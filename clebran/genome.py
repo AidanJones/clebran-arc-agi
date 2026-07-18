@@ -111,6 +111,30 @@ class GenomeOps:
 
     # ---------- generation ----------
 
+    def single_statement_program(self, fn: str) -> Program | None:
+        """One statement `O = fn(args)` with random typed args — used by
+        ramped init so every depth-1 head is sampled each seeding."""
+        prog = Program([])
+        st = None
+        for _ in range(10):
+            sig = PRIMITIVES[fn]
+            args = []
+            ok = True
+            for pt in sig.params:
+                a = self._random_arg(prog, 0, pt)
+                if a is None:
+                    ok = False
+                    break
+                args.append(a)
+            if ok:
+                st = Statement(("prim", fn), tuple(args))
+                break
+        if st is None:
+            return None
+        prog.statements.append(st)
+        self._force_grid_output(prog)
+        return prog if self._returns_grid(prog) else None
+
     def random_program(self, length: int | None = None) -> Program | None:
         n = length or self.rng.randint(1, self.max_len // 2)
         prog = Program([])

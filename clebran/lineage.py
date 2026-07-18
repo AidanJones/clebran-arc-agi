@@ -42,6 +42,8 @@ class Population:
     individuals: list[Individual] = field(default_factory=list)
     solved: bool = False
     solution: Individual | None = None
+    stall: int = 0
+    best_key: tuple = (-1.0, -1.0)
 
 
 class Lineage:
@@ -78,9 +80,20 @@ class Lineage:
 
     # ---------- init ----------
 
-    def seed_population(self, tid: str) -> None:
+    def seed_population(self, tid: str, keep: int = 0) -> None:
+        """Ramped init: half systematic (each pool primitive once, typed
+        args) so depth-1 solutions are always sampled, half random."""
         pop = self.pops[tid]
         task = self.tasks[tid]
+        pop.individuals = pop.individuals[:keep]
+        fns = list(self.ops.pool)
+        self.rng.shuffle(fns)
+        for fn in fns[: self.pop_size // 2 - keep]:
+            prog = self.ops.single_statement_program(fn)
+            if prog is None:
+                continue
+            fit = self.evaluator.evaluate(prog, task)
+            pop.individuals.append(Individual(prog, fit))
         while len(pop.individuals) < self.pop_size:
             prog = self.ops.random_program()
             if prog is None:
@@ -115,6 +128,16 @@ class Lineage:
         pop.individuals = next_gen
         self._sort(pop)
         best = pop.individuals[0]
+        if best.fit.key > pop.best_key:
+            pop.best_key = best.fit.key
+            pop.stall = 0
+        else:
+            pop.stall += 1
+            if pop.stall >= 40:
+                # stagnation restart: keep top-2, reseed the rest
+                self.seed_population(tid, keep=2)
+                pop.stall = 0
+                best = pop.individuals[0]
         if best.fit.solved_all:
             pop.solved = True
             pop.solution = best

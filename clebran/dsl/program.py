@@ -84,12 +84,27 @@ class Program:
         return "\n".join(lines)
 
 
+# Union aliases whose concrete type flows through polymorphic primitives:
+# e.g. vmirror(x: Piece) -> Piece applied to a Grid returns a Grid.
+_FLOW_THROUGH = {"Piece", "Element", "Patch", "Numerical"}
+
+
 def statement_return_type(program: Program, i: int) -> str:
-    """Static return type of statement i ("Any" for register-called)."""
-    fn = program.statements[i].fn
-    if fn[0] == "prim":
-        return PRIMITIVES[fn[1]].returns
-    return "Any"
+    """Static return type of statement i, with union flow-through
+    refinement ("Any" for register-called statements)."""
+    st = program.statements[i]
+    if st.fn[0] != "prim":
+        return "Any"
+    sig = PRIMITIVES[st.fn[1]]
+    ret = sig.returns
+    if ret in _FLOW_THROUGH:
+        for k, pt in enumerate(sig.params):
+            if pt == ret and k < len(st.args):
+                refined = arg_type(program, st.args[k])
+                if refined != "Any":
+                    return refined
+                break
+    return ret
 
 
 def arg_type(program: Program, a: Arg) -> str:
