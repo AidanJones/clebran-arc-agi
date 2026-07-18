@@ -74,9 +74,11 @@ def run(program: Program, grid: Grid) -> Grid:
     if not (
         isinstance(result, tuple)
         and result
-        and all(isinstance(row, tuple) for row in result)
+        and all(isinstance(row, tuple) and row for row in result)
+        and len({len(row) for row in result}) == 1
+        and all(isinstance(v, int) for row in result for v in row)
     ):
-        raise ExecutionError("result is not a grid")
+        raise ExecutionError("result is not a rectangular grid")
     return result
 
 

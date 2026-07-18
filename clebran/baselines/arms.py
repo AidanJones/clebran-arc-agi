@@ -1,0 +1,84 @@
+"""Arm runners B1–B4 (§7) — thin wrappers over the orchestrator — and the
+matched-compute sweep driver used for the H2/H3 table.
+
+  B1: N isolated lineages (CH-NONE), best-of-ensemble union
+  B2: N lineages + CH-CONSTRAINED, fragment payload   (main treatment)
+  B3: N lineages + CH-UNCONSTRAINED, fragment payload (tests H3)
+  B4: N lineages + CH-CONSTRAINED, signal payload
+"""
+from __future__ import annotations
+
+import argparse
+import json
+
+from ..channel import make_channel
+from ..orchestrator import run_multi
+from .b0 import run_b0
+from .common import LOG_DIR
+
+ARM_CHANNEL = {
+    "B1": dict(kind="none"),
+    "B2": dict(kind="constrained", payload="fragment"),
+    "B3": dict(kind="unconstrained", payload="fragment"),
+    "B4": dict(kind="constrained", payload="signal"),
+}
+
+
+def run_arm(
+    arm: str,
+    seed: int,
+    budget: int,
+    n_lineages: int = 3,
+    pop_size: int = 100,
+    frag_k: int = 4,
+    frag_m: int = 3,
+) -> dict:
+    if arm == "B0":
+        return run_b0(seed=seed, budget=budget, pop_size=pop_size)
+    spec = dict(ARM_CHANNEL[arm])
+    kind = spec.pop("kind")
+    if kind == "constrained":
+        chan = make_channel(kind, max_fragment_size=frag_k, max_messages=frag_m, **spec)
+    else:
+        chan = make_channel(kind, **spec)
+    return run_multi(
+        arm=arm,
+        channel=chan,
+        seed=seed,
+        n_lineages=n_lineages,
+        budget=budget,
+        pop_size=pop_size,
+        max_frag_size=frag_k,
+        run_name=f"{arm.lower()}_seed{seed}",
+    )
+
+
+def sweep(arms: list[str], seeds: list[int], budget: int, **kw) -> None:
+    results = []
+    for arm in arms:
+        for seed in seeds:
+            s = run_arm(arm, seed, budget, **kw)
+            print(
+                f"{arm} seed={seed}: solved "
+                f"{s.get('solved_union', s.get('solved'))}/30 "
+                f"evals={s['evals']}"
+            )
+            results.append(s)
+    out = LOG_DIR / "sweep_results.jsonl"
+    with out.open("a") as fh:
+        for r in results:
+            fh.write(json.dumps(r) + "\n")
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--arms", nargs="+", default=["B0", "B1", "B2"])
+    ap.add_argument("--seeds", nargs="+", type=int, default=[1, 2, 3, 4, 5])
+    ap.add_argument("--budget", type=int, default=500_000)
+    ap.add_argument("--lineages", type=int, default=3)
+    ap.add_argument("--pop", type=int, default=100)
+    args = ap.parse_args()
+    sweep(
+        args.arms, args.seeds, args.budget,
+        n_lineages=args.lineages, pop_size=args.pop,
+    )
