@@ -1,0 +1,254 @@
+{
+  "seed": 20260718,
+  "recipe": "spec \u00a74.1 v1.1",
+  "tasks": [
+    {
+      "task_id": "5582e5ca",
+      "depth": 2,
+      "bucket": "D1",
+      "tags": [
+        "object-count"
+      ]
+    },
+    {
+      "task_id": "5614dbcf",
+      "depth": 2,
+      "bucket": "D1",
+      "tags": [
+        "object-count",
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "5bd6f4ac",
+      "depth": 2,
+      "bucket": "D1",
+      "tags": [
+        "object-count",
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "6150a2bd",
+      "depth": 1,
+      "bucket": "D1",
+      "tags": [
+        "geometry",
+        "object-count"
+      ]
+    },
+    {
+      "task_id": "6d0aefbc",
+      "depth": 2,
+      "bucket": "D1",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "9172f3a0",
+      "depth": 1,
+      "bucket": "D1",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "a416b8f3",
+      "depth": 1,
+      "bucket": "D1",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "b1948b0a",
+      "depth": 1,
+      "bucket": "D1",
+      "tags": [
+        "other"
+      ]
+    },
+    {
+      "task_id": "d10ecb37",
+      "depth": 1,
+      "bucket": "D1",
+      "tags": [
+        "object-count",
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "ed36ccf7",
+      "depth": 1,
+      "bucket": "D1",
+      "tags": [
+        "geometry",
+        "object-count"
+      ]
+    },
+    {
+      "task_id": "0b148d64",
+      "depth": 3,
+      "bucket": "D2",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "0d3d703e",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "object-count",
+        "symmetry-repair"
+      ]
+    },
+    {
+      "task_id": "1f85a75f",
+      "depth": 3,
+      "bucket": "D2",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "2dc579da",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "32597951",
+      "depth": 3,
+      "bucket": "D2",
+      "tags": [
+        "other"
+      ]
+    },
+    {
+      "task_id": "41e4d17e",
+      "depth": 5,
+      "bucket": "D2",
+      "tags": [
+        "symmetry-repair"
+      ]
+    },
+    {
+      "task_id": "46f33fce",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "6f8cd79b",
+      "depth": 5,
+      "bucket": "D2",
+      "tags": [
+        "symmetry-repair"
+      ]
+    },
+    {
+      "task_id": "a79310a0",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "other"
+      ]
+    },
+    {
+      "task_id": "ae4f1146",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "object-count",
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "be94b721",
+      "depth": 3,
+      "bucket": "D2",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "ce22a75a",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "symmetry-repair"
+      ]
+    },
+    {
+      "task_id": "f25fbde4",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "f25ffba3",
+      "depth": 3,
+      "bucket": "D2",
+      "tags": [
+        "symmetry-repair"
+      ]
+    },
+    {
+      "task_id": "f76d97a5",
+      "depth": 5,
+      "bucket": "D2",
+      "tags": [
+        "other"
+      ]
+    },
+    {
+      "task_id": "007bbfb7",
+      "depth": 7,
+      "bucket": "D3",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "1190e5a7",
+      "depth": 8,
+      "bucket": "D3",
+      "tags": [
+        "object-count",
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "178fcbfb",
+      "depth": 10,
+      "bucket": "D3",
+      "tags": [
+        "symmetry-repair"
+      ]
+    },
+    {
+      "task_id": "ba97ae07",
+      "depth": 7,
+      "bucket": "D3",
+      "tags": [
+        "recolour"
+      ]
+    },
+    {
+      "task_id": "dc0a314f",
+      "depth": 10,
+      "bucket": "D3",
+      "tags": [
+        "size-change"
+      ]
+    }
+  ]
+}
