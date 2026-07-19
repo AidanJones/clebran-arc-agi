@@ -46,6 +46,16 @@ class Population:
     stall: int = 0
     best_key: tuple = (-1.0, -1.0)
     restarts: int = 0
+    # adaptive operator selection: exponential-recency credit per operator
+    op_n: dict = field(default_factory=lambda: {"mutate": 2.0, "crossover": 2.0, "fragment": 2.0})
+    op_w: dict = field(default_factory=lambda: {"mutate": 1.0, "crossover": 1.0, "fragment": 1.0})
+
+    def op_weight(self, op: str) -> float:
+        return max(0.05, self.op_w[op] / self.op_n[op])
+
+    def op_credit(self, op: str, win: bool, decay: float = 0.99) -> None:
+        self.op_n[op] = self.op_n[op] * decay + 1.0
+        self.op_w[op] = self.op_w[op] * decay + (1.0 if win else 0.0)
 
 
 class Lineage:
@@ -164,13 +174,17 @@ class Lineage:
             if len(next_gen) >= self.pop_size - n_immigrants:
                 # random immigrants: keep exploration alive when the
                 # population has no fitness gradient to follow
-                child, used_frag = self.ops.random_program(), False
+                child, used_frag, op, parent_key = (
+                    self.ops.random_program(), False, None, None
+                )
             else:
-                child, used_frag = self._make_child(inds)
+                child, used_frag, op, parent_key = self._make_child(pop, inds)
             if child is None:
                 continue
             fit = self.evaluator.evaluate(child, task)
             next_gen.append(Individual(child, fit, from_fragment=used_frag))
+            if op is not None:
+                pop.op_credit(op, fit.key >= parent_key)
         pop.individuals = next_gen
         self._sort(pop)
         best = pop.individuals[0]
@@ -202,24 +216,44 @@ class Lineage:
             pop.solution = best
             self._absorb_solution(best)
 
-    def _make_child(self, inds: list[Individual]) -> tuple[Program | None, bool]:
-        r = self.rng.random()
-        used_frag = False
-        if r < self.p_fragment and self.library:
+    def _make_child(
+        self, pop: Population, inds: list[Individual]
+    ) -> tuple[Program | None, bool, str, tuple]:
+        """Pick an operator by adaptive credit (recent fraction of children
+        at least matching their parent), floored so no operator dies out.
+        Fragment splicing thus self-suppresses on tasks where library
+        material is irrelevant and self-amplifies where it pays — the fair
+        setting for judging the channel. Returns
+        (child, carries_received_material, op, parent_fitness_key)."""
+        ops = ["mutate"]
+        base = {"mutate": 1.0}
+        if len(inds) >= 2:
+            ops.append("crossover")
+            base["crossover"] = self.p_crossover / 0.55
+        if self.library:
+            ops.append("fragment")
+            base["fragment"] = self.p_fragment / 0.55
+        weights = [base[o] * pop.op_weight(o) for o in ops]
+        op = self.rng.choices(ops, weights=weights, k=1)[0]
+        if op == "fragment":
             entry = self._pick_fragment()
             parent = self._tournament(inds)
             child = self.ops.inject_fragment(parent.prog, entry.frag)
+            used_frag = False
             if child is not None:
                 entry.uses += 1
                 used_frag = entry.received or parent.from_fragment
-            return child, used_frag
-        if r < self.p_fragment + self.p_crossover and len(inds) >= 2:
+            return child, used_frag, op, parent.fit.key
+        if op == "crossover":
             a, b = self._tournament(inds), self._tournament(inds)
             child = self.ops.crossover(a.prog, b.prog)
-            return child, a.from_fragment or b.from_fragment
+            return (
+                child, a.from_fragment or b.from_fragment, op,
+                max(a.fit.key, b.fit.key),
+            )
         parent = self._tournament(inds)
         child = self.ops.mutate(parent.prog)
-        return child, parent.from_fragment
+        return child, parent.from_fragment, op, parent.fit.key
 
     def _local_const_search(self, pop: Population, task: Task) -> bool:
         """Coordinate descent on the elite's const/lit arg slots: try all
@@ -289,6 +323,9 @@ class Lineage:
                     break
             if not improved or fit.solved_all:
                 break
+        if not fit.solved_all and len(prog) <= 2:
+            prog, fit, hit2d = self._joint_tuple_sweep(prog, fit, task)
+            improved_any = improved_any or hit2d
         if improved_any:
             try:
                 idx = next(
@@ -301,6 +338,49 @@ class Lineage:
             )
             self._sort(pop)
         return improved_any
+
+    def _joint_tuple_sweep(
+        self, prog: Program, fit: Fitness, task: Task
+    ) -> tuple[Program, Fitness, bool]:
+        """2-D sweep for two-coordinate needles (e.g. crop offset+size):
+        jointly try lit tuples 0..9² in one tuple slot × tuple constants in
+        another. Coordinate descent cannot cross these when neither
+        coordinate improves alone; a bounded joint sweep (~2.6k evals on a
+        short elite) can."""
+        slots = [
+            (i, k)
+            for i, st in enumerate(prog.statements)
+            for k, a in enumerate(st.args)
+            if (a[0] == "const" and isinstance(CONSTANTS[a[1]][0], tuple))
+            or (a[0] == "lit" and isinstance(a[1], tuple))
+        ]
+        if len(slots) < 2:
+            return prog, fit, False
+        tuple_consts = [
+            ("const", n) for n, (v, _) in sorted(CONSTANTS.items())
+            if isinstance(v, tuple)
+        ]
+        lits = [("lit", (x, y)) for x in range(10) for y in range(10)]
+        improved = False
+        for (ia, ka), (ib, kb) in ((slots[0], slots[1]), (slots[1], slots[0])):
+            for va in lits:
+                for vb in tuple_consts:
+                    trial = Program(list(prog.statements))
+                    sa = trial.statements[ia]
+                    args = list(sa.args)
+                    args[ka] = va
+                    trial.statements[ia] = Statement(sa.fn, tuple(args))
+                    sb = trial.statements[ib]
+                    args = list(sb.args)
+                    args[kb] = vb
+                    trial.statements[ib] = Statement(sb.fn, tuple(args))
+                    tfit = self.evaluator.evaluate(trial, task)
+                    if tfit.key > fit.key:
+                        prog, fit = trial, tfit
+                        improved = True
+                        if fit.solved_all:
+                            return prog, fit, True
+        return prog, fit, improved
 
     def _tournament(self, inds: list[Individual]) -> Individual:
         pick = max(
@@ -361,7 +441,27 @@ class Lineage:
         weights = [max(e.score, 0.01) + 0.1 * e.uses for e in self.library]
         return self.rng.choices(self.library, weights=weights, k=1)[0]
 
-    # ---------- reporting ----------
+    # ---------- scheduling ----------
+
+    def task_weights(self) -> dict[str, float]:
+        """Budget-allocation weights over unsolved tasks: proximity to a
+        solution (partial credit) plus a boost while improvement is live.
+        Round-robin starves near-miss tasks in the tail — most budget goes
+        to deep tasks that cannot crack at this stage; this skews
+        generations toward tasks the engine is actually making progress on.
+        Every unsolved task keeps a floor weight so none starves entirely."""
+        weights: dict[str, float] = {}
+        for tid, pop in self.pops.items():
+            if pop.solved:
+                continue
+            solved_frac, tiebreak = (
+                pop.best_key if pop.best_key > (0.0, 0.0) else (0.0, 0.0)
+            )
+            w = 0.15 + solved_frac + min(tiebreak, 1.0)
+            if pop.stall < 10:
+                w *= 1.5  # improvement is live
+            weights[tid] = w
+        return weights
 
     def solved_tasks(self) -> set[str]:
         return {tid for tid, p in self.pops.items() if p.solved}

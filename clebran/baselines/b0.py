@@ -35,12 +35,21 @@ def run_b0(
     log.write({"event": "start", "arm": "B0", "seed": seed, "budget": budget,
                "pool_size": len(pool), "pop_size": pop_size})
 
+    import random as _random
+    sched_rng = _random.Random(seed + 777)
     epoch = 0
     while ev.evaluations < budget:
         unsolved = [t for t in tasks if not lin.pops[t].solved]
         if not unsolved:
             break
-        for tid in unsolved:
+        # progress-weighted schedule: same number of generations per epoch
+        # as round-robin, skewed toward near-miss tasks
+        w = lin.task_weights()
+        picks = sched_rng.choices(
+            unsolved, weights=[w.get(t, 0.15) for t in unsolved],
+            k=len(unsolved),
+        )
+        for tid in picks:
             if ev.evaluations >= budget:
                 break
             before = lin.pops[tid].solved

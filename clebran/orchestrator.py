@@ -117,14 +117,23 @@ def run_multi(
     def total_evals() -> int:
         return sum(l.evaluator.evaluations for l in lineages)
 
+    sched_rng = random.Random(seed + 777)
     epoch = 0
     while total_evals() < budget:
         all_solved = True
         for lin in lineages:
-            for tid in tasks:
+            unsolved = [t for t in tasks if not lin.pops[t].solved]
+            if not unsolved:
+                continue
+            all_solved = False
+            w = lin.task_weights()
+            picks = sched_rng.choices(
+                unsolved, weights=[w.get(t, 0.15) for t in unsolved],
+                k=len(unsolved),
+            )
+            for tid in picks:
                 if lin.pops[tid].solved:
                     continue
-                all_solved = False
                 if total_evals() >= budget:
                     break
                 before = lin.pops[tid].solved
