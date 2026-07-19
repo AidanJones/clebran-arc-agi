@@ -89,8 +89,15 @@ class Lineage:
         evaluator: Evaluator | None = None,
     ):
         self.lineage_id = lineage_id
-        self.rng = random.Random(seed)
-        self.ops = GenomeOps(pool, self.rng)
+        self.rng = random.Random(seed)  # lineage-level (library picks)
+        # per-task rng substreams: a task's search trajectory is identical
+        # whether it runs in isolation or interleaved with other tasks —
+        # isolation probes then predict full-run behavior exactly
+        self.rngs = {tid: random.Random(f"{seed}:{tid}") for tid in tasks}
+        self.ops_by_task = {
+            tid: GenomeOps(pool, self.rngs[tid]) for tid in tasks
+        }
+        self.ops = GenomeOps(pool, self.rng)  # lineage-level (fragments)
         self.tasks = tasks
         self.pop_size = pop_size
         self.tournament_k = tournament_k
@@ -112,17 +119,18 @@ class Lineage:
         systematic single statements, half random."""
         pop = self.pops[tid]
         task = self.tasks[tid]
+        ops = self.ops_by_task[tid]
         first_time = not pop.individuals and keep == 0
         pop.individuals = pop.individuals[:keep]
         if first_time:
             scored = []
-            for prog in self.ops.enumerate_depth1():
+            for prog in ops.enumerate_depth1():
                 fit = self.evaluator.evaluate(prog, task)
                 scored.append(Individual(prog, fit))
                 if fit.solved_all:
                     break
             if not (scored and scored[-1].fit.solved_all):
-                for prog in self.ops.enumerate_depth2():
+                for prog in ops.enumerate_depth2():
                     fit = self.evaluator.evaluate(prog, task)
                     scored.append(Individual(prog, fit))
                     if fit.solved_all:
@@ -141,7 +149,7 @@ class Lineage:
             )
             pop.individuals = nichebest[: self.pop_size // 2]
             while len(pop.individuals) < self.pop_size:
-                prog = self.ops.random_program()
+                prog = ops.random_program()
                 if prog is None:
                     continue
                 pop.individuals.append(
@@ -183,16 +191,16 @@ class Lineage:
                 pop.solution = best
                 self._absorb_solution(best)
             return
-        fns = list(self.ops.pool)
-        self.rng.shuffle(fns)
+        fns = list(ops.pool)
+        self.rngs[tid].shuffle(fns)
         for fn in fns[: self.pop_size // 2 - keep]:
-            prog = self.ops.single_statement_program(fn)
+            prog = ops.single_statement_program(fn)
             if prog is None:
                 continue
             fit = self.evaluator.evaluate(prog, task)
             pop.individuals.append(Individual(prog, fit))
         while len(pop.individuals) < self.pop_size:
-            prog = self.ops.random_program()
+            prog = ops.random_program()
             if prog is None:
                 continue
             fit = self.evaluator.evaluate(prog, task)
@@ -218,7 +226,7 @@ class Lineage:
                 # random immigrants: keep exploration alive when the
                 # population has no fitness gradient to follow
                 child, used_frag, op, parent_key = (
-                    self.ops.random_program(), False, None, None
+                    self.ops_by_task[tid].random_program(), False, None, None
                 )
             else:
                 child, used_frag, op, parent_key = self._make_child(pop, inds)
@@ -273,6 +281,8 @@ class Lineage:
         material is irrelevant and self-amplifies where it pays — the fair
         setting for judging the channel. Returns
         (child, carries_received_material, op, parent_fitness_key)."""
+        gops = self.ops_by_task[pop.task_id]
+        rng = self.rngs[pop.task_id]
         ops = ["mutate"]
         base = {"mutate": 1.0}
         if len(inds) >= 2:
@@ -282,25 +292,25 @@ class Lineage:
             ops.append("fragment")
             base["fragment"] = self.p_fragment / 0.55
         weights = [base[o] * pop.op_weight(o) for o in ops]
-        op = self.rng.choices(ops, weights=weights, k=1)[0]
+        op = rng.choices(ops, weights=weights, k=1)[0]
         if op == "fragment":
             entry = self._pick_fragment()
-            parent = self._tournament(inds)
-            child = self.ops.inject_fragment(parent.prog, entry.frag)
+            parent = self._tournament(inds, rng)
+            child = gops.inject_fragment(parent.prog, entry.frag)
             used_frag = False
             if child is not None:
                 entry.uses += 1
                 used_frag = entry.received or parent.from_fragment
             return child, used_frag, op, parent.fit.key
         if op == "crossover":
-            a, b = self._tournament(inds), self._tournament(inds)
-            child = self.ops.crossover(a.prog, b.prog)
+            a, b = self._tournament(inds, rng), self._tournament(inds, rng)
+            child = gops.crossover(a.prog, b.prog)
             return (
                 child, a.from_fragment or b.from_fragment, op,
                 max(a.fit.key, b.fit.key),
             )
-        parent = self._tournament(inds)
-        child = self.ops.mutate(parent.prog)
+        parent = self._tournament(inds, rng)
+        child = gops.mutate(parent.prog)
         return child, parent.from_fragment, op, parent.fit.key
 
     def _local_const_search(self, pop: Population, task: Task) -> bool:
@@ -354,7 +364,7 @@ class Lineage:
                         # short programs are needle candidates — sweep the
                         # full tuple space; sample it for longer ones
                         if len(prog) > 3 and len(cands) > 40:
-                            cands = self.rng.sample(cands, 40)
+                            cands = self.rngs[pop.task_id].sample(cands, 40)
                     else:
                         continue
                     for cand in cands:
@@ -453,9 +463,12 @@ class Lineage:
                             return prog, fit, True
         return prog, fit, improved
 
-    def _tournament(self, inds: list[Individual]) -> Individual:
+    def _tournament(
+        self, inds: list[Individual], rng: random.Random | None = None
+    ) -> Individual:
+        rng = rng or self.rng
         pick = max(
-            self.rng.sample(inds, min(self.tournament_k, len(inds))),
+            rng.sample(inds, min(self.tournament_k, len(inds))),
             key=lambda i: i.fit.key,
         )
         return pick
@@ -493,9 +506,12 @@ class Lineage:
         toward what other lineages report is paying off. Blend keeps 1.0
         as the floor so local primitives never vanish."""
         scale = max(weights.values()) if weights else 1.0
-        self.ops.fn_weights = {
+        fw = {
             p: 1.0 + 2.0 * weights.get(p, 0.0) / scale for p in self.ops.pool
         }
+        self.ops.fn_weights = fw
+        for gops in self.ops_by_task.values():
+            gops.fn_weights = fw
 
     def add_fragment(self, frag: Fragment, score: float, received: bool) -> None:
         key = repr(frag)
