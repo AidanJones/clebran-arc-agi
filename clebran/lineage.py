@@ -49,6 +49,20 @@ class Population:
     # adaptive operator selection: exponential-recency credit per operator
     op_n: dict = field(default_factory=lambda: {"mutate": 2.0, "crossover": 2.0, "fragment": 2.0})
     op_w: dict = field(default_factory=lambda: {"mutate": 1.0, "crossover": 1.0, "fragment": 1.0})
+    # hall of fame: best individual per skeleton signature, survives
+    # restarts so full restarts explore fresh space without destroying
+    # polishable partial-credit stubs
+    hof: dict = field(default_factory=dict)
+    swept: set = field(default_factory=set)  # programs already const-swept
+
+    def hof_update(self, ind) -> None:
+        sig = tuple(st.fn for st in ind.prog.statements)
+        cur = self.hof.get(sig)
+        if cur is None or ind.fit.key > cur.fit.key:
+            self.hof[sig] = ind
+        if len(self.hof) > 10:
+            drop = min(self.hof, key=lambda s: self.hof[s].fit.key)
+            del self.hof[drop]
 
     def op_weight(self, op: str) -> float:
         return max(0.05, self.op_w[op] / self.op_n[op])
@@ -187,6 +201,8 @@ class Lineage:
                 pop.op_credit(op, fit.key >= parent_key)
         pop.individuals = next_gen
         self._sort(pop)
+        for ind in pop.individuals[:5]:
+            pop.hof_update(ind)
         best = pop.individuals[0]
         if best.fit.key > pop.best_key:
             pop.best_key = best.fit.key
@@ -206,9 +222,12 @@ class Lineage:
                 # restart in its own basin
                 pop.restarts += 1
                 keep = 2 if pop.restarts % 2 == 1 else 0
-                if keep == 0:
-                    pop.best_key = (-1.0, -1.0)
                 self.seed_population(tid, keep=keep)
+                # re-inject the hall of fame: restarts explore fresh space
+                # but never lose the best stub of each known skeleton
+                if pop.hof:
+                    pop.individuals[-len(pop.hof):] = list(pop.hof.values())
+                    self._sort(pop)
                 pop.stall = 0
                 best = pop.individuals[0]
         if best.fit.solved_all:
@@ -279,6 +298,10 @@ class Lineage:
         return improved_all
 
     def _sweep_one(self, pop: Population, task: Task, best: Individual) -> bool:
+        key = best.prog.to_json()
+        if key in pop.swept:
+            return False
+        pop.swept.add(key)
         prog, fit = best.prog, best.fit
         improved_any = False
         for _round in range(3):
