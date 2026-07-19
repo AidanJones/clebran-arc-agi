@@ -111,6 +111,45 @@ class GenomeOps:
 
     # ---------- generation ----------
 
+    def enumerate_depth1(self, max_per_fn: int = 400) -> list[Program]:
+        """All single-statement programs over the pool whose args draw from
+        {I} ∪ typed constants. Complete coverage of the depth-1-with-
+        constants space (capped per fn), used once at first seeding so
+        near-atomic tasks are found deterministically rather than sampled."""
+        from itertools import product
+
+        out: list[Program] = []
+        for fn in sorted(self.pool):
+            sig = PRIMITIVES[fn]
+            if not compatible(sig.returns, "Grid") and sig.returns not in (
+                "Any", "Element", "Piece"
+            ):
+                continue
+            slots: list[list[Arg]] = []
+            ok = True
+            for pt in sig.params:
+                cands: list[Arg] = []
+                if compatible("Grid", pt):
+                    cands.append(("in", None))
+                for t, names in self._consts_by_type.items():
+                    if compatible(t, pt):
+                        cands.extend(("const", n) for n in names)
+                if not cands:
+                    ok = False
+                    break
+                slots.append(cands)
+            if not ok:
+                continue
+            combos = list(product(*slots)) if slots else [()]
+            if len(combos) > max_per_fn:
+                combos = self.rng.sample(combos, max_per_fn)
+            for combo in combos:
+                # require I somewhere: constants-only programs ignore input
+                if slots and not any(a == ("in", None) for a in combo):
+                    continue
+                out.append(Program([Statement(("prim", fn), tuple(combo))]))
+        return out
+
     def single_statement_program(self, fn: str) -> Program | None:
         """One statement `O = fn(args)` with random typed args — used by
         ramped init so every depth-1 head is sampled each seeding."""
@@ -333,22 +372,49 @@ class GenomeOps:
         return True
 
     def _mut_const(self, prog: Program) -> bool:
+        """Swap a constant for another of the same type, or tweak an
+        integer / integer-tuple value by ±1 into literal space (§5.2
+        "tweak an integer/colour literal")."""
         spots = [
             (i, k, a)
             for i, st in enumerate(prog.statements)
             for k, a in enumerate(st.args)
-            if a[0] == "const"
+            if a[0] == "const" or (a[0] == "lit" and isinstance(a[1], (int, tuple)))
         ]
         if not spots:
             return False
-        i, k, (_, name) = self.rng.choice(spots)
-        t = CONSTANTS[name][1]
-        options = [c for c in self._consts_by_type.get(t, []) if c != name]
-        if not options:
-            return False
+        i, k, a = self.rng.choice(spots)
+        value = CONSTANTS[a[1]][0] if a[0] == "const" else a[1]
         st = prog.statements[i]
         args = list(st.args)
-        args[k] = ("const", self.rng.choice(options))
+        if self.rng.random() < 0.5:
+            # value tweak, as a literal: mixture of a ±1 local step and a
+            # uniform jump in 0..9 (jumps cross zero-gradient valleys that
+            # defeat pure hill-climbing, e.g. grid offsets)
+            def step(v: int) -> int:
+                if self.rng.random() < 0.3:
+                    return self.rng.randint(0, 9)
+                return v + self.rng.choice((-1, 1))
+
+            if isinstance(value, bool):
+                args[k] = ("lit", not value)
+            elif isinstance(value, int):
+                args[k] = ("lit", step(value))
+            elif isinstance(value, tuple) and len(value) == 2:
+                args[k] = ("lit", (step(value[0]), value[1])
+                           if self.rng.random() < 0.5
+                           else (value[0], step(value[1])))
+            else:
+                return False
+        else:
+            t = (
+                CONSTANTS[a[1]][1] if a[0] == "const"
+                else ("Integer" if isinstance(value, int) else "IntegerTuple")
+            )
+            options = self._consts_by_type.get(t, [])
+            if not options:
+                return False
+            args[k] = ("const", self.rng.choice(options))
         prog.statements[i] = Statement(st.fn, tuple(args))
         return True
 

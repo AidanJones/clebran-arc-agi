@@ -44,6 +44,7 @@ class Population:
     solution: Individual | None = None
     stall: int = 0
     best_key: tuple = (-1.0, -1.0)
+    restarts: int = 0
 
 
 class Lineage:
@@ -81,11 +82,36 @@ class Lineage:
     # ---------- init ----------
 
     def seed_population(self, tid: str, keep: int = 0) -> None:
-        """Ramped init: half systematic (each pool primitive once, typed
-        args) so depth-1 solutions are always sampled, half random."""
+        """First seeding: exhaustive depth-1 sweep (typed constants), keep
+        the best half-population. Reseeding (restarts): ramped init — half
+        systematic single statements, half random."""
         pop = self.pops[tid]
         task = self.tasks[tid]
+        first_time = not pop.individuals and keep == 0
         pop.individuals = pop.individuals[:keep]
+        if first_time:
+            scored = []
+            for prog in self.ops.enumerate_depth1():
+                fit = self.evaluator.evaluate(prog, task)
+                scored.append(Individual(prog, fit))
+                if fit.solved_all:
+                    break
+            scored.sort(key=lambda i: i.fit.key, reverse=True)
+            pop.individuals = scored[: self.pop_size // 2]
+            while len(pop.individuals) < self.pop_size:
+                prog = self.ops.random_program()
+                if prog is None:
+                    continue
+                pop.individuals.append(
+                    Individual(prog, self.evaluator.evaluate(prog, task))
+                )
+            self._sort(pop)
+            best = pop.individuals[0]
+            if best.fit.solved_all:
+                pop.solved = True
+                pop.solution = best
+                self._absorb_solution(best)
+            return
         fns = list(self.ops.pool)
         self.rng.shuffle(fns)
         for fn in fns[: self.pop_size // 2 - keep]:
@@ -110,6 +136,8 @@ class Lineage:
             return
         if not pop.individuals:
             self.seed_population(tid)
+            if pop.solved:
+                return
         task = self.tasks[tid]
         inds = pop.individuals
         next_gen: list[Individual] = inds[: self.elite]
@@ -134,8 +162,14 @@ class Lineage:
         else:
             pop.stall += 1
             if pop.stall >= 40:
-                # stagnation restart: keep top-2, reseed the rest
-                self.seed_population(tid, keep=2)
+                # stagnation restart; alternate keeping the top-2 with a
+                # full restart so a deceptive elite can't re-trap every
+                # restart in its own basin
+                pop.restarts += 1
+                keep = 2 if pop.restarts % 2 == 1 else 0
+                if keep == 0:
+                    pop.best_key = (-1.0, -1.0)
+                self.seed_population(tid, keep=keep)
                 pop.stall = 0
                 best = pop.individuals[0]
         if best.fit.solved_all:

@@ -18,7 +18,7 @@ for path in sorted(Path("logs").glob("b0_seed*.jsonl")):
     solved = set(summary["solved_tasks"])
     rows.append(summary | {"d1_missing": sorted(d1 - solved)})
 
-print(f"{'seed':>4} {'solved':>6} {'test✓':>5} {'meanlen':>7} {'evals/solve':>11}  D1 gate")
+print(f"{'seed':>4} {'solved':>6} {'test':>5} {'meanlen':>7} {'evals/solve':>11}  D1 gate")
 gate_ok = True
 for r in rows:
     n = r["solved"]
