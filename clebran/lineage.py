@@ -347,24 +347,43 @@ class Lineage:
         another. Coordinate descent cannot cross these when neither
         coordinate improves alone; a bounded joint sweep (~2.6k evals on a
         short elite) can."""
-        slots = [
-            (i, k)
-            for i, st in enumerate(prog.statements)
-            for k, a in enumerate(st.args)
-            if (a[0] == "const" and isinstance(CONSTANTS[a[1]][0], tuple))
-            or (a[0] == "lit" and isinstance(a[1], tuple))
-        ]
-        if len(slots) < 2:
-            return prog, fit, False
+        def _val(a):
+            return CONSTANTS[a[1]][0] if a[0] == "const" else a[1]
+
+        tup_slots, int_slots = [], []
+        for i, st in enumerate(prog.statements):
+            for k, a in enumerate(st.args):
+                if a[0] not in ("const", "lit"):
+                    continue
+                v = _val(a)
+                if isinstance(v, tuple):
+                    tup_slots.append((i, k))
+                elif isinstance(v, int) and not isinstance(v, bool):
+                    int_slots.append((i, k))
         tuple_consts = [
             ("const", n) for n, (v, _) in sorted(CONSTANTS.items())
             if isinstance(v, tuple)
         ]
-        lits = [("lit", (x, y)) for x in range(10) for y in range(10)]
+        tup_lits = [("lit", (x, y)) for x in range(10) for y in range(10)]
+        int_lits = [("lit", v) for v in range(10)]
+        pairs: list[tuple] = []
+        if len(tup_slots) >= 2:
+            pairs += [
+                (tup_slots[0], tup_slots[1], tup_lits, tuple_consts),
+                (tup_slots[1], tup_slots[0], tup_lits, tuple_consts),
+            ]
+        if len(int_slots) >= 2:
+            # all int-slot pairs on a short program (colour pairs etc.)
+            for x in range(len(int_slots)):
+                for y in range(len(int_slots)):
+                    if x != y:
+                        pairs.append(
+                            (int_slots[x], int_slots[y], int_lits, int_lits)
+                        )
         improved = False
-        for (ia, ka), (ib, kb) in ((slots[0], slots[1]), (slots[1], slots[0])):
-            for va in lits:
-                for vb in tuple_consts:
+        for (ia, ka), (ib, kb), cands_a, cands_b in pairs:
+            for va in cands_a:
+                for vb in cands_b:
                     trial = Program(list(prog.statements))
                     sa = trial.statements[ia]
                     args = list(sa.args)
