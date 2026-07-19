@@ -50,28 +50,53 @@ class Evaluator:
                 solved += 1
                 cell_acc_sum += 1.0
             elif got is not None:
-                # Dense gradient: cell accuracy over the overlapping region,
-                # scaled by shape similarity so wrong-shape outputs earn
-                # strictly less than same-shape ones. Still pure outcome
-                # reward — computed only from the grids.
+                # Dense gradient, still pure outcome reward. Background and
+                # foreground cells are scored separately and averaged: on
+                # mostly-background targets a blank canvas otherwise gets
+                # ~half the cells "right" and deceptively dominates every
+                # content-bearing program (observed: canvas(ZERO, 3x3)
+                # out-ranking all crop stubs on block-selection tasks).
                 gh, gw = len(got), len(got[0])
                 wh, ww = len(want), len(want[0])
+                oh, ow = min(gh, wh), min(gw, ww)
+                counts: dict[int, int] = {}
+                for rw_ in want:
+                    for w in rw_:
+                        counts[w] = counts.get(w, 0) + 1
+                bg = max(counts, key=counts.get)
+                bg_hit = bg_tot = fg_hit = fg_tot = 0
+                for r in range(oh):
+                    rg, rw_ = got[r], want[r]
+                    for c in range(ow):
+                        if rw_[c] == bg:
+                            bg_tot += 1
+                            bg_hit += rg[c] == rw_[c]
+                        else:
+                            fg_tot += 1
+                            fg_hit += rg[c] == rw_[c]
+                # cells of `want` outside the overlap are misses
+                for r in range(oh, wh):
+                    for c in range(ww):
+                        if want[r][c] == bg:
+                            bg_tot += 1
+                        else:
+                            fg_tot += 1
+                for r in range(oh):
+                    for c in range(ow, ww):
+                        if want[r][c] == bg:
+                            bg_tot += 1
+                        else:
+                            fg_tot += 1
+                parts = []
+                if bg_tot:
+                    parts.append(bg_hit / bg_tot)
+                if fg_tot:
+                    parts.append(fg_hit / fg_tot)
+                acc = sum(parts) / len(parts) if parts else 0.0
                 if (gh, gw) == (wh, ww):
-                    hit = sum(
-                        g == w
-                        for rg, rw in zip(got, want)
-                        for g, w in zip(rg, rw)
-                    )
-                    cell_acc_sum += hit / (wh * ww)
+                    cell_acc_sum += acc
                 else:
-                    oh, ow = min(gh, wh), min(gw, ww)
-                    hit = sum(
-                        g == w
-                        for rg, rw in zip(got[:oh], want[:oh])
-                        for g, w in zip(rg[:ow], rw[:ow])
-                    )
                     shape_sim = (oh * ow) / (max(gh, wh) * max(gw, ww))
-                    acc = hit / (wh * ww)
                     cell_acc_sum += 0.5 * shape_sim * (0.2 + 0.8 * acc)
             # crash: contributes 0
         solved_frac = solved / n

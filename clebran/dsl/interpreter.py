@@ -87,3 +87,36 @@ def run_safe(program: Program, grid: Grid) -> Grid | None:
         return run(program, grid)
     except ExecutionError:
         return None
+
+
+def run_trace(program: Program, grid: Grid) -> list[object]:
+    """Execute like run() but return every intermediate register value
+    (for visualization). Raises ExecutionError on failure."""
+    regs: list[object] = []
+    for st in program.statements:
+        try:
+            fkind, fpayload = st.fn
+            if fkind == "prim":
+                fn = PRIMITIVES[fpayload].fn
+            else:
+                fn = regs[fpayload]
+            args = []
+            for kind, payload in st.args:
+                if kind == "in":
+                    args.append(grid)
+                elif kind == "reg":
+                    args.append(regs[payload])
+                elif kind == "const":
+                    args.append(CONSTANTS[payload][0])
+                elif kind == "prim":
+                    args.append(PRIMITIVES[payload].fn)
+                else:
+                    args.append(payload)
+            out = fn(*args)
+            _check_size(out)
+            regs.append(out)
+        except ExecutionError:
+            raise
+        except Exception as e:  # noqa: BLE001
+            raise ExecutionError(f"{st.fn!r}: {type(e).__name__}") from None
+    return regs
