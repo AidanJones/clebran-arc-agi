@@ -282,14 +282,20 @@ class Lineage:
         improved_all = False
         seen_sigs: set[tuple] = set()
         targets: list[Individual] = []
+        top_any = 0
         for ind in pop.individuals:
             sig = tuple(st.fn for st in ind.prog.statements)
             if sig in seen_sigs:
                 continue
             seen_sigs.add(sig)
-            targets.append(ind)
-            if len(targets) == 5:
-                break
+            # every distinct short-program signature gets swept (these are
+            # the needle candidates, and sweeps memoize per program), plus
+            # the top-3 signatures of any length
+            if len(ind.prog) <= 2:
+                targets.append(ind)
+            elif top_any < 3:
+                targets.append(ind)
+                top_any += 1
         for ind in targets:
             if self._sweep_one(pop, task, ind):
                 improved_all = True
