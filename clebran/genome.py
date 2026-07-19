@@ -150,6 +150,73 @@ class GenomeOps:
                 out.append(Program([Statement(("prim", fn), tuple(combo))]))
         return out
 
+    def enumerate_depth2(self, cap: int = 1500, per_skeleton: int = 2) -> list[Program]:
+        """Depth-2 skeleton sweep: x0 = fn1(…); O = fn2(…, x0, …) over
+        grid-pipeline primitives, with `per_skeleton` random constant
+        assignments each (exact constants are the memetic sweep's job).
+        With enumerate_depth1 this makes the D1 bucket (reference depth
+        ≤ 2) a systematic search rather than a lottery."""
+        out: list[Program] = []
+        pipe1 = []  # fns whose args can come from {I, consts}
+        for fn in sorted(self.pool):
+            sig = PRIMITIVES[fn]
+            if any(
+                not (
+                    compatible("Grid", pt)
+                    or any(compatible(t, pt) for t in self._consts_by_type)
+                )
+                for pt in sig.params
+            ):
+                continue
+            pipe1.append(fn)
+        for fn1 in pipe1:
+            sig1 = PRIMITIVES[fn1]
+            for fn2 in sorted(self.pool):
+                sig2 = PRIMITIVES[fn2]
+                for _ in range(per_skeleton):
+                    prog = Program([])
+                    args1 = []
+                    ok = True
+                    for pt in sig1.params:
+                        a = self._random_arg(prog, 0, pt)
+                        if a is None:
+                            ok = False
+                            break
+                        args1.append(a)
+                    if not ok:
+                        continue
+                    prog.statements.append(
+                        Statement(("prim", fn1), tuple(args1))
+                    )
+                    x0_t = statement_return_type(prog, 0)
+                    slots = [
+                        k for k, pt in enumerate(sig2.params)
+                        if compatible(x0_t, pt)
+                    ]
+                    if not slots:
+                        break  # no wiring possible for this skeleton
+                    use = self.rng.choice(slots)
+                    args2 = []
+                    for k, pt in enumerate(sig2.params):
+                        if k == use:
+                            args2.append(("reg", 0))
+                            continue
+                        a = self._random_arg(prog, 1, pt)
+                        if a is None:
+                            ok = False
+                            break
+                        args2.append(a)
+                    if not ok:
+                        continue
+                    prog.statements.append(
+                        Statement(("prim", fn2), tuple(args2))
+                    )
+                    if self._returns_grid(prog):
+                        out.append(prog)
+        if len(out) > cap:
+            out = self.rng.sample(out, cap)
+        return out
+
     def single_statement_program(self, fn: str) -> Program | None:
         """One statement `O = fn(args)` with random typed args — used by
         ramped init so every depth-1 head is sampled each seeding."""

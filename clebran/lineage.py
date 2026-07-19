@@ -16,7 +16,8 @@ import random
 from dataclasses import dataclass, field
 
 from .data.loader import Task
-from .dsl.program import Program
+from .dsl.program import Program, Statement
+from .dsl.registry import CONSTANTS
 from .fitness import Evaluator, Fitness
 from .genome import GenomeOps, Fragment
 
@@ -96,8 +97,25 @@ class Lineage:
                 scored.append(Individual(prog, fit))
                 if fit.solved_all:
                     break
-            scored.sort(key=lambda i: i.fit.key, reverse=True)
-            pop.individuals = scored[: self.pop_size // 2]
+            if not (scored and scored[-1].fit.solved_all):
+                for prog in self.ops.enumerate_depth2():
+                    fit = self.evaluator.evaluate(prog, task)
+                    scored.append(Individual(prog, fit))
+                    if fit.solved_all:
+                        break
+            # niche by skeleton signature: keep only the best program per
+            # function-sequence so one lucky family can't crowd out the
+            # right skeleton with unlucky constants
+            by_sig: dict[tuple, Individual] = {}
+            for ind in scored:
+                sig = tuple(st.fn for st in ind.prog.statements)
+                cur = by_sig.get(sig)
+                if cur is None or ind.fit.key > cur.fit.key:
+                    by_sig[sig] = ind
+            nichebest = sorted(
+                by_sig.values(), key=lambda i: i.fit.key, reverse=True
+            )
+            pop.individuals = nichebest[: self.pop_size // 2]
             while len(pop.individuals) < self.pop_size:
                 prog = self.ops.random_program()
                 if prog is None:
@@ -207,10 +225,26 @@ class Lineage:
         """Coordinate descent on the elite's const/lit arg slots: try all
         same-type constants plus small literals, keep strict improvements.
         All evaluations are metered. Returns True if the elite improved."""
-        from .dsl.program import Program, Statement
-        from .dsl.registry import CONSTANTS
 
-        best = pop.individuals[0]
+        improved_all = False
+        seen_sigs: set[tuple] = set()
+        targets: list[Individual] = []
+        for ind in pop.individuals:
+            sig = tuple(st.fn for st in ind.prog.statements)
+            if sig in seen_sigs:
+                continue
+            seen_sigs.add(sig)
+            targets.append(ind)
+            if len(targets) == 5:
+                break
+        for ind in targets:
+            if self._sweep_one(pop, task, ind):
+                improved_all = True
+                if pop.individuals[0].fit.solved_all:
+                    break
+        return improved_all
+
+    def _sweep_one(self, pop: Population, task: Task, best: Individual) -> bool:
         prog, fit = best.prog, best.fit
         improved_any = False
         for _round in range(3):
@@ -231,7 +265,9 @@ class Lineage:
                             for y in range(10)
                             if (x, y) != value
                         ]
-                        if len(cands) > 40:
+                        # short programs are needle candidates — sweep the
+                        # full tuple space; sample it for longer ones
+                        if len(prog) > 3 and len(cands) > 40:
                             cands = self.rng.sample(cands, 40)
                     else:
                         continue
@@ -254,7 +290,13 @@ class Lineage:
             if not improved or fit.solved_all:
                 break
         if improved_any:
-            pop.individuals[0] = Individual(
+            try:
+                idx = next(
+                    i for i, x in enumerate(pop.individuals) if x is best
+                )
+            except StopIteration:
+                idx = len(pop.individuals) - 1
+            pop.individuals[idx] = Individual(
                 prog, fit, from_fragment=best.from_fragment
             )
             self._sort(pop)
