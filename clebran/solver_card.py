@@ -6,27 +6,22 @@ auto-filled results table, and one card per subset task with demo pairs,
 the evolved program, and a step-by-step execution trace (every register
 rendered as a grid).
 
-Usage:  uv run python scripts/render_report.py
+Usage:  uv run python -m clebran.solver_card
 """
 from __future__ import annotations
 
 import html
 import json
 import statistics as st
-import sys
 from collections import defaultdict
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+from .data.loader import load_task, REPO_ROOT
+from .dsl.interpreter import run_trace, ExecutionError
+from .dsl.program import Program
+from .dsl.solver_parse import parse_all_solvers
+from .subset import load_subset
 
-from clebran.data.loader import load_task  # noqa: E402
-from clebran.dsl.interpreter import run_trace, run_safe, ExecutionError  # noqa: E402
-from clebran.dsl.program import Program  # noqa: E402
-from clebran.dsl.solver_parse import parse_all_solvers  # noqa: E402
-from clebran.subset import load_subset  # noqa: E402
-
-LOGS = ROOT / "logs"
+LOGS = REPO_ROOT / "logs"
 OUT = LOGS / "report.html"
 
 ARC_COLORS = [

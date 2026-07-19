@@ -32,7 +32,13 @@ uv run python -m clebran.baselines.b0 --seed 1 --budget 500000        # single a
 uv run python -m clebran.baselines.arms --arms B0 B1 B2 B3 B4 \
     --seeds 1 2 3 4 5 --budget 500000                                 # full sweep
 uv run python -m clebran.metrics.report                               # H2/H3 table
+uv run python -m clebran.solver_card                                  # logs/report.html
 ```
+
+`clebran.solver_card` renders the solver card — a single self-contained HTML
+page with the hypothesis/baseline mapping, an auto-filled results table, and
+one card per subset task showing the evolved program and its statement-by-
+statement execution trace.
 
 Logs are JSONL per run under `logs/`.
 
@@ -52,4 +58,5 @@ clebran/
   orchestrator.py    N lineages, epochs, matched-compute budgeting
   metrics/           divergence (Jaccard), H2/H3 report
   baselines/         B0–B4 runners + sweep driver
+  solver_card.py     self-contained HTML report with execution traces
 ```
