@@ -148,6 +148,21 @@ class Lineage:
                     Individual(prog, self.evaluator.evaluate(prog, task))
                 )
             self._sort(pop)
+            if not pop.individuals[0].fit.solved_all:
+                # phase-1 polish, once per task: sweep the best few short
+                # stubs to completion so the depth-<=2 bucket is closed
+                # systematically rather than left to stall-timing luck
+                seen: set[tuple] = set()
+                swept = 0
+                for ind in list(pop.individuals):
+                    sig = tuple(st.fn for st in ind.prog.statements)
+                    if len(ind.prog) > 2 or sig in seen:
+                        continue
+                    seen.add(sig)
+                    self._sweep_one(pop, task, ind)
+                    swept += 1
+                    if swept == 6 or pop.individuals[0].fit.solved_all:
+                        break
             best = pop.individuals[0]
             if best.fit.solved_all:
                 pop.solved = True
@@ -282,20 +297,14 @@ class Lineage:
         improved_all = False
         seen_sigs: set[tuple] = set()
         targets: list[Individual] = []
-        top_any = 0
         for ind in pop.individuals:
             sig = tuple(st.fn for st in ind.prog.statements)
             if sig in seen_sigs:
                 continue
             seen_sigs.add(sig)
-            # every distinct short-program signature gets swept (these are
-            # the needle candidates, and sweeps memoize per program), plus
-            # the top-3 signatures of any length
-            if len(ind.prog) <= 2:
-                targets.append(ind)
-            elif top_any < 3:
-                targets.append(ind)
-                top_any += 1
+            targets.append(ind)
+            if len(targets) == 5:
+                break
         for ind in targets:
             if self._sweep_one(pop, task, ind):
                 improved_all = True
