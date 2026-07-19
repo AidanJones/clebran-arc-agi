@@ -152,16 +152,30 @@ class Lineage:
                 # phase-1 polish, once per task: sweep the best few short
                 # stubs to completion so the depth-<=2 bucket is closed
                 # systematically rather than left to stall-timing luck
+                shorts: list[tuple[tuple, Individual]] = []
                 seen: set[tuple] = set()
-                swept = 0
                 for ind in list(pop.individuals):
                     sig = tuple(st.fn for st in ind.prog.statements)
                     if len(ind.prog) > 2 or sig in seen:
                         continue
                     seen.add(sig)
+                    shorts.append((sig, ind))
+                targets = [ind for _, ind in shorts[:6]]
+                # also sweep compositions built around the top families:
+                # the right skeleton often contains the top-ranked primitive
+                # but scores no better than it until its constants are swept
+                # (e.g. replace>downscale vs plain downscale)
+                top_fns = {
+                    p for sig, _ in shorts[:3] for k, p in sig if k == "prim"
+                }
+                extra = [
+                    ind for sig, ind in shorts[6:]
+                    if any(k == "prim" and p in top_fns for k, p in sig)
+                ]
+                targets += extra[:6]
+                for ind in targets:
                     self._sweep_one(pop, task, ind)
-                    swept += 1
-                    if swept == 6 or pop.individuals[0].fit.solved_all:
+                    if pop.individuals[0].fit.solved_all:
                         break
             best = pop.individuals[0]
             if best.fit.solved_all:
