@@ -79,7 +79,7 @@ def report(path=None) -> dict:
         # Welch t-ish heuristic: difference vs pooled sd
         sd = ((st.stdev(da) ** 2 / len(da)) + (st.stdev(db) ** 2 / len(db))) ** 0.5
         sig = "significant" if sd > 0 and abs(diff) > 2 * sd else "not significant"
-        return f"{a}−{b} = {diff:+.2f} ({sig}; pooled se {sd:.2f})"
+        return f"{a}-{b} = {diff:+.2f} ({sig}; pooled se {sd:.2f})"
 
     print("\nH2 (transfer helps): supported iff B2 > B1 and B2 > B0")
     for pair in (("B2", "B1"), ("B2", "B0")):
