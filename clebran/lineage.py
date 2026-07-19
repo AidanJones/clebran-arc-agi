@@ -161,6 +161,13 @@ class Lineage:
             pop.stall = 0
         else:
             pop.stall += 1
+            if pop.stall == 20:
+                # memetic step: coordinate-descent sweep over the elite's
+                # constant/literal slots before giving up on this basin
+                improved = self._local_const_search(pop, task)
+                if improved:
+                    pop.stall = 0
+                    best = pop.individuals[0]
             if pop.stall >= 40:
                 # stagnation restart; alternate keeping the top-2 with a
                 # full restart so a deceptive elite can't re-trap every
@@ -195,6 +202,63 @@ class Lineage:
         parent = self._tournament(inds)
         child = self.ops.mutate(parent.prog)
         return child, parent.from_fragment
+
+    def _local_const_search(self, pop: Population, task: Task) -> bool:
+        """Coordinate descent on the elite's const/lit arg slots: try all
+        same-type constants plus small literals, keep strict improvements.
+        All evaluations are metered. Returns True if the elite improved."""
+        from .dsl.program import Program, Statement
+        from .dsl.registry import CONSTANTS
+
+        best = pop.individuals[0]
+        prog, fit = best.prog, best.fit
+        improved_any = False
+        for _round in range(3):
+            improved = False
+            for i, st in enumerate(prog.statements):
+                for k, a in enumerate(st.args):
+                    if a[0] not in ("const", "lit"):
+                        continue
+                    value = CONSTANTS[a[1]][0] if a[0] == "const" else a[1]
+                    if isinstance(value, bool):
+                        cands = [("lit", not value)]
+                    elif isinstance(value, int):
+                        cands = [("lit", v) for v in range(10) if v != value]
+                    elif isinstance(value, tuple) and len(value) == 2:
+                        cands = [
+                            ("lit", (x, y))
+                            for x in range(10)
+                            for y in range(10)
+                            if (x, y) != value
+                        ]
+                        if len(cands) > 40:
+                            cands = self.rng.sample(cands, 40)
+                    else:
+                        continue
+                    for cand in cands:
+                        args = list(st.args)
+                        args[k] = cand
+                        trial = Program(list(prog.statements))
+                        trial.statements[i] = Statement(st.fn, tuple(args))
+                        tfit = self.evaluator.evaluate(trial, task)
+                        if tfit.key > fit.key:
+                            prog, fit = trial, tfit
+                            st = trial.statements[i]
+                            improved = improved_any = True
+                            if tfit.solved_all:
+                                break
+                    if fit.solved_all:
+                        break
+                if fit.solved_all:
+                    break
+            if not improved or fit.solved_all:
+                break
+        if improved_any:
+            pop.individuals[0] = Individual(
+                prog, fit, from_fragment=best.from_fragment
+            )
+            self._sort(pop)
+        return improved_any
 
     def _tournament(self, inds: list[Individual]) -> Individual:
         pick = max(
