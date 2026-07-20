@@ -18,7 +18,9 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 
-from .program import Program, Statement, Arg, statement_return_type
+from .program import (
+    Program, Statement, Arg, statement_return_type, _stmt_from_json,
+)
 from .registry import PRIMITIVES
 
 
@@ -43,6 +45,20 @@ class Abstraction:
         prog = Program(list(self.body))
         sig = ", ".join(f"p{i}:{t}" for i, t in enumerate(self.params))
         return f"{self.name}({sig}) -> {self.returns}:\n" + prog.pretty()
+
+    # ---- serialization (for logging + solver-card replay) ----
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "body": [[list(st.fn), [list(a) for a in st.args]] for st in self.body],
+            "params": list(self.params),
+            "returns": self.returns,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Abstraction":
+        body = tuple(_stmt_from_json(fn, args) for fn, args in d["body"])
+        return cls(d["name"], body, tuple(d["params"]), d["returns"])
 
 
 def _source_type(program: Program, a: Arg) -> str:

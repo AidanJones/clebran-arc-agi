@@ -161,6 +161,7 @@ def run_multi(
                 lin.step_generation(tid)
                 if lin.pops[tid].solved and not before:
                     sol = lin.pops[tid].solution
+                    used_abs = sol.prog.abstractions_used()
                     log.write({
                         "event": "solve", "lineage": lin.lineage_id,
                         "task": tid, "epoch": epoch,
@@ -169,6 +170,10 @@ def run_multi(
                         "from_fragment": sol.from_fragment,
                         "test_exact": lin.evaluator.test_exact(sol.prog, tasks[tid]),
                         "program": sol.prog.to_json(),
+                        # definitions needed to replay an abstr-using solution
+                        "abstractions": {
+                            n: lin.abstractions[n].to_dict() for n in used_abs
+                        },
                     })
             if total_evals() >= budget:
                 break

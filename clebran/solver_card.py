@@ -18,6 +18,7 @@ from collections import defaultdict
 from .data.loader import load_task, REPO_ROOT
 from .dsl.interpreter import run_trace, ExecutionError
 from .dsl.program import Program
+from .dsl.abstraction import Abstraction
 from .dsl.solver_parse import parse_all_solvers
 from .subset import load_subset
 
@@ -104,16 +105,25 @@ def task_card(row: dict, solve: dict | None, ref_depth: int) -> str:
     body = ""
     if solved:
         prog = Program.from_json(solve["program"])
+        abstractions = {
+            n: Abstraction.from_dict(d)
+            for n, d in solve.get("abstractions", {}).items()
+        }
         pretty = html.escape(prog.pretty())
+        vocab_note = (
+            f' · uses {len(abstractions)} abstraction'
+            f'{"s" if len(abstractions) != 1 else ""}'
+            if abstractions else ""
+        )
         meta = (
             f'evolved length {solve["len"]} · reference depth {ref_depth} · '
-            f'run {html.escape(solve["_src"])} · '
+            f'run {html.escape(solve["_src"])}{vocab_note} · '
             f'{"test pair exact ✓" if solve.get("test_exact") else "test pair MISS ✗"}'
         )
         inp = task.train[0][0]
         want = task.train[0][1]
         try:
-            regs = run_trace(prog, inp)
+            regs = run_trace(prog, inp, abstractions)
             steps = [
                 f'<div class="step"><div class="cap">I</div>{grid_html(inp)}</div>'
             ]
@@ -136,9 +146,19 @@ def task_card(row: dict, solve: dict | None, ref_depth: int) -> str:
             )
         except ExecutionError as e:
             trace = f'<p class="mut">trace failed: {html.escape(str(e))}</p>'
+        defs = ""
+        if abstractions:
+            rows_ = "".join(
+                f"<pre>{html.escape(a.pretty())}</pre>"
+                for a in abstractions.values()
+            )
+            defs = (
+                '<div class="lbl">recovered abstractions used</div>'
+                f"{rows_}"
+            )
         body = (
             f'<div class="meta">{meta}</div>'
-            f"<pre>{pretty}</pre>"
+            f"<pre>{pretty}</pre>{defs}"
             f'<div class="lbl">execution trace · demonstration pair 1</div>{trace}'
         )
     else:

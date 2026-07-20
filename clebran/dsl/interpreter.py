@@ -126,17 +126,15 @@ def run_safe(program: Program, grid: Grid, abstractions: dict | None = None) -> 
         return None
 
 
-def run_trace(program: Program, grid: Grid) -> list[object]:
+def run_trace(
+    program: Program, grid: Grid, abstractions: dict | None = None
+) -> list[object]:
     """Execute like run() but return every intermediate register value
     (for visualization). Raises ExecutionError on failure."""
+    abstractions = abstractions or {}
     regs: list[object] = []
     for st in program.statements:
         try:
-            fkind, fpayload = st.fn
-            if fkind == "prim":
-                fn = PRIMITIVES[fpayload].fn
-            else:
-                fn = regs[fpayload]
             args = []
             for kind, payload in st.args:
                 if kind == "in":
@@ -149,7 +147,7 @@ def run_trace(program: Program, grid: Grid) -> list[object]:
                     args.append(PRIMITIVES[payload].fn)
                 else:
                     args.append(payload)
-            out = fn(*args)
+            out = _invoke(st.fn, args, regs, abstractions)
             _check_size(out)
             regs.append(out)
         except ExecutionError:

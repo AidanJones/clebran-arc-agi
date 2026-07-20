@@ -35,9 +35,23 @@ from .registry import PRIMITIVES, CONSTANTS
 Arg = tuple  # (kind, payload)
 
 
+def _arg_from_json(a) -> Arg:
+    """Rebuild an arg tuple from JSON, restoring literal tuples (JSON turns
+    a ("lit", (0, 2)) payload into a list — convert it back so IntegerTuple
+    literals stay tuples)."""
+    kind, payload = a[0], a[1]
+    if kind in ("lit", "hole") and isinstance(payload, list):
+        payload = tuple(payload)
+    return (kind, payload)
+
+
+def _stmt_from_json(fn, args) -> "Statement":
+    return Statement(tuple(fn), tuple(_arg_from_json(a) for a in args))
+
+
 @dataclass(frozen=True)
 class Statement:
-    fn: Arg                 # ("prim", name) | ("reg", i)
+    fn: Arg                 # ("prim", name) | ("reg", i) | ("abstr", name)
     args: tuple[Arg, ...]
 
 
@@ -73,12 +87,7 @@ class Program:
     @classmethod
     def from_json(cls, s: str) -> "Program":
         raw = json.loads(s)
-        return cls(
-            [
-                Statement(tuple(fn), tuple(tuple(a) for a in args))
-                for fn, args in raw
-            ]
-        )
+        return cls([_stmt_from_json(fn, args) for fn, args in raw])
 
     def pretty(self) -> str:
         def render(a: Arg) -> str:

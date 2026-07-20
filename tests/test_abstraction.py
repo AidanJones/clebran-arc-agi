@@ -106,6 +106,28 @@ def test_installed_abstraction_shared_across_ops_and_evaluator():
     assert name in lin.ops_by_task[tid].abstractions
 
 
+def test_abstraction_serialization_roundtrip_and_replay():
+    from clebran.dsl.abstraction import Abstraction
+    from clebran.dsl.interpreter import run_trace
+    a = _abstr()
+    b = Abstraction.from_dict(a.to_dict())
+    assert b.key == a.key
+    q = Program([Statement(("abstr", "ma"), (("in", None),))])
+    # replay through run_trace (solver-card path) with the reloaded abstraction
+    for g in GRIDS:
+        regs = run_trace(q, g, {"ma": b})
+        assert regs[-1] == run(P, g)
+
+
+def test_program_json_preserves_literal_tuples():
+    # a mutation-produced integer-tuple literal must survive a JSON round-trip
+    p = Program([Statement(("prim", "crop"),
+                           (("in", None), ("lit", (0, 0)), ("lit", (2, 2))))])
+    q = Program.from_json(p.to_json())
+    assert q.statements[0].args[1] == ("lit", (0, 0))  # tuple, not list
+    assert q.statements[0].args[2] == ("lit", (2, 2))
+
+
 def test_abstraction_crosses_the_channel():
     # a home-grown abstraction on one lineage is admitted by the constrained
     # channel and installed as *received* on another, then usable there
