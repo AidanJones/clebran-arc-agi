@@ -59,6 +59,7 @@ def run_b0(
                 log.write({
                     "event": "solve", "task": tid, "epoch": epoch,
                     "evals": ev.evaluations, "len": sol.fit.length,
+                    "phase": lin.pops[tid].solved_phase,
                     "test_exact": ev.test_exact(sol.prog, tasks[tid]),
                     "program": sol.prog.to_json(),
                 })
@@ -77,10 +78,13 @@ def run_b0(
         sum(lin.pops[t].solution.fit.length for t in solved) / len(solved)
         if solved else 0.0
     )
+    by_phase = lin.solved_by_phase()
     summary = {
         "event": "summary", "arm": "B0", "seed": seed,
         "evals": ev.evaluations, "budget": budget,
         "solved": len(solved), "solved_tasks": sorted(solved),
+        "solved_phase1": sorted(by_phase["phase1"]),
+        "solved_evolution": sorted(by_phase["evolution"]),
         "test_exact": test_exact, "mean_solution_len": round(mean_len, 2),
         "primitive_usage": lin.primitive_usage(),
     }

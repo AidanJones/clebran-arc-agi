@@ -43,6 +43,11 @@ class Population:
     individuals: list[Individual] = field(default_factory=list)
     solved: bool = False
     solution: Individual | None = None
+    # which phase solved it: "phase1" = deterministic initial seeding
+    # (identical across arms — channel and library are empty there), or
+    # "evolution" = the evolutionary loop, where fragments/signals can act.
+    # The H2/H3 treatment effect can only live in evolution-phase solves.
+    solved_phase: str | None = None
     stall: int = 0
     best_key: tuple = (-1.0, -1.0)
     restarts: int = 0
@@ -188,6 +193,7 @@ class Lineage:
             best = pop.individuals[0]
             if best.fit.solved_all:
                 pop.solved = True
+                pop.solved_phase = "phase1"
                 pop.solution = best
                 self._absorb_solution(best)
             return
@@ -269,6 +275,7 @@ class Lineage:
                 best = pop.individuals[0]
         if best.fit.solved_all:
             pop.solved = True
+            pop.solved_phase = "evolution"
             pop.solution = best
             self._absorb_solution(best)
 
@@ -552,6 +559,15 @@ class Lineage:
 
     def solved_tasks(self) -> set[str]:
         return {tid for tid, p in self.pops.items() if p.solved}
+
+    def solved_by_phase(self) -> dict[str, set[str]]:
+        """{"phase1": {...}, "evolution": {...}} — the split that isolates
+        where communication could have acted (§ roadmap "sharper measure")."""
+        out = {"phase1": set(), "evolution": set()}
+        for tid, p in self.pops.items():
+            if p.solved and p.solved_phase in out:
+                out[p.solved_phase].add(tid)
+        return out
 
     def primitive_usage(self) -> dict[str, int]:
         """Primitive counts over current best programs (for H1 divergence)."""

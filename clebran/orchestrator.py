@@ -144,6 +144,7 @@ def run_multi(
                         "event": "solve", "lineage": lin.lineage_id,
                         "task": tid, "epoch": epoch,
                         "evals": total_evals(), "len": sol.fit.length,
+                        "phase": lin.pops[tid].solved_phase,
                         "from_fragment": sol.from_fragment,
                         "test_exact": lin.evaluator.test_exact(sol.prog, tasks[tid]),
                         "program": sol.prog.to_json(),
@@ -167,6 +168,14 @@ def run_multi(
     solved_sets = {l.lineage_id: l.solved_tasks() for l in lineages}
     usages = {l.lineage_id: l.primitive_usage() for l in lineages}
     union = set().union(*solved_sets.values())
+    # union-level phase split: a task counts as an evolution solve for the
+    # arm only if *no* lineage closed it deterministically at seeding —
+    # phase-1 is identical across arms, so only evolution solves can carry
+    # a channel effect (§ roadmap "sharper measure").
+    phase1_union: set[str] = set()
+    for l in lineages:
+        phase1_union |= l.solved_by_phase()["phase1"]
+    evolution_union = union - phase1_union
     # reuse rate (§9): solutions containing channel-received material
     sols = [
         (l, l.pops[t].solution) for l in lineages for t in l.solved_tasks()
@@ -186,6 +195,8 @@ def run_multi(
         "event": "summary", "arm": arm, "seed": seed,
         "evals": total_evals(), "budget": budget,
         "solved_union": len(union), "solved_tasks": sorted(union),
+        "solved_phase1": sorted(phase1_union),
+        "solved_evolution": sorted(evolution_union),
         "test_exact": test_exact,
         "per_lineage_solved": {k: sorted(v) for k, v in solved_sets.items()},
         "divergence": pairwise_jaccard(usages),

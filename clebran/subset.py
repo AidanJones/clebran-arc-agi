@@ -11,6 +11,7 @@ Output: data/stage1_subset.json
 from __future__ import annotations
 
 import json
+import os
 import random
 from collections import Counter
 from pathlib import Path
@@ -19,8 +20,25 @@ from .data.loader import Task, load_split, REPO_ROOT
 from .dsl.interpreter import run_safe
 from .dsl.solver_parse import parse_all_solvers
 
-SUBSET_PATH = REPO_ROOT / "data" / "stage1_subset.json"
+DATA_DIR = REPO_ROOT / "data"
+SUBSET_PATH = DATA_DIR / "stage1_subset.json"
 SEED = 20260718  # fixed: date the subset was frozen
+
+# Which subset a run operates on. Set CLEBRAN_SUBSET to a path (or a bare
+# name resolved under data/) to point every runner, the gate, and the
+# report at a different subset — e.g. the frontier subset — without
+# threading an argument through every call site.
+def active_subset_path() -> Path:
+    env = os.environ.get("CLEBRAN_SUBSET")
+    if not env:
+        return SUBSET_PATH
+    p = Path(env)
+    if not p.suffix:
+        p = DATA_DIR / f"{env}.json"
+    elif not p.is_absolute():
+        p = DATA_DIR / p
+    return p
+
 
 Grid = tuple
 
@@ -106,7 +124,20 @@ def _passes_gate(task: Task, prog) -> bool:
     )
 
 
-def build_subset(write: bool = True) -> dict:
+# Named subset compositions (bucket -> task count). The §4.1 stage-1 set is
+# the default; the frontier set drops the now-deterministic D1 bucket and
+# loads deep tasks, where isolated lineages fail and communication could
+# plausibly help (§ roadmap item 1).
+STAGE1 = {"D1": 10, "D2": 15, "D3": 5}
+FRONTIER = {"D2": 15, "D3": 15}
+
+
+def build_subset(
+    composition: dict[str, int] = STAGE1,
+    path: Path = SUBSET_PATH,
+    recipe: str = "spec §4.1 v1.1",
+    write: bool = True,
+) -> dict:
     progs = parse_all_solvers()
     assert len(progs) == 400, "expected one solver per training task"
     assert all(len(p) >= 1 for p in progs.values()), "empty solver"
@@ -121,10 +152,9 @@ def build_subset(write: bool = True) -> dict:
 
     tags = {tid: tag_task(tasks[tid]) for tid in tasks}
     rng = random.Random(SEED)
-    want = {"D1": 10, "D2": 15, "D3": 5}
     chosen: dict[str, list[str]] = {}
 
-    for b, n in want.items():
+    for b, n in composition.items():
         pool = [t for t in buckets[b]]
         rng.shuffle(pool)
         picked: list[str] = []
@@ -149,7 +179,8 @@ def build_subset(write: bool = True) -> dict:
 
     subset = {
         "seed": SEED,
-        "recipe": "spec §4.1 v1.1",
+        "recipe": recipe,
+        "composition": composition,
         "tasks": [
             {
                 "task_id": tid,
@@ -158,25 +189,42 @@ def build_subset(write: bool = True) -> dict:
                 "tags": tags[tid],
             }
             for b in ("D1", "D2", "D3")
-            for tid in sorted(chosen[b])
+            for tid in sorted(chosen.get(b, []))
         ],
     }
     if write:
-        SUBSET_PATH.parent.mkdir(exist_ok=True)
-        SUBSET_PATH.write_text(json.dumps(subset, indent=2))
+        path.parent.mkdir(exist_ok=True)
+        path.write_text(json.dumps(subset, indent=2))
     return subset
 
 
-def load_subset() -> list[dict]:
-    return json.loads(SUBSET_PATH.read_text())["tasks"]
+def build_frontier(write: bool = True) -> dict:
+    return build_subset(
+        composition=FRONTIER,
+        path=DATA_DIR / "frontier_subset.json",
+        recipe="frontier (D2/D3-heavy, roadmap item 1)",
+        write=write,
+    )
+
+
+def load_subset(path: Path | None = None) -> list[dict]:
+    return json.loads((path or active_subset_path()).read_text())["tasks"]
 
 
 if __name__ == "__main__":
-    s = build_subset()
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--frontier", action="store_true",
+                    help="build the D2/D3-heavy frontier subset instead")
+    args = ap.parse_args()
+    s = build_frontier() if args.frontier else build_subset()
     from collections import Counter as C
 
-    print(f"wrote {SUBSET_PATH} with {len(s['tasks'])} tasks")
+    print(f"wrote {len(s['tasks'])} tasks (composition {s['composition']})")
     for b in ("D1", "D2", "D3"):
         rows = [t for t in s["tasks"] if t["bucket"] == b]
+        if not rows:
+            continue
         tag_hist = C(tag for t in rows for tag in t["tags"])
         print(b, len(rows), dict(tag_hist))
