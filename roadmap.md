@@ -128,13 +128,22 @@ communicate those instead.
   size/arity, topsim. Logged per lineage in every summary; `report.py` prints a
   recovered-vocabulary table for B6/B7.
 
-**Remaining:**
-- **Replay:** solver-card `run_trace` needs the lineage's abstraction table to
-  render abstr-using solutions (log the table alongside solve events).
-- **Frontier run:** compare B1 vs B2 vs B6/B7 with recovered-primitive payload
-  on the frontier, where mining yields a vocabulary that gets *used* (on shallow
-  stage-1 the vocabulary crosses but used-rate is 0). This is the item-3 payoff
-  measurement; compute-heavy, size like the item-1 sweep.
+**Replay done:** `Abstraction.to_dict/from_dict`; solve events log the used
+abstractions' definitions; `run_trace` takes the table; the solver card renders
+a "recovered abstractions used" block and replays abstr solutions. (Also fixed a
+latent `Program.from_json` bug that turned literal tuples into lists.)
+
+**Frontier run set up + validated, not launched** (`clebran.baselines.frontier_sweep`,
+`scripts/frontier_recovered_sweep.sh`): runs B0/B1/B2/B6/B7 on the frontier at
+matched compute, `--analyze` prints the evolution-phase comparisons (B6>B1
+recovered-primitive transfer helps; B6 vs B2 recovered vs given; B6>B7 the H3
+constraint on a discovered vocabulary) plus the recovery table. Validated
+end-to-end at tiny scale.
+
+    SEEDS="1 2 3 4 5 6 7 8" BUDGET=3000000 sh scripts/frontier_recovered_sweep.sh
+
+**Only remaining: launch it** — 5 arms × ≥8 seeds × 3M ≈ several hours; the
+item-3 payoff measurement, held for the same compute decision as item 1.
 
 ## 4. Metrics debt (needed for any writeup)
 
