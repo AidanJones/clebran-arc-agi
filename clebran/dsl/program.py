@@ -3,9 +3,11 @@
 A Program is an SSA-style sequence of statements
     r0 = callee(args); r1 = callee(args); ...; return r_last
 mirroring the shape of Hodel's hand-written solvers, so reference solvers
-parse losslessly into this IR. The callee is ("prim", name) or ("reg", i)
+parse losslessly into this IR. The callee is ("prim", name), ("reg", i)
 — the latter because higher-order primitives (lbind, compose, matcher, …)
-store callables in registers that later statements invoke. Each arg is:
+store callables in registers that later statements invoke — or
+("abstr", name), a call to a lineage-discovered named abstraction
+(§ recovered-primitive channel). Each arg is:
 
     ("in", None)      the task input grid I
     ("reg", i)        the result of statement i (i < current index)
@@ -13,6 +15,15 @@ store callables in registers that later statements invoke. Each arg is:
     ("prim", name)    a DSL primitive passed as a value (higher-order arg)
     ("lit", value)    a raw literal (not produced by the solver parser;
                       available to mutation)
+    ("param", k)      the k-th argument of the enclosing abstraction; only
+                      ever appears inside an Abstraction body, never at the
+                      top level
+    ("hole", type)    an unbound slot to be filled by repair/injection
+
+An `abstractions` argument (a mapping name -> Abstraction, anything exposing
+`.params`/`.returns`) threads through the typing helpers so ("abstr", name)
+statements type like primitives; it defaults to empty, so ordinary
+primitive-only programs are unaffected.
 """
 from __future__ import annotations
 
@@ -45,6 +56,11 @@ class Program:
                     used.add(payload)
         return used
 
+    def abstractions_used(self) -> set[str]:
+        return {
+            st.fn[1] for st in self.statements if st.fn[0] == "abstr"
+        }
+
     # ---- serialization ----
     def to_json(self) -> str:
         return json.dumps(
@@ -71,6 +87,8 @@ class Program:
                 return "I"
             if kind == "reg":
                 return f"x{payload}"
+            if kind == "param":
+                return f"p{payload}"
             if kind == "lit":
                 return repr(payload)
             return str(payload)
@@ -89,35 +107,51 @@ class Program:
 _FLOW_THROUGH = {"Piece", "Element", "Patch", "Numerical"}
 
 
-def statement_return_type(program: Program, i: int) -> str:
+def _callee_sig(callee: Arg, abstractions) -> tuple[tuple, str] | None:
+    """(params, returns) for a ("prim"|"abstr", name) callee, else None."""
+    kind, name = callee
+    if kind == "prim":
+        sig = PRIMITIVES[name]
+        return sig.params, sig.returns
+    if kind == "abstr" and abstractions and name in abstractions:
+        a = abstractions[name]
+        return a.params, a.returns
+    return None
+
+
+def statement_return_type(program: Program, i: int, abstractions=None) -> str:
     """Static return type of statement i, with union flow-through
-    refinement ("Any" for register-called statements)."""
+    refinement ("Any" for register-called or unknown-abstraction calls)."""
     st = program.statements[i]
-    if st.fn[0] != "prim":
+    sig = _callee_sig(st.fn, abstractions)
+    if sig is None:
         return "Any"
-    sig = PRIMITIVES[st.fn[1]]
-    ret = sig.returns
+    params, ret = sig
     if ret in _FLOW_THROUGH:
-        for k, pt in enumerate(sig.params):
+        for k, pt in enumerate(params):
             if pt == ret and k < len(st.args):
-                refined = arg_type(program, st.args[k])
+                refined = arg_type(program, st.args[k], abstractions)
                 if refined != "Any":
                     return refined
                 break
     return ret
 
 
-def arg_type(program: Program, a: Arg) -> str:
+def arg_type(program: Program, a: Arg, abstractions=None) -> str:
     """Static type of an argument, as an arc_types alias name."""
     kind, payload = a
     if kind == "in":
         return "Grid"
     if kind == "reg":
-        return statement_return_type(program, payload)
+        return statement_return_type(program, payload, abstractions)
     if kind == "const":
         return CONSTANTS[payload][1]
     if kind == "prim":
         return "Callable"
+    if kind == "param":
+        return "Any"  # only inside abstraction bodies; not typed here
+    if kind == "hole":
+        return payload
     if kind == "lit":
         if isinstance(payload, bool):
             return "Boolean"

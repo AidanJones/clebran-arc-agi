@@ -32,19 +32,56 @@ def _check_size(value) -> None:
         raise ExecutionError("collection too large")
 
 
-def run(program: Program, grid: Grid) -> Grid:
+def _invoke(callee, argvals: list, regs: list, abstractions: dict):
+    """Call a ("prim"|"abstr"|"reg", ...) callee on already-evaluated args."""
+    fkind, fpayload = callee
+    if fkind == "prim":
+        return PRIMITIVES[fpayload].fn(*argvals)
+    if fkind == "abstr":
+        if fpayload not in abstractions:
+            raise ExecutionError(f"unknown abstraction {fpayload}")
+        return _run_body(abstractions[fpayload], argvals, abstractions)
+    if fkind == "reg":
+        fn = regs[fpayload]
+        if not callable(fn):
+            raise ExecutionError("callee register not callable")
+        return fn(*argvals)
+    raise ExecutionError(f"bad callee kind {fkind}")
+
+
+def _run_body(abstr, params: list, abstractions: dict):
+    """Inline-execute an abstraction body. ("param", k) resolves to the
+    bound call argument; the abstraction stays a single statement in the
+    genome (one mutation/MDL unit) but expands here at run time."""
+    regs: list[object] = []
+    for st in abstr.body:
+        args = []
+        for kind, payload in st.args:
+            if kind == "param":
+                args.append(params[payload])
+            elif kind == "reg":
+                args.append(regs[payload])
+            elif kind == "const":
+                args.append(CONSTANTS[payload][0])
+            elif kind == "prim":
+                args.append(PRIMITIVES[payload].fn)
+            elif kind == "lit":
+                args.append(payload)
+            else:
+                raise ExecutionError(f"bad body arg kind {kind}")
+        out = _invoke(st.fn, args, regs, abstractions)
+        _check_size(out)
+        regs.append(out)
+    if not regs:
+        raise ExecutionError("empty abstraction body")
+    return regs[-1]
+
+
+def run(program: Program, grid: Grid, abstractions: dict | None = None) -> Grid:
+    abstractions = abstractions or {}
     regs: list[object] = []
     for st in program.statements:
         try:
-            fkind, fpayload = st.fn
-            if fkind == "prim":
-                fn = PRIMITIVES[fpayload].fn
-            elif fkind == "reg":
-                fn = regs[fpayload]
-                if not callable(fn):
-                    raise ExecutionError("callee register not callable")
-            else:
-                raise ExecutionError(f"bad callee kind {fkind}")
             args = []
             for kind, payload in st.args:
                 if kind == "in":
@@ -59,7 +96,7 @@ def run(program: Program, grid: Grid) -> Grid:
                     args.append(payload)
                 else:
                     raise ExecutionError(f"bad arg kind {kind}")
-            out = fn(*args)
+            out = _invoke(st.fn, args, regs, abstractions)
             _check_size(out)
             regs.append(out)
         except ExecutionError:
@@ -82,9 +119,9 @@ def run(program: Program, grid: Grid) -> Grid:
     return result
 
 
-def run_safe(program: Program, grid: Grid) -> Grid | None:
+def run_safe(program: Program, grid: Grid, abstractions: dict | None = None) -> Grid | None:
     try:
-        return run(program, grid)
+        return run(program, grid, abstractions)
     except ExecutionError:
         return None
 

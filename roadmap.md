@@ -64,18 +64,39 @@ barely engages). Rerun the same ladder on the **frontier** (item 1), where
 reuse ran 0.67–1.00 and AOS *up-weights* fragments — there a curated vs
 flooded channel could finally differ. Read `op_mix` down the ladder.
 
-## 3. Recovered-primitive channel (§11's scientifically important variant)
+## 3. Recovered-primitive channel (§11's scientifically important variant; IN PROGRESS)
 
 The current channel communicates over Hodel's given primitives, which caps the
-emergent-language claim. Let lineages abstract their *own* subroutines:
+emergent-language claim. Let lineages abstract their *own* subroutines and
+communicate those instead.
 
-- Compress each lineage's solutions into named subroutines (Stitch, or a
-  simple duplicated-slice miner over the linear IR — extraction machinery
-  already exists in `genome.extract_fragment`).
-- Channel payload becomes the lineage's abstracted subroutines; receivers
-  add them as callable named units, not raw splices.
-- Then the H3 metrics that matter: topographic similarity (EGG-style),
-  primitive-recovery rate, compositional-OOD splits per L2T.
+**Foundation done** (`clebran/dsl/abstraction.py`, `tests/test_abstraction.py`):
+- `Abstraction` — a body parameterised by its external inputs (the task grid I
+  and out-of-slice registers become positional `("param", k)` parameters).
+  Invoked as a *single* statement `("abstr", name)`, so it costs one unit of
+  program length (the MDL/compression lever) but inlines at run time
+  (`interpreter._run_body`). Typing threads an `abstractions` table so
+  `("abstr", …)` types like a primitive; primitive-only programs unaffected.
+- `mine_abstractions` — a duplicated-slice miner over the linear IR: recurring
+  dependency-closed subroutines (same primitives/wiring/constants, inputs
+  abstracted) across a set of programs. On Hodel's 400 solvers it recovers
+  meaningful units unsupervised — `ofcolor(I, leastcolor(I))`,
+  `argmax(objects(I,…), size)`, `remove(ZERO, palette(I))`, … Stitch could
+  later replace it for optimal compression.
+- Interpreter refactor verified behaviour-preserving (399/400 solver
+  reproduction unchanged); all tests pass.
+
+**Remaining:**
+- **Search integration:** give `GenomeOps` a per-lineage abstraction table so
+  mutation/crossover/random-generation can emit `("abstr", …)` heads with typed
+  args, and thread `abstractions` through `fitness`/`lineage` execution and the
+  MDL length term (an abstraction call = length 1).
+- **Channel payload mode `"abstraction"`:** publish mined subroutines; receivers
+  install them as callable named units (not raw splices). Lineages mine their
+  own solutions each epoch to grow a private vocabulary.
+- **Metrics:** primitive-recovery rate, topographic similarity (EGG-style)
+  between message space and meaning space, compositional-OOD splits per L2T.
+- Then rerun the arm comparison with recovered-primitive payload on the frontier.
 
 ## 4. Metrics debt (needed for any writeup)
 
