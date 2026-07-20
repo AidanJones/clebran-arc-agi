@@ -29,12 +29,17 @@ fragment-equipped lineages might reach.
 - Counts are low (1-2 evolution solves per seed per 2M) → the treatment signal,
   if any, is small; budget and seed count must be sized for it.
 
-**Remaining (compute-heavy — sized, not yet launched):**
-- **Budget:** run the arm comparison at ~3M total (per-lineage ~1M, which is where
-  single-population evolution solves appeared). A full B0–B4 × ≥5 seeds at 3M is
-  ~75M evals ≈ several hours; worth confirming the budget/seed plan before spending it.
-- **Seeds:** ≥5, likely 8-10 for the headline B2-vs-B1 pair given the low counts.
-- Compare arms on **evolution-phase solves only**.
+**Pilot (B1 vs B2, 3M, seeds 1-2 —
+[experiments/2026-07-20_frontier_pilot](experiments/2026-07-20_frontier_pilot/README.md)):**
+hint of B2 > B1 on evolution solves (mean 2.0 vs 1.5; B2 solved a task B1
+never reached), and — the hard result — channel **reuse jumped from 0.06 to
+0.67-1.00**. The mechanism H2 depends on is now active; the frontier rebuild
+worked. Held here by decision on 2026-07-20; n=2 is too noisy to call H2.
+
+**Remaining (compute-heavy — sized, ready to launch):**
+- **Budget:** ~3M total (per-lineage ~1M, where evolution solves appear).
+- **Seeds:** ≥8 for the headline B2-vs-B1 pair given counts of 1-3/seed.
+- Full B0–B4 × 8 seeds ≈ several hours; compare on **evolution-phase solves only**.
 
 ## 2. Chase the B3 degradation (cheapest publishable finding)
 
