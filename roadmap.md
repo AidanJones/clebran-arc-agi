@@ -41,18 +41,28 @@ worked. Held here by decision on 2026-07-20; n=2 is too noisy to call H2.
 - **Seeds:** ≥8 for the headline B2-vs-B1 pair given counts of 1-3/seed.
 - Full B0–B4 × 8 seeds ≈ several hours; compare on **evolution-phase solves only**.
 
-## 2. Chase the B3 degradation (cheapest publishable finding)
+## 2. Chase the B3 degradation — DONE on stage-1: flat, mechanism absent
 
-Unconstrained sharing was the worst arm (9.80) at the highest reuse (17%) —
-preliminary evidence that bandwidth-unlimited gossip is actively harmful.
+Ran the K×M bandwidth ladder (`clebran.baselines.dose_response`:
+none→K2M1→K4M3→K8M10→uncon, 1M × 3 seeds) with fragment-crowding
+instrumentation ([experiments/2026-07-20_b3_dose_response](experiments/2026-07-20_b3_dose_response/README.md)).
 
-- Sweep the constraint knobs: K (fragment size) × M (messages/epoch) grid,
-  e.g. K ∈ {2, 4, 8, ∞}, M ∈ {1, 3, 10, ∞} — is there a dose-response curve
-  from CH-CONSTRAINED to CH-UNCONSTRAINED? A monotone degradation with
-  bandwidth would make H3 significant and mechanistic.
-- Instrument *where* the harm lands: are B3's lost solves tasks where
-  fragment-op children crowded out mutation (AOS credit logs already record
-  this per population)?
+**Finding: no dose-response, and the crowding mechanism does not occur.**
+Solve rate is flat across the ladder (10.0–10.7, all overlapping); `frag-share`
+is pinned at 0.03 *regardless of bandwidth* — identical even with no channel.
+Reuse rises with bandwidth (0→0.17) but fragment *share* does not, so
+unconstrained sharing can't crowd out mutation. The reason: **adaptive
+operator selection self-regulates** — it weights the fragment op by its ~2%
+success (vs ~36% for mutation) and floors it near 3% share no matter how much
+material arrives. An adaptive learner is robust to unconstrained sharing
+because it self-constrains; the constraint stops mattering. This complicates
+H3 rather than confirming it, and softens the Stage-4 "B3 is worst arm" line
+(which was never significant anyway: B2−B3 = +0.60, se 0.32).
+
+**Still open:** H3 is untestable on stage-1 (reuse tops out ~17%; channel
+barely engages). Rerun the same ladder on the **frontier** (item 1), where
+reuse ran 0.67–1.00 and AOS *up-weights* fragments — there a curated vs
+flooded channel could finally differ. Read `op_mix` down the ladder.
 
 ## 3. Recovered-primitive channel (§11's scientifically important variant)
 
