@@ -203,6 +203,7 @@ def run_multi(
         "unique": uniquely_solved(solved_sets),
         "reuse_rate": round(reuse, 4),
         "messages_published": channel.published_total,
+        "op_mix": {l.lineage_id: l.op_mix() for l in lineages},
         "primitive_usage": usages,
     }
     log.write(summary)

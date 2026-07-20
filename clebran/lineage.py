@@ -54,6 +54,13 @@ class Population:
     # adaptive operator selection: exponential-recency credit per operator
     op_n: dict = field(default_factory=lambda: {"mutate": 2.0, "crossover": 2.0, "fragment": 2.0})
     op_w: dict = field(default_factory=lambda: {"mutate": 1.0, "crossover": 1.0, "fragment": 1.0})
+    # cumulative counters for the crowding metric: how often each operator
+    # was chosen and how often its child at least matched the parent. The
+    # H3 hypothesis is that unconstrained sharing raises the fragment op's
+    # *share* (more material to splice) while lowering its *success* (it is
+    # noise), displacing productive mutation.
+    op_selected: dict = field(default_factory=lambda: {"mutate": 0, "crossover": 0, "fragment": 0})
+    op_wins: dict = field(default_factory=lambda: {"mutate": 0, "crossover": 0, "fragment": 0})
     # hall of fame: best individual per skeleton signature, survives
     # restarts so full restarts explore fresh space without destroying
     # polishable partial-credit stubs
@@ -75,6 +82,8 @@ class Population:
     def op_credit(self, op: str, win: bool, decay: float = 0.99) -> None:
         self.op_n[op] = self.op_n[op] * decay + 1.0
         self.op_w[op] = self.op_w[op] * decay + (1.0 if win else 0.0)
+        self.op_selected[op] += 1
+        self.op_wins[op] += 1 if win else 0
 
 
 class Lineage:
@@ -559,6 +568,23 @@ class Lineage:
 
     def solved_tasks(self) -> set[str]:
         return {tid for tid, p in self.pops.items() if p.solved}
+
+    def op_mix(self) -> dict[str, float]:
+        """Aggregate operator usage across this lineage's populations, for
+        the H3 crowding metric. fragment_share = fraction of offspring made
+        by fragment splicing; fragment_success = fraction of those at least
+        matching their parent (mutate/crossover_success given for contrast)."""
+        sel = {k: 0 for k in ("mutate", "crossover", "fragment")}
+        win = dict(sel)
+        for p in self.pops.values():
+            for op in sel:
+                sel[op] += p.op_selected[op]
+                win[op] += p.op_wins[op]
+        total = sum(sel.values())
+        out = {"fragment_share": (sel["fragment"] / total) if total else 0.0}
+        for op in sel:
+            out[f"{op}_success"] = (win[op] / sel[op]) if sel[op] else 0.0
+        return out
 
     def solved_by_phase(self) -> dict[str, set[str]]:
         """{"phase1": {...}, "evolution": {...}} — the split that isolates
