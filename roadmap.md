@@ -86,16 +86,29 @@ communicate those instead.
 - Interpreter refactor verified behaviour-preserving (399/400 solver
   reproduction unchanged); all tests pass.
 
+**Search integration done** (genome/fitness/lineage; 3 more tests, 11 total):
+- `GenomeOps` takes a per-lineage abstraction table (shared dict); random
+  generation / `_random_statement` / `_mut_grow` emit `("abstr", …)` heads with
+  typed args, and `repair`/`_mut_arg`/typing resolve abstraction signatures via
+  `_head_params`. Off by default (empty table) so ordinary search is unchanged
+  (verified: B0 pipeline intact).
+- `fitness.Evaluator` and every `Lineage` execution path thread the shared
+  table; an abstraction call is one statement, so `len(prog)` already gives it
+  MDL cost 1 — a test shows an installed subroutine collapses the depth-2 task
+  6d0aefbc to a length-1 solving program.
+- `Lineage.install_abstraction` / `mine_own_abstractions` (dedup by structure,
+  shared table → instantly usable). Self-mining finds nothing on shallow
+  stage-1 solutions (they don't share substructure) — expected; the vocabulary
+  emerges on the frontier.
+
 **Remaining:**
-- **Search integration:** give `GenomeOps` a per-lineage abstraction table so
-  mutation/crossover/random-generation can emit `("abstr", …)` heads with typed
-  args, and thread `abstractions` through `fitness`/`lineage` execution and the
-  MDL length term (an abstraction call = length 1).
 - **Channel payload mode `"abstraction"`:** publish mined subroutines; receivers
-  install them as callable named units (not raw splices). Lineages mine their
-  own solutions each epoch to grow a private vocabulary.
+  `install_abstraction` them as callable named units (not raw splices). Mine
+  each epoch to grow a private vocabulary.
 - **Metrics:** primitive-recovery rate, topographic similarity (EGG-style)
   between message space and meaning space, compositional-OOD splits per L2T.
+- **Replay:** solver-card `run_trace` needs the lineage's abstraction table to
+  render abstr-using solutions (log the table alongside solve events).
 - Then rerun the arm comparison with recovered-primitive payload on the frontier.
 
 ## 4. Metrics debt (needed for any writeup)

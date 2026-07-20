@@ -35,9 +35,14 @@ class Evaluator:
     """Evaluates candidates and meters candidate-evaluations (the compute
     unit that must be matched across baseline arms, §7)."""
 
-    def __init__(self, lam_mdl: float = 1.05):
+    def __init__(self, lam_mdl: float = 1.05, abstractions: dict | None = None):
         self.lam_mdl = lam_mdl
         self.evaluations = 0  # candidate-evaluations consumed
+        # shared per-lineage abstraction table (set by the owning Lineage);
+        # execution resolves ("abstr", name) heads through it. An abstraction
+        # call is one statement, so len(prog) already gives it MDL cost 1 —
+        # the compression reward for reusing a discovered subroutine.
+        self.abstractions: dict = abstractions if abstractions is not None else {}
 
     def evaluate(self, prog: Program, task: Task) -> Fitness:
         self.evaluations += 1
@@ -45,7 +50,7 @@ class Evaluator:
         cell_acc_sum = 0.0
         n = len(task.train)
         for inp, want in task.train:
-            got = run_safe(prog, inp)
+            got = run_safe(prog, inp, self.abstractions)
             if got == want:
                 solved += 1
                 cell_acc_sum += 1.0
@@ -111,4 +116,4 @@ class Evaluator:
     def test_exact(self, prog: Program, task: Task) -> bool:
         """Held-out check: does the program solve the task's test pair(s)?
         Not part of the reward — used only for reporting."""
-        return all(run_safe(prog, i) == o for i, o in task.test)
+        return all(run_safe(prog, i, self.abstractions) == o for i, o in task.test)

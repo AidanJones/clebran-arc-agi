@@ -27,18 +27,45 @@ class GenomeOps:
         rng: random.Random,
         max_len: int = 12,
         p_higher_order: float = 0.25,
+        abstractions: dict | None = None,
+        p_abstraction: float = 0.2,
     ):
         self.pool = [p for p in pool if p in PRIMITIVES]
         self.rng = rng
         self.max_len = max_len
         self.p_higher_order = p_higher_order
         self.fn_weights: dict[str, float] | None = None  # signal payload bias
+        # per-lineage recovered vocabulary (shared dict, grows in place); a
+        # statement may use an abstraction as its head (single ("abstr",name)
+        # statement, one MDL unit), typed via its stored signature.
+        self.abstractions: dict = abstractions if abstractions is not None else {}
+        self.p_abstraction = p_abstraction
         # constants grouped by type for fast sampling
         self._consts_by_type: dict[str, list[str]] = {}
         for name, (_, t) in CONSTANTS.items():
             self._consts_by_type.setdefault(t, []).append(name)
         for v in self._consts_by_type.values():
             v.sort()
+
+    # ---------- callable-head resolution (primitive or abstraction) ----------
+
+    def _srt(self, prog: Program, i: int) -> str:
+        return statement_return_type(prog, i, self.abstractions)
+
+    def _head_params(self, head: Arg) -> tuple:
+        """Static parameter types of a ("prim"|"abstr", name) head; () for a
+        register-valued or unknown head (repair then treats slots as Any)."""
+        kind, name = head
+        if kind == "prim":
+            return PRIMITIVES[name].params
+        if kind == "abstr" and name in self.abstractions:
+            return self.abstractions[name].params
+        return ()
+
+    def _pick_head(self) -> Arg:
+        if self.abstractions and self.rng.random() < self.p_abstraction:
+            return ("abstr", self.rng.choice(list(self.abstractions)))
+        return ("prim", self._pick_fn())
 
     # ---------- sources: what can fill an argument slot of type T ----------
 
@@ -49,7 +76,7 @@ class GenomeOps:
         if compatible("Grid", expected):
             out.append(("in", None))
         for i in range(len(prog_prefix)):
-            rt = statement_return_type(prog, i) if i < len(prog.statements) else "Any"
+            rt = self._srt(prog,i) if i < len(prog.statements) else "Any"
             if compatible(rt, expected):
                 out.append(("reg", i))
         for t, names in self._consts_by_type.items():
@@ -68,7 +95,7 @@ class GenomeOps:
         regs = [
             ("reg", i)
             for i in range(upto)
-            if compatible(statement_return_type(prog, i), expected)
+            if compatible(self._srt(prog,i), expected)
         ]
         cands.extend(regs)
         for t, names in self._consts_by_type.items():
@@ -93,20 +120,20 @@ class GenomeOps:
         return self.rng.choice(self.pool)
 
     def _random_statement(self, prog: Program, pos: int) -> Statement | None:
-        """A random well-typed statement usable at index pos."""
+        """A random well-typed statement usable at index pos — head is a
+        primitive or (with prob p_abstraction) a discovered abstraction."""
         for _ in range(30):
-            fn = self._pick_fn()
-            sig = PRIMITIVES[fn]
+            head = self._pick_head()
             args = []
             ok = True
-            for pt in sig.params:
+            for pt in self._head_params(head):
                 a = self._random_arg(prog, pos, pt)
                 if a is None:
                     ok = False
                     break
                 args.append(a)
             if ok:
-                return Statement(("prim", fn), tuple(args))
+                return Statement(head, tuple(args))
         return None
 
     # ---------- generation ----------
@@ -188,7 +215,7 @@ class GenomeOps:
                     prog.statements.append(
                         Statement(("prim", fn1), tuple(args1))
                     )
-                    x0_t = statement_return_type(prog, 0)
+                    x0_t = self._srt(prog,0)
                     slots = [
                         k for k, pt in enumerate(sig2.params)
                         if compatible(x0_t, pt)
@@ -255,7 +282,7 @@ class GenomeOps:
     def _returns_grid(self, prog: Program) -> bool:
         if not prog.statements:
             return False
-        rt = statement_return_type(prog, len(prog.statements) - 1)
+        rt = self._srt(prog,len(prog.statements) - 1)
         return compatible(rt, "Grid") or rt in ("Any", "Element", "Piece")
 
     def _force_grid_output(self, prog: Program) -> None:
@@ -292,7 +319,7 @@ class GenomeOps:
                 # a random primitive of matching arity
                 cands = [
                     i for i in range(pos)
-                    if statement_return_type(prog, i) in ("Callable", "Any")
+                    if self._srt(prog,i) in ("Callable", "Any")
                 ]
                 if cands and self.rng.random() < 0.5:
                     new_fn = ("reg", self.rng.choice(cands))
@@ -304,10 +331,10 @@ class GenomeOps:
                     if not prims:
                         return None
                     new_fn = ("prim", self.rng.choice(prims))
-            sig = PRIMITIVES[new_fn[1]] if new_fn[0] == "prim" else None
+            head_params = self._head_params(new_fn)
             new_args = []
             for k, a in enumerate(st.args):
-                expected = sig.params[k] if sig and k < len(sig.params) else "Any"
+                expected = head_params[k] if k < len(head_params) else "Any"
                 kind, payload = a
                 bad = (
                     kind == "hole"
@@ -315,12 +342,12 @@ class GenomeOps:
                     or (
                         kind == "reg"
                         and not compatible(
-                            statement_return_type(prog, payload), expected
+                            self._srt(prog,payload), expected
                         )
                     )
                 )
-                if kind == "hole":
-                    expected = payload if sig is None else expected
+                if kind == "hole" and k >= len(head_params):
+                    expected = payload  # head has no static type for this slot
                 if bad:
                     repl = self._random_arg(prog, pos, expected)
                     if repl is None:
@@ -380,11 +407,8 @@ class GenomeOps:
         if not st.args:
             return False
         k = self.rng.randrange(len(st.args))
-        expected = (
-            PRIMITIVES[st.fn[1]].params[k]
-            if st.fn[0] == "prim" and k < PRIMITIVES[st.fn[1]].arity
-            else "Any"
-        )
+        hp = self._head_params(st.fn)
+        expected = hp[k] if k < len(hp) else "Any"
         a = self._random_arg(prog, pos, expected)
         if a is None:
             return False
@@ -404,14 +428,14 @@ class GenomeOps:
             return False
         self._shift_refs(prog, pos, +1)
         prog.statements.insert(pos, st)
-        new_type = statement_return_type(prog, pos)
+        new_type = self._srt(prog,pos)
         # find downstream arg slots that could consume the new register
         slots = []
         for j in range(pos + 1, len(prog.statements)):
             stj = prog.statements[j]
-            sig = PRIMITIVES[stj.fn[1]] if stj.fn[0] == "prim" else None
+            hp = self._head_params(stj.fn)
             for k in range(len(stj.args)):
-                expected = sig.params[k] if sig and k < len(sig.params) else "Any"
+                expected = hp[k] if k < len(hp) else "Any"
                 if compatible(new_type, expected):
                     slots.append((j, k))
         if not slots:

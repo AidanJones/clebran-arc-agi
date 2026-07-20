@@ -13,13 +13,14 @@ metered for the matched-budget audit (§8.1 stage 3).
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from .data.loader import Task
 from .dsl.program import Program, Statement
 from .dsl.registry import CONSTANTS
 from .fitness import Evaluator, Fitness
 from .genome import GenomeOps, Fragment
+from .dsl.abstraction import mine_abstractions
 
 
 @dataclass
@@ -104,14 +105,19 @@ class Lineage:
     ):
         self.lineage_id = lineage_id
         self.rng = random.Random(seed)  # lineage-level (library picks)
+        # the lineage's recovered vocabulary: one dict shared (by reference)
+        # with every per-task GenomeOps and the evaluator, so installing an
+        # abstraction makes it immediately usable in search and execution.
+        self.abstractions: dict = {}
         # per-task rng substreams: a task's search trajectory is identical
         # whether it runs in isolation or interleaved with other tasks —
         # isolation probes then predict full-run behavior exactly
         self.rngs = {tid: random.Random(f"{seed}:{tid}") for tid in tasks}
         self.ops_by_task = {
-            tid: GenomeOps(pool, self.rngs[tid]) for tid in tasks
+            tid: GenomeOps(pool, self.rngs[tid], abstractions=self.abstractions)
+            for tid in tasks
         }
-        self.ops = GenomeOps(pool, self.rng)  # lineage-level (fragments)
+        self.ops = GenomeOps(pool, self.rng, abstractions=self.abstractions)
         self.tasks = tasks
         self.pop_size = pop_size
         self.tournament_k = tournament_k
@@ -120,6 +126,7 @@ class Lineage:
         self.p_fragment = p_fragment
         self.max_library = max_library
         self.evaluator = evaluator or Evaluator(lam_mdl=lam_mdl)
+        self.evaluator.abstractions = self.abstractions
         self.library: list[LibraryEntry] = []
         self.pops: dict[str, Population] = {
             tid: Population(task_id=tid) for tid in tasks
@@ -568,6 +575,39 @@ class Lineage:
 
     def solved_tasks(self) -> set[str]:
         return {tid for tid, p in self.pops.items() if p.solved}
+
+    # ---------- recovered vocabulary (roadmap item 3) ----------
+
+    def install_abstraction(self, abstr) -> str | None:
+        """Register a mined/received abstraction under a stable lineage-local
+        name (dedup by structure). Shared table → immediately usable in
+        search and execution. Returns the assigned name, or None if already
+        present."""
+        for existing in self.abstractions.values():
+            if existing.key == abstr.key:
+                return None
+        name = f"{self.lineage_id}_a{len(self.abstractions)}"
+        self.abstractions[name] = replace(abstr, name=name)
+        return name
+
+    def mine_own_abstractions(
+        self, max_new: int = 3, min_size: int = 2, max_size: int = 4
+    ) -> int:
+        """Mine recurring subroutines from this lineage's own solved programs
+        and install them. A subroutine must recur across ≥2 solved tasks —
+        the lineage's characteristic idioms. Returns the count newly added."""
+        solved = [
+            p.solution.prog
+            for p in self.pops.values()
+            if p.solved and p.solution is not None
+        ]
+        if len(solved) < 2:
+            return 0
+        mined = mine_abstractions(
+            solved, min_count=2, min_size=min_size, max_size=max_size,
+            max_results=max_new,
+        )
+        return sum(1 for a in mined if self.install_abstraction(a) is not None)
 
     def op_mix(self) -> dict[str, float]:
         """Aggregate operator usage across this lineage's populations, for
