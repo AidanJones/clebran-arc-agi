@@ -107,7 +107,46 @@ def report(path=None) -> dict:
         if v:
             print("  ", v)
             verdicts[f"{metric}:B2>B3"] = v
+    _recovery_table(by_arm)
     return {"stats": {k: v["mean"] for k, v in stats.items()}, "verdicts": verdicts}
+
+
+def _recovery_table(by_arm: dict) -> None:
+    """Recovered-vocabulary stats for abstraction-payload arms (B6/B7)."""
+    def mean_of(rows, f):
+        vals = [f(r) for r in rows if f(r) is not None]
+        return sum(vals) / len(vals) if vals else None
+
+    def arm_row(rs):
+        stats = [
+            v for r in rs for v in r.get("abstraction_stats", {}).values()
+            if v.get("n", 0) > 0
+        ]
+        if not stats:
+            return None
+        topsims = [s["topsim"] for s in stats if s.get("topsim") is not None]
+        return {
+            "vocab": mean_of(stats, lambda s: s["n"]),
+            "used_rate": mean_of(stats, lambda s: s.get("used_rate")),
+            "cross_task": mean_of(stats, lambda s: s.get("reused_across_tasks")),
+            "recv_used": mean_of(stats, lambda s: s.get("received_used")),
+            "topsim": (sum(topsims) / len(topsims)) if topsims else None,
+        }
+
+    rows = {arm: arm_row(rs) for arm, rs in by_arm.items()}
+    rows = {a: r for a, r in rows.items() if r}
+    if not rows:
+        return
+    print("\n=== recovered vocabulary (abstraction-payload arms) ===")
+    print(f"{'arm':4} {'vocab':>7} {'used-rate':>10} {'cross-task':>11} "
+          f"{'recv-used':>10} {'topsim':>8}")
+    for arm in sorted(rows):
+        r = rows[arm]
+        def f(x, p=2):
+            return "-" if x is None else f"{x:.{p}f}"
+        print(f"{arm:4} {f(r['vocab']):>7} {f(r['used_rate']):>10} "
+              f"{f(r['cross_task']):>11} {f(r['recv_used']):>10} "
+              f"{f(r['topsim']):>8}")
 
 
 if __name__ == "__main__":

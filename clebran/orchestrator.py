@@ -14,6 +14,7 @@ from .channel import Channel, Message
 from .fitness import Evaluator
 from .lineage import Lineage
 from .metrics.divergence import pairwise_jaccard, uniquely_solved
+from .metrics.recovery import abstraction_stats
 
 
 def make_lineages(
@@ -231,12 +232,8 @@ def run_multi(
         "reuse_rate": round(reuse, 4),
         "messages_published": channel.published_total,
         "op_mix": {l.lineage_id: l.op_mix() for l in lineages},
-        "vocabulary": {
-            l.lineage_id: {
-                "total": len(l.abstractions),
-                "received": len(l.received_abstraction_names()),
-            }
-            for l in lineages
+        "abstraction_stats": {
+            l.lineage_id: abstraction_stats(l) for l in lineages
         },
         "primitive_usage": usages,
     }

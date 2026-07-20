@@ -116,13 +116,25 @@ communicate those instead.
   (vocab received=2/lineage); reuse 0 on shallow stage-1 (received vocabulary
   not *needed* there), as expected — engages on the frontier.
 
+**Metrics done** (`clebran/metrics/recovery.py`, `tests/test_recovery.py`;
+6 more tests, 18 total):
+- **Topographic similarity** — Spearman rho (scipy-free) between structural
+  (message) and behavioural (meaning, over a probe battery) pairwise distances
+  across arity-1 Grid abstractions. Validated: 0.53 on the 20 subroutines mined
+  from Hodel's solvers — a real compositional signal.
+- **Primitive-recovery stats** — `abstraction_stats`: used-rate,
+  reused-across-tasks (genuine reusable primitives), received-used (the
+  NEO-style "used a primitive it was handed, never derived"), mean body
+  size/arity, topsim. Logged per lineage in every summary; `report.py` prints a
+  recovered-vocabulary table for B6/B7.
+
 **Remaining:**
-- **Metrics:** primitive-recovery rate, topographic similarity (EGG-style)
-  between message space and meaning space, compositional-OOD splits per L2T.
 - **Replay:** solver-card `run_trace` needs the lineage's abstraction table to
   render abstr-using solutions (log the table alongside solve events).
-- Then rerun the arm comparison (B1 vs B2 vs B6/B7) with recovered-primitive
-  payload on the frontier, where mining yields a vocabulary that gets *used*.
+- **Frontier run:** compare B1 vs B2 vs B6/B7 with recovered-primitive payload
+  on the frontier, where mining yields a vocabulary that gets *used* (on shallow
+  stage-1 the vocabulary crosses but used-rate is 0). This is the item-3 payoff
+  measurement; compute-heavy, size like the item-1 sweep.
 
 ## 4. Metrics debt (needed for any writeup)
 
