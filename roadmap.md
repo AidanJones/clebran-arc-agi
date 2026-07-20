@@ -97,3 +97,59 @@ emergent-language claim. Let lineages abstract their *own* subroutines:
 - Kaggle-envelope feasibility: wall-clock per task at competition budgets.
 - Only then: a learned proposal component (tiny mutation-bias policy), with
   the pure-symbolic system kept as the reproducible baseline.
+
+## 7. Curriculum generation — the inverse-teaching direction (longer horizon)
+
+So far the arrow runs task → program → discovered abstractions (a DSL). This
+item runs it **backwards**: given a DSL we have already discovered — a set of
+reusable abstractions, ideally the *recovered* subroutines from item 3, not
+just Hodel's given primitives — **generate an ordered sequence of tasks that
+would lead a fresh learner to build that same DSL.** The analogy is a teacher
+handing a student problems in a deliberate order so the student develops, in
+the right sequence, the concepts they'll need for problems they haven't seen
+yet. It's the symbolic-program-synthesis cousin of automatic **curriculum
+learning** in RL (teacher-student curricula, unsupervised environment design,
+open-ended generation à la POET) — the teacher proposes tasks at the frontier
+of the student's current ability so competence compounds.
+
+Why this fits clebran specifically:
+- **The forward generator already exists in principle.** A task that *requires*
+  abstraction A is cheap to synthesize: sample programs that use A, run them on
+  random input grids through our deterministic interpreter, and keep the
+  resulting (input → output) demonstration pairs. "Make a task needing A" is
+  just running the DSL forward. (Hodel's `re-arc` generators are prior art for
+  the grid-synthesis half.)
+- **We already ship a crude, *static* curriculum.** The §4.1 depth-graded
+  subset (D1 → D2 → D3) is a hand-built ordering by pipeline depth. This item
+  generalizes that from a fixed hand-ordering to an ordering *derived from a
+  target DSL*: order abstractions by their prerequisite structure (which
+  subroutines compose out of which), then emit tasks bottom-up so each new
+  abstraction is learnable from ones already acquired.
+- **It closes an open-ended loop.** Divergent lineages discover abstractions
+  (H1); the constrained channel shares them (H2/H3); a curriculum generator
+  could then synthesize task distributions that make those abstractions *easier
+  to rediscover and compose* — feeding new populations that reach deeper than
+  the original run could. Teacher and student co-evolve.
+
+Concrete first experiments:
+- **Inversion test.** Take a DSL discovered by a lineage. Generate a curriculum
+  from it. Train a fresh B0 lineage on the curriculum (in order) and check
+  whether it rediscovers the target abstractions *faster / at lower compute*
+  than the same lineage on a random task order or on the flat depth-graded
+  subset. Faster rediscovery = the curriculum encodes real prerequisite
+  structure.
+- **DSL-quality probe.** A *good* DSL should admit a *short, learnable*
+  curriculum; an entangled one should not. Curriculum length / learnability
+  becomes an intrinsic quality metric for a discovered DSL — complementary to
+  the MDL and topographic-similarity measures already planned (items 3–4).
+- **Teacher as a policy.** Later, make the teacher adaptive: pick the next task
+  to maximize the student's learning progress (measured as reduction in evals
+  to solve held-out tasks needing the target abstractions), the standard
+  learning-progress signal from automatic-curriculum RL.
+
+Depends on item 3 (recovered-primitive channel) for the interesting version —
+generating a curriculum for Hodel's *given* primitives is possible but far less
+meaningful than for a vocabulary the system discovered itself. Also relates to
+the L2T anchor (§2.4): a curriculum is a controlled distribution over
+phenomena, and NEO's compositional-/length-OOD splits are essentially a
+hand-designed curriculum for probing primitive recovery.
