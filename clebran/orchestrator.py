@@ -46,7 +46,6 @@ def make_lineages(
 
 
 def _publish(lin: Lineage, chan: Channel, max_frag_size: int) -> None:
-    lin.harvest_fragments(max_size=max_frag_size)
     if chan.payload == "signal":
         usage = lin.primitive_usage()
         if usage:
@@ -60,6 +59,24 @@ def _publish(lin: Lineage, chan: Channel, max_frag_size: int) -> None:
                 )
             ])
         return
+    if chan.payload == "abstraction":
+        # grow the lineage's private vocabulary from its own solutions
+        # (min_count=1: offer every subroutine that helped), then publish
+        # the home-grown ones — the constraint decides what crosses.
+        lin.mine_own_abstractions(min_count=1, max_new=8, max_size=max_frag_size)
+        home = lin.home_abstractions()
+        home.sort(key=lambda t: t[1], reverse=True)
+        chan.publish(lin.lineage_id, [
+            Message(
+                sender=lin.lineage_id,
+                payload_kind="abstraction",
+                abstraction=a,
+                score=score,
+            )
+            for a, score in home
+        ])
+        return
+    lin.harvest_fragments(max_size=max_frag_size)
     home = [e for e in lin.library if not e.received]
     home.sort(key=lambda e: (e.score, e.uses), reverse=True)
     chan.publish(lin.lineage_id, [
@@ -81,6 +98,9 @@ def _receive(lin: Lineage, chan: Channel) -> int:
         if m.payload_kind == "fragment" and m.fragment is not None:
             lin.add_fragment(m.fragment, score=m.score, received=True)
             n_used += 1
+        elif m.payload_kind == "abstraction" and m.abstraction is not None:
+            if lin.install_abstraction(m.abstraction, received=True, score=m.score):
+                n_used += 1
         elif m.payload_kind == "signal" and m.signal:
             signals.append(m.signal)
             n_used += 1
@@ -176,13 +196,20 @@ def run_multi(
     for l in lineages:
         phase1_union |= l.solved_by_phase()["phase1"]
     evolution_union = union - phase1_union
-    # reuse rate (§9): solutions containing channel-received material
+    # reuse rate (§9): solutions containing channel-received material — a
+    # received fragment (from_fragment) or a received abstraction, depending
+    # on payload
     sols = [
         (l, l.pops[t].solution) for l in lineages for t in l.solved_tasks()
     ]
-    reuse = (
-        sum(1 for _, s in sols if s.from_fragment) / len(sols) if sols else 0.0
-    )
+    if channel.payload == "abstraction":
+        reused = sum(
+            1 for l, s in sols
+            if l.solution_uses_received_abstraction(s.prog)
+        )
+    else:
+        reused = sum(1 for _, s in sols if s.from_fragment)
+    reuse = reused / len(sols) if sols else 0.0
     test_exact = sum(
         1 for t in union
         if any(
@@ -204,6 +231,13 @@ def run_multi(
         "reuse_rate": round(reuse, 4),
         "messages_published": channel.published_total,
         "op_mix": {l.lineage_id: l.op_mix() for l in lineages},
+        "vocabulary": {
+            l.lineage_id: {
+                "total": len(l.abstractions),
+                "received": len(l.received_abstraction_names()),
+            }
+            for l in lineages
+        },
         "primitive_usage": usages,
     }
     log.write(summary)

@@ -109,6 +109,8 @@ class Lineage:
         # with every per-task GenomeOps and the evaluator, so installing an
         # abstraction makes it immediately usable in search and execution.
         self.abstractions: dict = {}
+        self.abstraction_meta: dict[str, dict] = {}  # name -> {received, score, uses}
+        self._abstr_counter = 0
         # per-task rng substreams: a task's search trajectory is identical
         # whether it runs in isolation or interleaved with other tasks —
         # isolation probes then predict full-run behavior exactly
@@ -578,36 +580,65 @@ class Lineage:
 
     # ---------- recovered vocabulary (roadmap item 3) ----------
 
-    def install_abstraction(self, abstr) -> str | None:
+    def install_abstraction(
+        self, abstr, received: bool = False, score: float = 1.0
+    ) -> str | None:
         """Register a mined/received abstraction under a stable lineage-local
         name (dedup by structure). Shared table → immediately usable in
-        search and execution. Returns the assigned name, or None if already
-        present."""
-        for existing in self.abstractions.values():
+        search and execution. Returns the assigned name, or None if it was
+        already known (its score is bumped)."""
+        for name, existing in self.abstractions.items():
             if existing.key == abstr.key:
+                meta = self.abstraction_meta[name]
+                meta["score"] = max(meta["score"], score)
                 return None
-        name = f"{self.lineage_id}_a{len(self.abstractions)}"
+        name = f"{self.lineage_id}_a{self._abstr_counter}"
+        self._abstr_counter += 1
         self.abstractions[name] = replace(abstr, name=name)
+        self.abstraction_meta[name] = {
+            "received": received, "score": score, "uses": 0,
+        }
         return name
 
     def mine_own_abstractions(
-        self, max_new: int = 3, min_size: int = 2, max_size: int = 4
+        self, max_new: int = 3, min_size: int = 2, max_size: int = 4,
+        min_count: int = 2,
     ) -> int:
-        """Mine recurring subroutines from this lineage's own solved programs
-        and install them. A subroutine must recur across ≥2 solved tasks —
-        the lineage's characteristic idioms. Returns the count newly added."""
+        """Mine subroutines from this lineage's own solved programs and
+        install them. min_count=2 keeps only idioms recurring across ≥2
+        solved tasks; min_count=1 (the channel-publish path) offers every
+        subroutine that helped solve a task, letting the channel constraint
+        do the filtering. Returns the count newly added."""
         solved = [
             p.solution.prog
             for p in self.pops.values()
             if p.solved and p.solution is not None
         ]
-        if len(solved) < 2:
+        if len(solved) < max(min_count, 1):
             return 0
         mined = mine_abstractions(
-            solved, min_count=2, min_size=min_size, max_size=max_size,
+            solved, min_count=min_count, min_size=min_size, max_size=max_size,
             max_results=max_new,
         )
-        return sum(1 for a in mined if self.install_abstraction(a) is not None)
+        return sum(
+            1 for a in mined
+            if self.install_abstraction(a, received=False) is not None
+        )
+
+    def home_abstractions(self) -> list[tuple]:
+        """(Abstraction, score) for home-grown (non-received) entries — what
+        this lineage offers to the channel."""
+        return [
+            (self.abstractions[n], m["score"])
+            for n, m in self.abstraction_meta.items()
+            if not m["received"]
+        ]
+
+    def received_abstraction_names(self) -> set[str]:
+        return {n for n, m in self.abstraction_meta.items() if m["received"]}
+
+    def solution_uses_received_abstraction(self, prog) -> bool:
+        return bool(prog.abstractions_used() & self.received_abstraction_names())
 
     def op_mix(self) -> dict[str, float]:
         """Aggregate operator usage across this lineage's populations, for

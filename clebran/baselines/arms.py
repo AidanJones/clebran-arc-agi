@@ -21,6 +21,11 @@ ARM_CHANNEL = {
     "B2": dict(kind="constrained", payload="fragment"),
     "B3": dict(kind="unconstrained", payload="fragment"),
     "B4": dict(kind="constrained", payload="signal"),
+    # recovered-primitive channel (roadmap item 3): lineages gossip their own
+    # discovered subroutines. B6 constrained vs B7 unconstrained is the H3
+    # test on a *discovered* vocabulary. (B5 is reserved for Stitch, spec §7.)
+    "B6": dict(kind="constrained", payload="abstraction"),
+    "B7": dict(kind="unconstrained", payload="abstraction"),
 }
 
 

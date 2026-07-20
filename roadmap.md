@@ -101,15 +101,28 @@ communicate those instead.
   stage-1 solutions (they don't share substructure) — expected; the vocabulary
   emerges on the frontier.
 
+**Channel payload mode `"abstraction"` done** (channel/lineage/orchestrator/arms;
+1 more test, 12 total):
+- `Message` carries an `Abstraction`; `ChConstrained` gates it by body size (K)
+  and count (M) via a shared `_msg_size`. Lineages track abstraction provenance
+  (`abstraction_meta`: received/score/uses); `_publish` mines home-grown
+  subroutines (`min_count=1` — offer every subroutine that helped, the
+  constraint filters) and publishes them; `_receive` installs received ones as
+  named units. `reuse_rate` counts solutions using a *received* abstraction;
+  summary logs per-lineage `vocabulary` (total/received).
+- Arms **B6** (constrained) and **B7** (unconstrained) abstraction payload —
+  the H3 test on a *discovered* vocabulary. (B5 reserved for Stitch.)
+- Smoke run: abstractions mine, cross the channel, and install as received
+  (vocab received=2/lineage); reuse 0 on shallow stage-1 (received vocabulary
+  not *needed* there), as expected — engages on the frontier.
+
 **Remaining:**
-- **Channel payload mode `"abstraction"`:** publish mined subroutines; receivers
-  `install_abstraction` them as callable named units (not raw splices). Mine
-  each epoch to grow a private vocabulary.
 - **Metrics:** primitive-recovery rate, topographic similarity (EGG-style)
   between message space and meaning space, compositional-OOD splits per L2T.
 - **Replay:** solver-card `run_trace` needs the lineage's abstraction table to
   render abstr-using solutions (log the table alongside solve events).
-- Then rerun the arm comparison with recovered-primitive payload on the frontier.
+- Then rerun the arm comparison (B1 vs B2 vs B6/B7) with recovered-primitive
+  payload on the frontier, where mining yields a vocabulary that gets *used*.
 
 ## 4. Metrics debt (needed for any writeup)
 

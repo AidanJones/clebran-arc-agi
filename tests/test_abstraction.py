@@ -106,6 +106,33 @@ def test_installed_abstraction_shared_across_ops_and_evaluator():
     assert name in lin.ops_by_task[tid].abstractions
 
 
+def test_abstraction_crosses_the_channel():
+    # a home-grown abstraction on one lineage is admitted by the constrained
+    # channel and installed as *received* on another, then usable there
+    from clebran.channel import make_channel
+    from clebran.orchestrator import _publish, _receive
+
+    tid = "6d0aefbc"
+    task = load_task("training", tid)
+    pool = ["vmirror", "hconcat"]
+    a_lin = Lineage("A", pool, {tid: task}, seed=0, pop_size=20)
+    b_lin = Lineage("B", pool, {tid: task}, seed=1, pop_size=20)
+    a_lin.install_abstraction(_abstr(), received=False, score=1.0)
+
+    chan = make_channel("constrained", payload="abstraction",
+                        max_fragment_size=4, max_messages=3)
+    _publish(a_lin, chan, max_frag_size=4)
+    _publish(b_lin, chan, max_frag_size=4)  # B has none to offer
+    got = _receive(b_lin, chan)
+
+    assert got == 1
+    assert len(b_lin.received_abstraction_names()) == 1
+    # the received abstraction is usable in B's search + execution
+    name = next(iter(b_lin.received_abstraction_names()))
+    q = Program([Statement(("abstr", name), (("in", None),))])
+    assert b_lin.evaluator.evaluate(q, task).solved_all
+
+
 def test_abstraction_collapses_depth2_task_to_depth1():
     # 6d0aefbc's reference solution is hconcat(I, vmirror(I)) — depth 2.
     # With that subroutine installed, a length-1 program solves it.

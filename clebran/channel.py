@@ -10,25 +10,41 @@ Variants (map 1:1 onto baseline arms, §7):
   ChUnconstrained — CH-UNCONSTRAINED: whole library dumped every epoch (B3)
 
 Payload modes (config flag, §5.3):
-  "fragment" — concrete DSL subtrees, injected into the receiver's library
-               (horizontal gene transfer)
-  "signal"   — a primitive-reweighting vector biasing the receiver's
-               mutation distribution; no concrete code crosses the channel
+  "fragment"    — concrete DSL subtrees, injected into the receiver's library
+                  (horizontal gene transfer over Hodel's given primitives)
+  "signal"      — a primitive-reweighting vector biasing the receiver's
+                  mutation distribution; no concrete code crosses the channel
+  "abstraction" — a lineage-*recovered* subroutine (the emergent-vocabulary
+                  variant, spec §11); receivers install it as a named callable
+                  unit. This is the scientifically important payload: the
+                  shared alphabet is discovered, not given.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
 from .genome import Fragment
+from .dsl.abstraction import Abstraction
 
 
 @dataclass(frozen=True)
 class Message:
     sender: str
-    payload_kind: str            # "fragment" | "signal"
+    payload_kind: str            # "fragment" | "signal" | "abstraction"
     fragment: Fragment | None = None
     score: float = 0.0
-    signal: dict | None = None   # primitive name -> weight
+    signal: dict | None = None       # primitive name -> weight
+    abstraction: Abstraction | None = None
+
+
+def _msg_size(m: Message) -> int:
+    """Statement count a message would inject — the quantity the bandwidth
+    constraint (K) caps. Signals carry no code, so size 0."""
+    if m.fragment is not None:
+        return len(m.fragment)
+    if m.abstraction is not None:
+        return len(m.abstraction.body)
+    return 0
 
 
 @dataclass
@@ -64,11 +80,13 @@ class ChConstrained(Channel):
     max_messages: int = 3        # M: messages per lineage per epoch
 
     def _admit(self, messages: list[Message]) -> list[Message]:
+        # bounded fragment/abstraction size (K) and bounded count (M); signals
+        # are uncapped in size (they carry no code) but still count-limited
         ok = [
             m
             for m in messages
             if m.payload_kind == "signal"
-            or (m.fragment is not None and len(m.fragment) <= self.max_fragment_size)
+            or _msg_size(m) <= self.max_fragment_size
         ]
         ok.sort(key=lambda m: m.score, reverse=True)
         return ok[: self.max_messages]
