@@ -1,0 +1,9 @@
+seed solved  test meanlen evals/solve  D1 gate
+   1    10/30     9     1.6      100000  PASS
+   2    11/30    11    1.73       90916  PASS
+   3    11/30    11    1.91       90912  PASS
+   4    11/30    11    1.73       90912  PASS
+   5    10/30    10     2.3      100005  PASS
+
+B0 solve count: 10.60 ± 0.55 over 5 seeds
+Stage-1 hard gate (all D1 on every seed): PASS

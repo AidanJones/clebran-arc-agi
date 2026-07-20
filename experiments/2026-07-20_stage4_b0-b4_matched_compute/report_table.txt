@@ -1,0 +1,14 @@
+arm   n      solved/30     test-exact        evals    reuse  jaccard
+B0    5   10.60 ± 0.55   10.40 ± 0.89      1000042        -        -
+B1    5   10.40 ± 0.55   10.40 ± 0.55      1001286 0.00 ± 0.00 0.57 ± 0.10
+B2    5   10.40 ± 0.55   10.40 ± 0.55      1000295 0.06 ± 0.06 0.57 ± 0.06
+B3    5    9.80 ± 0.45    9.80 ± 0.45      1001174 0.17 ± 0.07 0.51 ± 0.09
+B4    5   10.40 ± 0.55   10.40 ± 0.55      1000247 0.00 ± 0.00 0.59 ± 0.11
+
+compute audit: mean-evals spread across arms = 0.12% (PASS ±1%)
+
+H2 (transfer helps): supported iff B2 > B1 and B2 > B0
+   B2-B1 = +0.00 (not significant; pooled se 0.35)
+   B2-B0 = -0.20 (not significant; pooled se 0.35)
+H3 (constraint matters): supported iff B2 > B3
+   B2-B3 = +0.60 (not significant; pooled se 0.32)
