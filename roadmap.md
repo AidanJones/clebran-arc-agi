@@ -7,21 +7,34 @@ solvable frontier is shallow enough that systematic phase-1 search closes it
 without communication, so the channel has nothing to move. Everything below is
 ordered by how directly it attacks that.
 
-## 1. Build a contested frontier, rerun B0–B4 (highest priority)
+## 1. Build a contested frontier, rerun B0–B4 (highest priority; IN PROGRESS)
 
 H2 can only show signal on tasks that isolated lineages *fail* but
 fragment-equipped lineages might reach.
 
-- **Frontier subset:** re-run the §4.1 recipe weighted toward D2/D3 (e.g.
-  5×D1 / 15×D2 / 10×D3, or drop D1 entirely for the treatment comparison —
-  D1 is now deterministic and just burns budget).
-- **Budget scaling curve:** B0 at 1M / 3M / 10M evals on the new subset to
-  find the knee where GP is still gaining tasks — run the arm comparison at
-  that budget, not below it.
-- **Sharper measure:** count solves *outside* phase-1 (evolution-phase solves
-  only) per arm, so the deterministic layer doesn't dilute the comparison.
-- Keep ≥5 seeds; consider 10 for the headline pair (B2 vs B1) since the
-  effect size at 5 seeds was ≈0 ± 0.35.
+**Done:**
+- **Sharper measure** — evolution-phase solve accounting (`Population.solved_phase`,
+  `solved_evolution` in every summary; `report.py` compares on both all-solves and
+  evolution-only). This is where any channel effect must live.
+- **Frontier subset** — `clebran.subset.build_frontier` → `data/frontier_subset.json`;
+  point runs at it with `CLEBRAN_SUBSET=frontier_subset`.
+
+**What the 2M-eval B0 reachability probe (seeds 1-2) showed:**
+- Phase tagging validated: the one D3 solve was a short accidental depth-2
+  solution, correctly tagged phase1; every genuine evolution solve was D2.
+- Evolution reaches **only D2** (depth 3-5): 3 distinct D2 tasks solved across
+  2 seeds at 390k–1.17M evals. **Zero** genuine D3 evolution solves — D3
+  (depth 6-10) is beyond reach and would just add a floor of zeros. Composition
+  reweighted to **25 D2 / 5 D3** accordingly.
+- Counts are low (1-2 evolution solves per seed per 2M) → the treatment signal,
+  if any, is small; budget and seed count must be sized for it.
+
+**Remaining (compute-heavy — sized, not yet launched):**
+- **Budget:** run the arm comparison at ~3M total (per-lineage ~1M, which is where
+  single-population evolution solves appeared). A full B0–B4 × ≥5 seeds at 3M is
+  ~75M evals ≈ several hours; worth confirming the budget/seed plan before spending it.
+- **Seeds:** ≥5, likely 8-10 for the headline B2-vs-B1 pair given the low counts.
+- Compare arms on **evolution-phase solves only**.
 
 ## 2. Chase the B3 degradation (cheapest publishable finding)
 

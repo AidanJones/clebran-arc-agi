@@ -129,7 +129,11 @@ def _passes_gate(task: Task, prog) -> bool:
 # loads deep tasks, where isolated lineages fail and communication could
 # plausibly help (§ roadmap item 1).
 STAGE1 = {"D1": 10, "D2": 15, "D3": 5}
-FRONTIER = {"D2": 15, "D3": 15}
+# D2-heavy: a 2M-eval B0 reachability probe found evolution solves only D2
+# tasks (depth 3-5); D3 (depth 6-10) is unreachable and would just add a
+# floor of zeros. D2 is the spec's own "sweet spot where H2/H3 should first
+# show signal". A few D3 kept as stretch markers.
+FRONTIER = {"D2": 25, "D3": 5}
 
 
 def build_subset(

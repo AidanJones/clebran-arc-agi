@@ -2,8 +2,8 @@
   "seed": 20260718,
   "recipe": "frontier (D2/D3-heavy, roadmap item 1)",
   "composition": {
-    "D2": 15,
-    "D3": 15
+    "D2": 25,
+    "D3": 5
   },
   "tasks": [
     {
@@ -15,11 +15,52 @@
       ]
     },
     {
+      "task_id": "2013d3e2",
+      "depth": 5,
+      "bucket": "D2",
+      "tags": [
+        "object-count",
+        "size-change"
+      ]
+    },
+    {
       "task_id": "25ff71a9",
       "depth": 3,
       "bucket": "D2",
       "tags": [
         "object-count"
+      ]
+    },
+    {
+      "task_id": "2dc579da",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "32597951",
+      "depth": 3,
+      "bucket": "D2",
+      "tags": [
+        "other"
+      ]
+    },
+    {
+      "task_id": "3618c87e",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "other"
+      ]
+    },
+    {
+      "task_id": "42a50994",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "other"
       ]
     },
     {
@@ -36,6 +77,22 @@
       "bucket": "D2",
       "tags": [
         "other"
+      ]
+    },
+    {
+      "task_id": "60b61512",
+      "depth": 3,
+      "bucket": "D2",
+      "tags": [
+        "symmetry-repair"
+      ]
+    },
+    {
+      "task_id": "62c24649",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "size-change"
       ]
     },
     {
@@ -81,6 +138,14 @@
       ]
     },
     {
+      "task_id": "ac0a08a4",
+      "depth": 3,
+      "bucket": "D2",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
       "task_id": "ae4f1146",
       "depth": 4,
       "bucket": "D2",
@@ -95,6 +160,14 @@
       "bucket": "D2",
       "tags": [
         "other"
+      ]
+    },
+    {
+      "task_id": "b91ae062",
+      "depth": 3,
+      "bucket": "D2",
+      "tags": [
+        "size-change"
       ]
     },
     {
@@ -122,6 +195,14 @@
       ]
     },
     {
+      "task_id": "e98196ab",
+      "depth": 5,
+      "bucket": "D2",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
       "task_id": "f76d97a5",
       "depth": 5,
       "bucket": "D2",
@@ -138,56 +219,6 @@
       ]
     },
     {
-      "task_id": "1190e5a7",
-      "depth": 8,
-      "bucket": "D3",
-      "tags": [
-        "object-count",
-        "size-change"
-      ]
-    },
-    {
-      "task_id": "1f642eb9",
-      "depth": 9,
-      "bucket": "D3",
-      "tags": [
-        "recolour"
-      ]
-    },
-    {
-      "task_id": "239be575",
-      "depth": 8,
-      "bucket": "D3",
-      "tags": [
-        "object-count",
-        "size-change"
-      ]
-    },
-    {
-      "task_id": "3f7978a0",
-      "depth": 8,
-      "bucket": "D3",
-      "tags": [
-        "size-change"
-      ]
-    },
-    {
-      "task_id": "73251a56",
-      "depth": 9,
-      "bucket": "D3",
-      "tags": [
-        "other"
-      ]
-    },
-    {
-      "task_id": "a1570a43",
-      "depth": 8,
-      "bucket": "D3",
-      "tags": [
-        "other"
-      ]
-    },
-    {
       "task_id": "bbc9ae5d",
       "depth": 9,
       "bucket": "D3",
@@ -196,40 +227,8 @@
       ]
     },
     {
-      "task_id": "c8cbb738",
-      "depth": 10,
-      "bucket": "D3",
-      "tags": [
-        "size-change"
-      ]
-    },
-    {
-      "task_id": "d364b489",
-      "depth": 9,
-      "bucket": "D3",
-      "tags": [
-        "symmetry-repair"
-      ]
-    },
-    {
       "task_id": "d406998b",
       "depth": 6,
-      "bucket": "D3",
-      "tags": [
-        "recolour"
-      ]
-    },
-    {
-      "task_id": "ddf7fa4f",
-      "depth": 10,
-      "bucket": "D3",
-      "tags": [
-        "recolour"
-      ]
-    },
-    {
-      "task_id": "e76a88a6",
-      "depth": 8,
       "bucket": "D3",
       "tags": [
         "recolour"

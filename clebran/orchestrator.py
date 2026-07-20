@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import random
 
-from .baselines.common import RunLog, subset_pool, subset_tasks
+from .baselines.common import RunLog, run_prefix, subset_pool, subset_tasks
 from .channel import Channel, Message
 from .fitness import Evaluator
 from .lineage import Lineage
@@ -106,7 +106,7 @@ def run_multi(
     tasks = subset_tasks()
     pool = subset_pool()
     lineages = make_lineages(n_lineages, seed, tasks, pool, pop_size)
-    log = RunLog(run_name or f"{arm.lower()}_seed{seed}")
+    log = RunLog(run_name or f"{run_prefix()}{arm.lower()}_seed{seed}")
     log.write({
         "event": "start", "arm": arm, "seed": seed, "budget": budget,
         "n_lineages": n_lineages, "pop_size": pop_size,

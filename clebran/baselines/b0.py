@@ -9,7 +9,7 @@ import argparse
 
 from ..fitness import Evaluator
 from ..lineage import Lineage
-from .common import RunLog, subset_pool, subset_tasks
+from .common import RunLog, run_prefix, subset_pool, subset_tasks
 
 
 def run_b0(
@@ -31,7 +31,7 @@ def run_b0(
         evaluator=ev,
         p_fragment=p_fragment,
     )
-    log = RunLog(run_name or f"b0_seed{seed}")
+    log = RunLog(run_name or f"{run_prefix()}b0_seed{seed}")
     log.write({"event": "start", "arm": "B0", "seed": seed, "budget": budget,
                "pool_size": len(pool), "pop_size": pop_size})
 

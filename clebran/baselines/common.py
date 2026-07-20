@@ -12,9 +12,19 @@ from pathlib import Path
 
 from ..data.loader import Task, load_task, REPO_ROOT
 from ..dsl.solver_parse import parse_all_solvers
-from ..subset import load_subset
+from ..subset import load_subset, active_subset_path, SUBSET_PATH
 
 LOG_DIR = REPO_ROOT / "logs"
+
+
+def run_prefix() -> str:
+    """Log-name prefix identifying the active subset, so runs on different
+    subsets don't overwrite each other's logs. Empty for the default
+    stage-1 subset; e.g. 'frontier_' otherwise."""
+    p = active_subset_path()
+    if p == SUBSET_PATH:
+        return ""
+    return p.stem.replace("_subset", "") + "_"
 
 
 def subset_tasks() -> dict[str, Task]:

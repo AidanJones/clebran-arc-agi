@@ -14,7 +14,7 @@ import json
 from ..channel import make_channel
 from ..orchestrator import run_multi
 from .b0 import run_b0
-from .common import LOG_DIR
+from .common import LOG_DIR, run_prefix
 
 ARM_CHANNEL = {
     "B1": dict(kind="none"),
@@ -49,7 +49,7 @@ def run_arm(
         budget=budget,
         pop_size=pop_size,
         max_frag_size=frag_k,
-        run_name=f"{arm.lower()}_seed{seed}",
+        run_name=f"{run_prefix()}{arm.lower()}_seed{seed}",
     )
 
 
