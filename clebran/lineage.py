@@ -20,7 +20,7 @@ from .dsl.program import Program, Statement
 from .dsl.registry import CONSTANTS
 from .fitness import Evaluator, Fitness
 from .genome import GenomeOps, Fragment
-from .dsl.abstraction import mine_abstractions
+from .dsl.abstraction import mine_compressing
 
 
 @dataclass
@@ -601,24 +601,22 @@ class Lineage:
         return name
 
     def mine_own_abstractions(
-        self, max_new: int = 3, min_size: int = 2, max_size: int = 4,
-        min_count: int = 2,
+        self, max_new: int = 8, min_size: int = 2, max_size: int = 4,
     ) -> int:
-        """Mine subroutines from this lineage's own solved programs and
-        install them. min_count=2 keeps only idioms recurring across ≥2
-        solved tasks; min_count=1 (the channel-publish path) offers every
-        subroutine that helped solve a task, letting the channel constraint
-        do the filtering. Returns the count newly added."""
+        """Mine subroutines from this lineage's own solved programs with the
+        Stitch-style compression miner and install the top `max_new`
+        (best-compressing first, constant-antiunified). The channel offers
+        these; its constraint does the final filtering. Returns count added."""
         solved = [
             p.solution.prog
             for p in self.pops.values()
             if p.solved and p.solution is not None
         ]
-        if len(solved) < max(min_count, 1):
+        if not solved:
             return 0
-        mined = mine_abstractions(
-            solved, min_count=min_count, min_size=min_size, max_size=max_size,
-            max_results=max_new,
+        mined = mine_compressing(
+            solved, min_size=min_size, max_size=max_size, max_results=max_new,
+            min_occurrences=1, min_utility=-1e9,  # offer all; constraint filters
         )
         return sum(
             1 for a in mined

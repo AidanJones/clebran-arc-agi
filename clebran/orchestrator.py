@@ -64,7 +64,7 @@ def _publish(lin: Lineage, chan: Channel, max_frag_size: int) -> None:
         # grow the lineage's private vocabulary from its own solutions
         # (min_count=1: offer every subroutine that helped), then publish
         # the home-grown ones — the constraint decides what crosses.
-        lin.mine_own_abstractions(min_count=1, max_new=8, max_size=max_frag_size)
+        lin.mine_own_abstractions(max_new=8, max_size=max_frag_size)
         home = lin.home_abstractions()
         home.sort(key=lambda t: t[1], reverse=True)
         chan.publish(lin.lineage_id, [
