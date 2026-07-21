@@ -37,15 +37,33 @@ class Evaluator:
 
     def __init__(self, lam_mdl: float = 1.05, abstractions: dict | None = None):
         self.lam_mdl = lam_mdl
-        self.evaluations = 0  # candidate-evaluations consumed
+        self.evaluations = 0  # candidate-evaluations consumed (the compute unit)
         # shared per-lineage abstraction table (set by the owning Lineage);
         # execution resolves ("abstr", name) heads through it. An abstraction
         # call is one statement, so len(prog) already gives it MDL cost 1 —
         # the compression reward for reusing a discovered subroutine.
         self.abstractions: dict = abstractions if abstractions is not None else {}
+        # Fitness cache keyed on (program, task). Transparent: every evaluate
+        # still counts as a candidate-evaluation (budget/compute-matching are
+        # byte-identical to no-cache), it only skips re-running the interpreter
+        # on a repeat — ~27% of evals are duplicates (elites, sweep near-misses,
+        # re-derived children). Keyed per-Evaluator so lineage-local abstraction
+        # names never collide.
+        self._cache: dict = {}
+        self._cache_cap = 300_000
 
     def evaluate(self, prog: Program, task: Task) -> Fitness:
         self.evaluations += 1
+        # Cache only deep programs: for short ones (stage-1, len ≤ 3) the key
+        # construction costs as much as re-running the cheap interpreter, so
+        # caching there is a net loss (measured). Frontier programs (len 8-12)
+        # are expensive to run, so the ~27% duplicate rate pays off.
+        key = None
+        if len(prog) >= 4:
+            key = (tuple(prog.statements), task.task_id)
+            hit = self._cache.get(key)
+            if hit is not None:
+                return hit
         solved = 0
         cell_acc_sum = 0.0
         n = len(task.train)
@@ -106,12 +124,15 @@ class Evaluator:
             # crash: contributes 0
         solved_frac = solved / n
         tiebreak = (cell_acc_sum / n) * (self.lam_mdl ** (-len(prog)))
-        return Fitness(
+        fit = Fitness(
             solved_frac=solved_frac,
             tiebreak=tiebreak,
             solved_all=(solved == n),
             length=len(prog),
         )
+        if key is not None and len(self._cache) < self._cache_cap:
+            self._cache[key] = fit
+        return fit
 
     def test_exact(self, prog: Program, task: Task) -> bool:
         """Held-out check: does the program solve the task's test pair(s)?

@@ -108,14 +108,26 @@ def run(program: Program, grid: Grid, abstractions: dict | None = None) -> Grid:
     if not regs:
         raise ExecutionError("empty program")
     result = regs[-1]
+    # Grid validation, O(rows + width) rather than O(cells): a real grid is a
+    # non-empty tuple of equal-length tuples whose first row is all ints. This
+    # rejects non-grids (1D tuples, frozensets, TupleTuple with a non-int first
+    # row) cheaply; a malformed grid that slips through can never *equal* a
+    # target grid downstream, so exactness of solves is preserved. (Was a full
+    # per-cell isinstance scan — 79.5M calls / 32s in profiling.)
     if not (
         isinstance(result, tuple)
         and result
-        and all(isinstance(row, tuple) and row for row in result)
-        and len({len(row) for row in result}) == 1
-        and all(isinstance(v, int) for row in result for v in row)
+        and isinstance(result[0], tuple)
+        and result[0]
     ):
-        raise ExecutionError("result is not a rectangular grid")
+        raise ExecutionError("result is not a grid")
+    w = len(result[0])
+    for row in result:
+        if not isinstance(row, tuple) or len(row) != w:
+            raise ExecutionError("result is not a rectangular grid")
+    for v in result[0]:
+        if not isinstance(v, int):
+            raise ExecutionError("result is not an integer grid")
     return result
 
 

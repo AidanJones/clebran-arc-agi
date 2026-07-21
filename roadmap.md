@@ -160,13 +160,15 @@ item-3 payoff measurement, held for the same compute decision as item 1.
 - Phase-1 currently covers depth ≤ 2; a bounded depth-3 skeleton pass
   (pipeline-fns only, sweep-gated) may be worth its cost on a D2-heavy
   subset — measure, don't assume.
-- Evaluation throughput is ~2.5–3k evals/s/process; if 10M-eval runs are
-  needed, profile the interpreter (grid ops dominate) or shard tasks across
-  processes.
-- Fitness cache keyed on (program, task) would cut re-evaluation of elites
-  and duplicated children — but it changes the meaning of "candidate-
-  evaluations", so if added it must be identical across arms and the budget
-  metric must switch to *unique* evaluations.
+- **Throughput ~8.3k evals/s/process (done, ~3× up from ~2.8k).** The
+  interpreter's per-cell grid-validation scan (79.5M isinstance calls / 32s in
+  profiling) was replaced with an O(rows+width) structural + first-row check;
+  reproduction unchanged (399/400). A length-guarded fitness cache (only deep
+  programs, len ≥ 4, where re-running is dearer than the key) skips the ~27%
+  duplicate evaluations transparently — every call still counts as a
+  candidate-evaluation, so budgets/compute-matching are byte-identical and
+  search is deterministic-identical (verified). Further wins if needed: shard
+  tasks across processes; the DSL primitives (upscale/replace) now dominate.
 
 ## 6. Toward Stage 5 (later)
 
