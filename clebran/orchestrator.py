@@ -128,8 +128,12 @@ def _receive(lin: Lineage, chan: Channel) -> int:
             if lin.install_abstraction(m.abstraction, received=True, score=m.score):
                 n_used += 1
         elif m.payload_kind == "curriculum" and m.task is not None:
-            # add a received teaching task, capped so it can't swamp the budget
-            if len(lin.aux_task_ids) < _MAX_AUX_TASKS and lin.add_task(m.task):
+            # add a received teaching task, capped so it can't swamp the budget;
+            # source + score let the order-aware learner gate it in prerequisite
+            # order (fundamentals — higher score — unlock first)
+            if len(lin.aux_task_ids) < _MAX_AUX_TASKS and lin.add_task(
+                m.task, source=m.sender, score=m.score
+            ):
                 n_used += 1
         elif m.payload_kind == "signal" and m.signal:
             signals.append(m.signal)
@@ -172,17 +176,21 @@ def run_multi(
     while total_evals() < budget:
         all_solved = True
         for lin in lineages:
-            # schedule over real *and* auxiliary (received curriculum) tasks;
-            # only unsolved real tasks decide the termination flag
-            unsolved = [t for t in lin.tasks if not lin.pops[t].solved]
-            if any(t not in lin.aux_task_ids for t in unsolved):
+            # schedule over real tasks + only the *ungated* auxiliary tasks
+            # (the order-aware prerequisite frontier); only unsolved real tasks
+            # decide termination
+            if any(
+                t not in lin.aux_task_ids
+                for t in lin.tasks if not lin.pops[t].solved
+            ):
                 all_solved = False
-            if not unsolved:
+            sched = lin.schedulable_tasks()
+            if not sched:
                 continue
             w = lin.task_weights()
             picks = sched_rng.choices(
-                unsolved, weights=[w.get(t, 0.15) for t in unsolved],
-                k=len(unsolved),
+                sched, weights=[w.get(t, 0.15) for t in sched],
+                k=len(sched),
             )
             for tid in picks:
                 if lin.pops[tid].solved:

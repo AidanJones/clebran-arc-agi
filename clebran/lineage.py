@@ -115,6 +115,10 @@ class Lineage:
         # the lineage also evolves on these, and solving them enriches its
         # library, but they never count toward the real solve rate.
         self.aux_task_ids: set[str] = set()
+        # per received curriculum task: {source, score}. score = shallowness
+        # (a fundamental prerequisite scores higher). Used by the order-aware
+        # learner to gate a deeper task until its prerequisites are solved.
+        self.aux_meta: dict[str, dict] = {}
         self.curriculum_rng = random.Random(f"{seed}:curriculum")
         # per-task rng substreams: a task's search trajectory is identical
         # whether it runs in isolation or interleaved with other tasks —
@@ -125,7 +129,9 @@ class Lineage:
             for tid in tasks
         }
         self.ops = GenomeOps(pool, self.rng, abstractions=self.abstractions)
-        self.tasks = tasks
+        # own copy: add_task (received curriculum tasks) mutates this, and the
+        # same dict is shared across lineages by the orchestrator
+        self.tasks = dict(tasks)
         self.pop_size = pop_size
         self.tournament_k = tournament_k
         self.elite = elite
@@ -587,7 +593,8 @@ class Lineage:
             if p.solved and tid not in self.aux_task_ids
         }
 
-    def add_task(self, task, auxiliary: bool = True) -> bool:
+    def add_task(self, task, auxiliary: bool = True, source: str | None = None,
+                 score: float = 0.0) -> bool:
         """Register a task dynamically (a received curriculum task). Creates
         its population, per-task ops and rng. Returns False if already known."""
         if task.task_id in self.pops:
@@ -600,7 +607,33 @@ class Lineage:
         self.pops[task.task_id] = Population(task_id=task.task_id)
         if auxiliary:
             self.aux_task_ids.add(task.task_id)
+            self.aux_meta[task.task_id] = {"source": source, "score": score}
         return True
+
+    def is_aux_gated(self, tid: str) -> bool:
+        """Order-aware learner (roadmap 7a): a received task is gated — no
+        search budget yet — while a *more fundamental* prerequisite from the
+        same curriculum (same source, higher shallowness score) is still
+        unsolved. So the lineage masters building blocks before the
+        compositions that need them, and each solved prerequisite enriches the
+        library the next step draws on."""
+        meta = self.aux_meta.get(tid)
+        if meta is None:
+            return False
+        return any(
+            m["source"] == meta["source"]
+            and m["score"] > meta["score"]
+            and not self.pops[other].solved
+            for other, m in self.aux_meta.items()
+        )
+
+    def schedulable_tasks(self) -> list[str]:
+        """Unsolved tasks eligible for search: all real tasks plus only the
+        *ungated* auxiliary tasks (the current prerequisite frontier)."""
+        return [
+            t for t in self.tasks
+            if not self.pops[t].solved and not self.is_aux_gated(t)
+        ]
 
     def solved_programs(self, real_only: bool = True) -> list:
         """(task, program) for solved tasks — the transforms this lineage has

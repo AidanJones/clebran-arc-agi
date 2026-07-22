@@ -115,6 +115,35 @@ def test_curriculum_crosses_the_channel_and_is_learnable():
     assert not (student.solved_tasks() & student.aux_task_ids)
 
 
+def test_order_aware_learner_gates_until_prerequisite_solved():
+    from clebran.data.loader import load_task
+    from clebran.lineage import Lineage
+
+    tid = "6d0aefbc"
+    task = load_task("training", tid)
+    lin = Lineage("S", ["vmirror", "hconcat"], {tid: task}, seed=0, pop_size=20)
+
+    from clebran.curriculum import generate_task
+    fundamental = generate_task(  # the vmirror prerequisite
+        Program([Statement(("prim", "vmirror"), (("in", None),))]),
+        random.Random(0))
+    composition = generate_task(MIRROR_APPEND, random.Random(1))
+    # same source; fundamental scores higher (shallower prerequisite)
+    lin.add_task(fundamental, source="T", score=2.0)
+    lin.add_task(composition, source="T", score=1.0)
+
+    sched = lin.schedulable_tasks()
+    # the deeper composition is gated out; the fundamental (and the real task)
+    # are schedulable
+    assert fundamental.task_id in sched
+    assert composition.task_id not in sched          # gated until prereq solved
+    assert tid in sched
+
+    # once the fundamental is solved, the composition unlocks
+    lin.pops[fundamental.task_id].solved = True
+    assert composition.task_id in lin.schedulable_tasks()
+
+
 def test_generate_from_real_solvers():
     # generating from a spread of reference solvers should mostly succeed and
     # always round-trip when it does
