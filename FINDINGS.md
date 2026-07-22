@@ -41,14 +41,18 @@ number reflects only what search (and communication) contributed.
 | B0 | single population | 2.25 ± 1.07 |
 | B7 | recovered-primitive channel, unconstrained | 1.85 ± 1.04 |
 | B6 | recovered-primitive channel, constrained | 1.80 ± 1.06 |
+| B9 | curriculum channel, unconstrained | 1.65 ± 0.75 |
 | B2 | fragment channel (given primitives) | 1.60 ± 0.99 |
+| B8 | curriculum channel, constrained | 1.60 ± 0.75 |
 | B1 | isolated lineages, no channel | 1.45 ± 0.94 |
 
-    B5 (2.65)  >  B0 (2.25)  >  B7 ≈ B6 (1.8)  >  B2 (1.6)  >  B1 (1.45)
-    central lib   single pop    multi-agent+channel  fragment   isolated
+    B5 (2.65) > B0 (2.25) > B7≈B6 (1.8) > B9≈B2≈B8 (1.6) > B1 (1.45)
+    central lib  single pop  recovered-prim   curriculum/frag   isolated
 
 Only one comparison in the entire study reaches significance: **B6 − B5 = −0.85
-(~2.2 se)** — the channel is significantly worse than a central library.
+(~2.2 se)** — the channel is significantly worse than a central library. **Every
+communication variant we built — four payload types, constrained and
+unconstrained — sits below simply not dividing the compute.**
 
 ## Verdicts
 
@@ -77,6 +81,19 @@ Only one comparison in the entire study reaches significance: **B6 − B5 = −0
   stable even without per-comparison significance. The mechanism is real:
   lineages solve tasks using primitives they were *handed and never derived*
   (received-used ≈ 1.1–1.4). But it is all dominated by B5.
+
+- **Communication through curricula (roadmap 7b): mechanism confirmed, benefit
+  null — and the failure is newly diagnostic.** Lineages that share *synthetic
+  tasks showing what they learned* (prerequisite-ordered, with an order-aware
+  learner gating deeper tasks until fundamentals are solved) received ~31
+  teaching tasks each and **solved ~78% of them** — the students genuinely
+  learned their peers' concepts. It bought +0.15 over isolation (ns), below
+  every code-sharing payload. So the bottleneck is **not acquiring** a taught
+  concept; it is that **a concept learned from demonstrations does not transfer
+  to novel tasks that need it** — the L2T transfer-vs-reconstruction gap at the
+  level of whole concepts. Teaching also costs budget (~24 auxiliary tasks
+  solved), making it close to a wash under matched compute.
+  ([experiments/2026-07-23_frontier_curriculum](experiments/2026-07-23_frontier_curriculum/README.md))
 
 - **B5 (the central-library control): significantly best.** One agent that
   reuses its own abstractions beats everything. Two forces explain the whole
@@ -126,10 +143,13 @@ itself a record of what pure-reward program evolution needs to be reliable.
 - **Deeper tasks / a regime where single-population search genuinely stalls** —
   the divergence tax only becomes worth paying when one agent *can't* do the job
   alone. On this frontier B0 does fine, leaving little room for communication.
-- **Communication through exported curricula** (roadmap 7b) — share *problems*,
-  not code: a substrate-agnostic payload that sidesteps the "divergence degrades
-  the shared vocabulary" failure this study found. The most promising untested
-  idea.
+- **Concept transfer, not concept acquisition.** The curriculum result localises
+  the real obstacle: students learn taught concepts (78% of teaching tasks
+  solved) but don't deploy them on novel tasks. Anything that closes *that* gap
+  — richer teaching sets that vary the concept's context, explicitly rewarding
+  reuse of a just-learned abstraction, or curricula built for a *target* task
+  rather than from a solved one — attacks the actual bottleneck. This is the
+  most specific open lead the project produced.
 - **B5 is not the ceiling either** — it points at centralized library learning
   (DreamCoder/Stitch proper) as the stronger direction for ARC program
   synthesis, with or without the multi-agent framing.
