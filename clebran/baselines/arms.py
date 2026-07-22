@@ -13,7 +13,7 @@ import json
 
 from ..channel import make_channel
 from ..orchestrator import run_multi
-from .b0 import run_b0
+from .b0 import run_b0, run_b5
 from .common import LOG_DIR, run_prefix
 
 ARM_CHANNEL = {
@@ -40,6 +40,8 @@ def run_arm(
 ) -> dict:
     if arm == "B0":
         return run_b0(seed=seed, budget=budget, pop_size=pop_size)
+    if arm == "B5":
+        return run_b5(seed=seed, budget=budget, pop_size=pop_size)
     spec = dict(ARM_CHANNEL[arm])
     kind = spec.pop("kind")
     if kind == "constrained":
