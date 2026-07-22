@@ -1,0 +1,23 @@
+arm   n    solved/30   evo-solved      reuse
+B0   20    2.25±1.07    2.25±1.07          -
+B1   20    1.50±0.95    1.45±0.94  0.00±0.00
+B2   20    1.65±1.14    1.60±0.99  0.46±0.37
+B5   20    2.65±1.31    2.65±1.31          -
+B6   20    1.85±1.09    1.80±1.06  0.59±0.19
+B7   20    1.90±1.07    1.85±1.04  0.64±0.18
+
+compute audit: eval spread 0.10% (PASS ±1%)
+
+evolution-phase solve comparisons:
+  B6-B1 = +0.35 (not significant; se 0.32)   [recovered-primitive transfer helps]
+  B6-B2 = +0.20 (not significant; se 0.32)   [recovered vs given-primitive transfer]
+  B6-B7 = -0.05 (not significant; se 0.33)   [constraint matters for a discovered vocabulary (H3)]
+  B2-B1 = +0.15 (not significant; se 0.31)   [given-primitive transfer helps (H2)]
+  B6-B5 = -0.85 (significant; se 0.38)   [channel adds over a central library (the key B5 test)]
+  B5-B0 = +0.40 (not significant; se 0.38)   [central abstraction library adds over plain single-pop]
+
+=== recovered vocabulary (abstraction-payload arms) ===
+arm    vocab  used-rate  cross-task  recv-used   topsim
+B5      6.60       0.09        0.15       0.00     0.33
+B6      4.77       0.27        0.05       1.12     0.14
+B7      6.05       0.26        0.05       1.42     0.15
