@@ -15,7 +15,7 @@ from .fitness import Evaluator
 from .lineage import Lineage
 from .metrics.divergence import pairwise_jaccard, uniquely_solved
 from .metrics.recovery import abstraction_stats
-from .curriculum import generate_task
+from .curriculum import prerequisite_curriculum
 
 # cap on how many received curriculum tasks a lineage will take on, so
 # learning from them can't crowd out its real tasks' budget
@@ -66,18 +66,22 @@ def _publish(lin: Lineage, chan: Channel, max_frag_size: int) -> None:
             ])
         return
     if chan.payload == "curriculum":
-        # "show what you learned": generate a synthetic task variant from each
-        # solved (real) program — the constraint decides how many cross
+        # "show what you learned": for each solved program, generate its
+        # *ordered* prerequisite curriculum — a task for each sub-abstraction,
+        # simplest first — and share it. Score = shallowness, so under the
+        # constraint the most fundamental prerequisites cross first (teach the
+        # building blocks before the composition).
         msgs = []
         for _task, prog in lin.solved_programs(real_only=True):
-            gt = generate_task(
+            curr = prerequisite_curriculum(
                 prog, lin.curriculum_rng, abstractions=lin.abstractions,
                 n_pairs=4,
             )
-            if gt is not None:
+            depth_max = max((d for d, _ in curr), default=1)
+            for depth, gt in curr:
                 msgs.append(Message(
                     sender=lin.lineage_id, payload_kind="curriculum",
-                    task=gt, score=1.0,
+                    task=gt, score=float(depth_max - depth + 1),
                 ))
         chan.publish(lin.lineage_id, msgs)
         return

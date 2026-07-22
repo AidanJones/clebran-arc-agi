@@ -55,6 +55,26 @@ def test_generation_from_abstraction_using_program():
     assert solves(prog, task, abstractions={"MA": a})
 
 
+def test_prerequisite_curriculum_orders_subabstractions_first():
+    from clebran.curriculum import prerequisite_curriculum, solves
+    # MIRROR_APPEND = vmirror(I); hconcat(I, x0). The prerequisite of the
+    # composition is just vmirror — it must come first, the full task last.
+    curr = prerequisite_curriculum(MIRROR_APPEND, random.Random(0), n_pairs=4)
+    assert len(curr) >= 2
+    depths = [d for d, _ in curr]
+    assert depths == sorted(depths)          # dependency order, shallowest first
+
+    vmirror_only = Program([Statement(("prim", "vmirror"), (("in", None),))])
+    first_depth, first_task = curr[0]
+    last_depth, last_task = curr[-1]
+    assert first_depth < last_depth
+    # the first task teaches the sub-abstraction (solved by vmirror alone),
+    # not the full composition
+    assert solves(vmirror_only, first_task)
+    assert not solves(vmirror_only, last_task)
+    assert solves(MIRROR_APPEND, last_task)  # the last item is the target
+
+
 def test_curriculum_crosses_the_channel_and_is_learnable():
     # a lineage that has solved a task generates a variant, publishes it over
     # the curriculum channel; a receiver adds it as an auxiliary task, evolves,
@@ -81,18 +101,18 @@ def test_curriculum_crosses_the_channel_and_is_learnable():
     _publish(student, chan, max_frag_size=6)
     got = _receive(student, chan)
 
-    assert got == 1                              # a teaching task crossed
-    assert len(student.aux_task_ids) == 1
-    aux_id = next(iter(student.aux_task_ids))
-    assert aux_id in student.pops                # student registered it
-    # the student can learn it: evolve the aux task to solution
+    assert got >= 1                              # a teaching curriculum crossed
+    assert len(student.aux_task_ids) >= 1
+    # the student can learn from a shared task: evolve the aux tasks; at least
+    # one (a fundamental prerequisite) becomes solved
     for _ in range(400):
-        student.step_generation(aux_id)
-        if student.pops[aux_id].solved:
+        for aux_id in list(student.aux_task_ids):
+            student.step_generation(aux_id)
+        if any(student.pops[a].solved for a in student.aux_task_ids):
             break
-    assert student.pops[aux_id].solved           # learned from the shared task
-    # ...and solving it never counts toward the real solve rate
-    assert aux_id not in student.solved_tasks()
+    assert any(student.pops[a].solved for a in student.aux_task_ids)
+    # ...and solving aux tasks never counts toward the real solve rate
+    assert not (student.solved_tasks() & student.aux_task_ids)
 
 
 def test_generate_from_real_solvers():

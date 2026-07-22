@@ -137,3 +137,39 @@ def solves(program: Program, task: Task, abstractions: dict | None = None) -> bo
         run_safe(program, i, abstractions) == o
         for i, o in task.train + task.test
     )
+
+
+def prerequisite_curriculum(
+    program: Program,
+    rng: random.Random,
+    abstractions: dict | None = None,
+    n_pairs: int = 4,
+    max_items: int = 5,
+) -> list[tuple[int, Task]]:
+    """Decompose a solved program into an *ordered* teaching curriculum.
+
+    A solved program is a chain x0 = f0(…); x1 = f1(x0, …); …; O = fk(…). Each
+    grid-producing **prefix** is a self-contained sub-transform — the earlier,
+    simpler abstractions the final composition is built from. Generating a task
+    from each prefix and ordering shortest-first gives a curriculum that
+    *teaches each abstraction before the step that needs it*: to teach
+    hconcat(I, vmirror(I)) you first show tasks that are just vmirror, then the
+    composition. Returns [(depth, Task)] shortest-first; the full program's task
+    is the final target. Prefixes whose intermediate value isn't a grid are
+    skipped (nothing to demonstrate)."""
+    items: list[tuple[int, Task]] = []
+    seen_trains: set = set()
+    n = len(program.statements)
+    for i in range(n):
+        prefix = Program(list(program.statements[: i + 1]))
+        gt = generate_task(prefix, rng, abstractions=abstractions, n_pairs=n_pairs)
+        if gt is None:
+            continue
+        if gt.train in seen_trains:      # same sub-transform as a shallower prefix
+            continue
+        seen_trains.add(gt.train)
+        items.append((i + 1, gt))
+    items.sort(key=lambda t: t[0])
+    if len(items) > max_items:           # keep the shallowest prerequisites + the target
+        items = items[: max_items - 1] + [items[-1]]
+    return items
