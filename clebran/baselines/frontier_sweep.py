@@ -31,7 +31,7 @@ from ..metrics.report import _recovery_table
 from .arms import run_arm
 from .common import LOG_DIR
 
-ARMS = ["B0", "B1", "B2", "B5", "B6", "B7"]
+ARMS = ["B0", "B1", "B2", "B5", "B6", "B7", "B8", "B9"]
 
 
 def _summaries() -> dict[str, list[dict]]:
@@ -106,6 +106,9 @@ def analyze() -> None:
         ("B2", "B1", "given-primitive transfer helps (H2)"),
         ("B6", "B5", "channel adds over a central library (the key B5 test)"),
         ("B5", "B0", "central abstraction library adds over plain single-pop"),
+        ("B8", "B1", "curriculum transfer helps (share tasks, not code)"),
+        ("B8", "B6", "curriculum vs recovered-primitive payload"),
+        ("B8", "B9", "constraint matters for teaching sets (H3, curricula)"),
     ):
         v = _cmp(by_arm, a, b, _evo)
         if v:

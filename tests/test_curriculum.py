@@ -55,6 +55,46 @@ def test_generation_from_abstraction_using_program():
     assert solves(prog, task, abstractions={"MA": a})
 
 
+def test_curriculum_crosses_the_channel_and_is_learnable():
+    # a lineage that has solved a task generates a variant, publishes it over
+    # the curriculum channel; a receiver adds it as an auxiliary task, evolves,
+    # and solves it — learning the concept from a shared *problem*, not code
+    from clebran.data.loader import load_task
+    from clebran.lineage import Lineage, Individual
+    from clebran.channel import make_channel
+    from clebran.orchestrator import _publish, _receive
+
+    tid = "6d0aefbc"  # reference solution is exactly MIRROR_APPEND
+    task = load_task("training", tid)
+    pool = ["vmirror", "hconcat"]
+    teacher = Lineage("T", pool, {tid: task}, seed=0, pop_size=30)
+    student = Lineage("S", pool, {tid: task}, seed=1, pop_size=30)
+
+    # make the teacher "have learned" the transform
+    fit = teacher.evaluator.evaluate(MIRROR_APPEND, task)
+    teacher.pops[tid].solved = True
+    teacher.pops[tid].solution = Individual(MIRROR_APPEND, fit)
+
+    chan = make_channel("constrained", payload="curriculum",
+                        max_fragment_size=6, max_messages=3)
+    _publish(teacher, chan, max_frag_size=6)
+    _publish(student, chan, max_frag_size=6)
+    got = _receive(student, chan)
+
+    assert got == 1                              # a teaching task crossed
+    assert len(student.aux_task_ids) == 1
+    aux_id = next(iter(student.aux_task_ids))
+    assert aux_id in student.pops                # student registered it
+    # the student can learn it: evolve the aux task to solution
+    for _ in range(400):
+        student.step_generation(aux_id)
+        if student.pops[aux_id].solved:
+            break
+    assert student.pops[aux_id].solved           # learned from the shared task
+    # ...and solving it never counts toward the real solve rate
+    assert aux_id not in student.solved_tasks()
+
+
 def test_generate_from_real_solvers():
     # generating from a spread of reference solvers should mostly succeed and
     # always round-trip when it does

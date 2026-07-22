@@ -26,6 +26,11 @@ ARM_CHANNEL = {
     # test on a *discovered* vocabulary. (B5 is reserved for Stitch, spec §7.)
     "B6": dict(kind="constrained", payload="abstraction"),
     "B7": dict(kind="unconstrained", payload="abstraction"),
+    # curriculum channel (roadmap 7b): lineages communicate by exporting
+    # synthetic tasks that show what they learned. B8 constrained vs B9
+    # unconstrained is the H3 test on *teaching sets*.
+    "B8": dict(kind="constrained", payload="curriculum"),
+    "B9": dict(kind="unconstrained", payload="curriculum"),
 }
 
 

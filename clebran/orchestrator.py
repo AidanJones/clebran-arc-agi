@@ -15,6 +15,11 @@ from .fitness import Evaluator
 from .lineage import Lineage
 from .metrics.divergence import pairwise_jaccard, uniquely_solved
 from .metrics.recovery import abstraction_stats
+from .curriculum import generate_task
+
+# cap on how many received curriculum tasks a lineage will take on, so
+# learning from them can't crowd out its real tasks' budget
+_MAX_AUX_TASKS = 12
 
 
 def make_lineages(
@@ -60,10 +65,26 @@ def _publish(lin: Lineage, chan: Channel, max_frag_size: int) -> None:
                 )
             ])
         return
+    if chan.payload == "curriculum":
+        # "show what you learned": generate a synthetic task variant from each
+        # solved (real) program — the constraint decides how many cross
+        msgs = []
+        for _task, prog in lin.solved_programs(real_only=True):
+            gt = generate_task(
+                prog, lin.curriculum_rng, abstractions=lin.abstractions,
+                n_pairs=4,
+            )
+            if gt is not None:
+                msgs.append(Message(
+                    sender=lin.lineage_id, payload_kind="curriculum",
+                    task=gt, score=1.0,
+                ))
+        chan.publish(lin.lineage_id, msgs)
+        return
     if chan.payload == "abstraction":
         # grow the lineage's private vocabulary from its own solutions
-        # (min_count=1: offer every subroutine that helped), then publish
-        # the home-grown ones — the constraint decides what crosses.
+        # (offer every subroutine that helped), then publish the home-grown
+        # ones — the constraint decides what crosses.
         lin.mine_own_abstractions(max_new=8, max_size=max_frag_size)
         home = lin.home_abstractions()
         home.sort(key=lambda t: t[1], reverse=True)
@@ -101,6 +122,10 @@ def _receive(lin: Lineage, chan: Channel) -> int:
             n_used += 1
         elif m.payload_kind == "abstraction" and m.abstraction is not None:
             if lin.install_abstraction(m.abstraction, received=True, score=m.score):
+                n_used += 1
+        elif m.payload_kind == "curriculum" and m.task is not None:
+            # add a received teaching task, capped so it can't swamp the budget
+            if len(lin.aux_task_ids) < _MAX_AUX_TASKS and lin.add_task(m.task):
                 n_used += 1
         elif m.payload_kind == "signal" and m.signal:
             signals.append(m.signal)
@@ -143,10 +168,13 @@ def run_multi(
     while total_evals() < budget:
         all_solved = True
         for lin in lineages:
-            unsolved = [t for t in tasks if not lin.pops[t].solved]
+            # schedule over real *and* auxiliary (received curriculum) tasks;
+            # only unsolved real tasks decide the termination flag
+            unsolved = [t for t in lin.tasks if not lin.pops[t].solved]
+            if any(t not in lin.aux_task_ids for t in unsolved):
+                all_solved = False
             if not unsolved:
                 continue
-            all_solved = False
             w = lin.task_weights()
             picks = sched_rng.choices(
                 unsolved, weights=[w.get(t, 0.15) for t in unsolved],
@@ -159,7 +187,7 @@ def run_multi(
                     break
                 before = lin.pops[tid].solved
                 lin.step_generation(tid)
-                if lin.pops[tid].solved and not before:
+                if lin.pops[tid].solved and not before and tid not in lin.aux_task_ids:
                     sol = lin.pops[tid].solution
                     used_abs = sol.prog.abstractions_used()
                     log.write({
@@ -168,7 +196,7 @@ def run_multi(
                         "evals": total_evals(), "len": sol.fit.length,
                         "phase": lin.pops[tid].solved_phase,
                         "from_fragment": sol.from_fragment,
-                        "test_exact": lin.evaluator.test_exact(sol.prog, tasks[tid]),
+                        "test_exact": lin.evaluator.test_exact(sol.prog, lin.tasks[tid]),
                         "program": sol.prog.to_json(),
                         # definitions needed to replay an abstr-using solution
                         "abstractions": {
@@ -239,6 +267,13 @@ def run_multi(
         "op_mix": {l.lineage_id: l.op_mix() for l in lineages},
         "abstraction_stats": {
             l.lineage_id: abstraction_stats(l) for l in lineages
+        },
+        "curriculum_stats": {
+            l.lineage_id: {
+                "aux_received": len(l.aux_task_ids),
+                "aux_solved": sum(1 for t in l.aux_task_ids if l.pops[t].solved),
+            }
+            for l in lineages
         },
         "primitive_usage": usages,
     }

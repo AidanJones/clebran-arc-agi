@@ -111,6 +111,11 @@ class Lineage:
         self.abstractions: dict = {}
         self.abstraction_meta: dict[str, dict] = {}  # name -> {received, score, uses}
         self._abstr_counter = 0
+        # auxiliary tasks received over a curriculum channel (roadmap 7b):
+        # the lineage also evolves on these, and solving them enriches its
+        # library, but they never count toward the real solve rate.
+        self.aux_task_ids: set[str] = set()
+        self.curriculum_rng = random.Random(f"{seed}:curriculum")
         # per-task rng substreams: a task's search trajectory is identical
         # whether it runs in isolation or interleaved with other tasks —
         # isolation probes then predict full-run behavior exactly
@@ -576,7 +581,38 @@ class Lineage:
         return weights
 
     def solved_tasks(self) -> set[str]:
-        return {tid for tid, p in self.pops.items() if p.solved}
+        # real (non-auxiliary) solved tasks — the solve-rate metric
+        return {
+            tid for tid, p in self.pops.items()
+            if p.solved and tid not in self.aux_task_ids
+        }
+
+    def add_task(self, task, auxiliary: bool = True) -> bool:
+        """Register a task dynamically (a received curriculum task). Creates
+        its population, per-task ops and rng. Returns False if already known."""
+        if task.task_id in self.pops:
+            return False
+        self.tasks[task.task_id] = task
+        self.rngs[task.task_id] = random.Random(f"{self.lineage_id}:{task.task_id}")
+        self.ops_by_task[task.task_id] = GenomeOps(
+            self.ops.pool, self.rngs[task.task_id], abstractions=self.abstractions
+        )
+        self.pops[task.task_id] = Population(task_id=task.task_id)
+        if auxiliary:
+            self.aux_task_ids.add(task.task_id)
+        return True
+
+    def solved_programs(self, real_only: bool = True) -> list:
+        """(task, program) for solved tasks — the transforms this lineage has
+        learned, i.e. what it can generate curriculum variants from."""
+        out = []
+        for tid, p in self.pops.items():
+            if not (p.solved and p.solution is not None):
+                continue
+            if real_only and tid in self.aux_task_ids:
+                continue
+            out.append((self.tasks[tid], p.solution.prog))
+        return out
 
     # ---------- recovered vocabulary (roadmap item 3) ----------
 

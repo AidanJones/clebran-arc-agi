@@ -18,6 +18,9 @@ Payload modes (config flag, §5.3):
                   variant, spec §11); receivers install it as a named callable
                   unit. This is the scientifically important payload: the
                   shared alphabet is discovered, not given.
+  "curriculum"  — a *synthetic task* the sender's learning produced (roadmap
+                  7b); receivers add it as an auxiliary task and learn from it.
+                  Knowledge crosses as problems, not code.
 """
 from __future__ import annotations
 
@@ -30,20 +33,24 @@ from .dsl.abstraction import Abstraction
 @dataclass(frozen=True)
 class Message:
     sender: str
-    payload_kind: str            # "fragment" | "signal" | "abstraction"
+    payload_kind: str            # "fragment" | "signal" | "abstraction" | "curriculum"
     fragment: Fragment | None = None
     score: float = 0.0
     signal: dict | None = None       # primitive name -> weight
     abstraction: Abstraction | None = None
+    task: object = None              # a synthetic Task (curriculum payload)
 
 
 def _msg_size(m: Message) -> int:
-    """Statement count a message would inject — the quantity the bandwidth
-    constraint (K) caps. Signals carry no code, so size 0."""
+    """The quantity the bandwidth constraint (K) caps. For code payloads it is
+    statement count; for a curriculum task it is its demonstration-pair count
+    (a longer teaching example costs more bandwidth). Signals carry none."""
     if m.fragment is not None:
         return len(m.fragment)
     if m.abstraction is not None:
         return len(m.abstraction.body)
+    if m.task is not None:
+        return len(m.task.train) + len(m.task.test)
     return 0
 
 
