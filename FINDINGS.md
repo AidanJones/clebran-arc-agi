@@ -95,6 +95,23 @@ unconstrained — sits below simply not dividing the compute.**
   solved), making it close to a wash under matched compute.
   ([experiments/2026-07-23_frontier_curriculum](experiments/2026-07-23_frontier_curriculum/README.md))
 
+- **Transfer probe — concepts *do* transfer; they buy speed, not capability.**
+  A controlled teach → test probe (oracle-relevant curriculum vs an unrelated
+  one, matched item count, seed and total budget; 34 paired runs) separates
+  "concepts don't transfer" from "the curricula were mis-targeted". Result:
+  target **solve rate is null** (4 vs 2 discordant pairs, p = 0.688), but among
+  solves the taught arm used **15% of its available budget vs 32%** — ~2×
+  faster, permutation **p = 0.025**, and *not* a censoring artifact (both arms
+  had ~equal test budget). So a relevant curriculum makes a target roughly twice
+  as cheap to find and barely changes which targets are findable. That explains
+  the curriculum channel's null exactly: its benefit is *speed*, but the arm
+  metric is *solve count at fixed budget*, and speed only converts to count for
+  tasks near the budget frontier — 19 of 34 pairs were solved by neither arm and
+  9 by both, leaving few marginal tasks to flip. **The curriculum idea was
+  measured with the wrong endpoint on the wrong task distribution, not
+  falsified.**
+  ([experiments/2026-07-23_transfer_probe](experiments/2026-07-23_transfer_probe/README.md))
+
 - **B5 (the central-library control): significantly best.** One agent that
   reuses its own abstractions beats everything. Two forces explain the whole
   ranking: (1) splitting compute across lineages is a **tax** (B1 ≪ B0);
@@ -143,13 +160,15 @@ itself a record of what pure-reward program evolution needs to be reliable.
 - **Deeper tasks / a regime where single-population search genuinely stalls** —
   the divergence tax only becomes worth paying when one agent *can't* do the job
   alone. On this frontier B0 does fine, leaving little room for communication.
-- **Concept transfer, not concept acquisition.** The curriculum result localises
-  the real obstacle: students learn taught concepts (78% of teaching tasks
-  solved) but don't deploy them on novel tasks. Anything that closes *that* gap
-  — richer teaching sets that vary the concept's context, explicitly rewarding
-  reuse of a just-learned abstraction, or curricula built for a *target* task
-  rather than from a solved one — attacks the actual bottleneck. This is the
-  most specific open lead the project produced.
+- **Measure cost, and put tasks at the budget frontier.** The transfer probe
+  shows teaching's benefit is real but lives in *evals-to-solve*, not
+  solve-count — so (a) report cost-to-solve alongside counts in every arm, and
+  (b) build a task set concentrated where a ~2× speedup actually flips outcomes
+  (marginal tasks), or raise the budget until today's hopeless tasks become
+  marginal. Both are cheap and directly test whether the curriculum channel's
+  null is an artifact of endpoint + task distribution. **This is the most
+  specific open lead the project produced** — and, unlike the other leads, it
+  comes with a measured effect size (~2×) to size the experiment against.
 - **B5 is not the ceiling either** — it points at centralized library learning
   (DreamCoder/Stitch proper) as the stronger direction for ARC program
   synthesis, with or without the multi-agent framing.

@@ -1,0 +1,10 @@
+arm        n  target solve rate  curriculum learned  mean evals-to-solve
+taught    34            38.24%                50%               62,563
+control   34            32.35%                46%              130,968
+
+paired over 34 (target, seed) pairs:
+  taught-only solves : 4
+  control-only solves: 2
+  both / neither     : 9 / 19
+
+Transfer shows up as taught-only >> control-only. Equal counts mean the relevant curriculum bought nothing a random one didn't.
