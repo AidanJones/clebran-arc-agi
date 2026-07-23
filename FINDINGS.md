@@ -95,22 +95,21 @@ unconstrained — sits below simply not dividing the compute.**
   solved), making it close to a wash under matched compute.
   ([experiments/2026-07-23_frontier_curriculum](experiments/2026-07-23_frontier_curriculum/README.md))
 
-- **Transfer probe — concepts *do* transfer; they buy speed, not capability.**
-  A controlled teach → test probe (oracle-relevant curriculum vs an unrelated
-  one, matched item count, seed and total budget; 34 paired runs) separates
-  "concepts don't transfer" from "the curricula were mis-targeted". Result:
-  target **solve rate is null** (4 vs 2 discordant pairs, p = 0.688), but among
-  solves the taught arm used **15% of its available budget vs 32%** — ~2×
-  faster, permutation **p = 0.025**, and *not* a censoring artifact (both arms
-  had ~equal test budget). So a relevant curriculum makes a target roughly twice
-  as cheap to find and barely changes which targets are findable. That explains
-  the curriculum channel's null exactly: its benefit is *speed*, but the arm
-  metric is *solve count at fixed budget*, and speed only converts to count for
-  tasks near the budget frontier — 19 of 34 pairs were solved by neither arm and
-  9 by both, leaving few marginal tasks to flip. **The curriculum idea was
-  measured with the wrong endpoint on the wrong task distribution, not
-  falsified.**
-  ([experiments/2026-07-23_transfer_probe](experiments/2026-07-23_transfer_probe/README.md))
+- **Concept transfer, against a proper baseline: neutral if relevant, harmful if
+  not.** A first probe (oracle-relevant curriculum vs an *irrelevant* one)
+  seemed to show a ~2× speedup — but it lacked a no-teaching baseline. Adding a
+  **cold** arm (no curriculum) and merging the three (same targets/seeds/budget)
+  corrects it decisively: **taught ≈ cold** (−986 evals to solve the target,
+  perm p = 0.97 — *no* speedup from relevant teaching), while **control > cold**
+  (+43k — irrelevant teaching is *slower* than not teaching). The apparent "2×"
+  was the size of the *harm* to the mis-targeted control, mislabeled as a
+  benefit. Honest statement: **relevant concept teaching is neutral; irrelevant
+  concept teaching causes negative transfer.** And it costs budget to acquire —
+  per student, taught total L+T = 129k vs cold U = 73k, so the per-student
+  condition L+T < U fails and **amortisation across N agents cannot rescue it at
+  any N** (the crossover has no solution).
+  ([experiments/2026-07-23_amortization](experiments/2026-07-23_amortization/README.md),
+  correcting [experiments/2026-07-23_transfer_probe](experiments/2026-07-23_transfer_probe/README.md))
 
 - **B5 (the central-library control): significantly best.** One agent that
   reuses its own abstractions beats everything. Two forces explain the whole

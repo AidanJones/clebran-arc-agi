@@ -102,11 +102,11 @@ def analyze(path=None, teacher_cost: float | None = None) -> None:
     gain = st.mean(U) - st.mean(LT)
     C = teacher_cost if teacher_cost is not None else st.mean(U)
     print(f"\nper-student condition  L+T < U : "
-          f"{'YES' if gain > 0 else 'NO'}  (U − (L+T) = {gain:+,.0f} per student)")
+          f"{'YES' if gain > 0 else 'NO'}  (U - (L+T) = {gain:+,.0f} per student)")
     if gain > 0:
         n_star = C / gain
         print(f"teacher cost C (≈ one cold solve) = {C:,.0f}")
-        print(f"crossover  N* = C / (U − (L+T)) = {n_star:.1f}"
+        print(f"crossover  N* = C / (U - (L+T)) = {n_star:.1f}"
               f"  → a shared curriculum pays off from ~{max(1, int(n_star) + 1)} students on")
         print("\n  N   untaught total      taught total   winner")
         for N in (1, 2, 3, 5, 10, 25):

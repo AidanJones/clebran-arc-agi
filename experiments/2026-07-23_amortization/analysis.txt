@@ -1,0 +1,12 @@
+34 paired (target, seed) runs; both arms solved in 9
+cold solve rate   35.3%
+taught solve rate 13/34 = 38.2%
+
+per-student cost on pairs where both solved (n=9):
+  U  cold total              mean    73,152  median    61,866
+  L  taught: learn curriculum mean    56,775  median     7,561
+  T  taught: solve target     mean    72,166  median    72,082
+  L+T taught total            mean   128,942  median    95,581
+
+per-student condition  L+T < U : NO  (U - (L+T) = -55,789 per student)
+teaching costs more per student than it saves — amortisation cannot rescue it at any N.

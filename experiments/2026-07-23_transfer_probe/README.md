@@ -1,5 +1,17 @@
 # Paired transfer probe — does a taught concept transfer? (2026-07-23)
 
+> **⚠️ CORRECTED by [2026-07-23_amortization](../2026-07-23_amortization/README.md).**
+> This probe's headline ("concepts DO transfer, ~2× speedup, p = 0.025") was
+> **wrong** — it compared taught vs an *irrelevant-curriculum control* with no
+> no-teaching baseline. Adding a **cold** (no-curriculum) baseline shows
+> **taught ≈ cold** (−986 evals, p = 0.97): relevant teaching gives *no*
+> target-solve speedup. The 2× was **irrelevant teaching harming the control**
+> (control − cold = +43k), not relevant teaching helping. Honest verdict:
+> relevant teaching is neutral; irrelevant teaching hurts. Read the amortization
+> writeup for the corrected three-way result; the analysis below is left intact
+> as a record of the confound.
+
+
 The curriculum frontier run left two explanations confounded: concepts genuinely
 don't transfer, or the curricula were aimed at the wrong target. This probe
 separates them with a controlled teach → test protocol, and finds a clear,
