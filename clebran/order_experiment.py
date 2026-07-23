@@ -199,7 +199,7 @@ def analyze(path=None) -> None:
         va = [ca[k] for k in common]
         vb = [cb[k] for k in common]
         diff, p = _perm(va, vb)
-        print(f"  {a:8} − {b:8} = {diff:+9,.0f}  perm p={p:.3f}  "
+        print(f"  {a:8} - {b:8} = {diff:+9,.0f}  perm p={p:.3f}  "
               f"(n={len(common)})  [{label}]")
 
     print("\nProcess matters iff forward is significantly cheaper than shuffled "
