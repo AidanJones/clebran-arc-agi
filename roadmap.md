@@ -414,3 +414,112 @@ taught < control, that is the most important scoping result available.
 not an engine of novelty*. A system that must **discover** should look like B5 —
 one learner, maximum compute, maximum task exposure. Teaching is what you bolt
 on afterwards to make that expensive competence cheap to replicate.
+
+## 9. Learning *process* as the object of study — "not what you know, how you learned it"
+
+A reorientation, grounded in the benchmark's own theory and in our own data.
+
+**The theory.** Chollet defines intelligence as **skill-acquisition efficiency**
+over a scope of tasks, relative to priors, experience and generalisation
+difficulty — and warns that *unlimited priors or data let you "buy" skill*,
+masking generalisation power ([On the Measure of
+Intelligence](https://arxiv.org/abs/1911.01547)). Skill is the thing you can
+purchase; acquisition efficiency is the thing you cannot.
+
+**Our data says the same thing, and we mis-scored it.** The transfer probe found
+a relevant curriculum moves **evals-to-solve** (acquisition cost, p = 0.025) and
+leaves **solve count** (skill) untouched. Every arm in this repo was scored on
+solve count — the endpoint Chollet argues is uninformative. The instrument
+existed; it was not the metric.
+
+### 9a. Make acquisition efficiency the primary endpoint (cheap, do first)
+
+Report **cost-to-solve** (evals, and evals-per-solve) alongside counts in every
+arm, and re-score the existing logs — they already contain per-solve `evals`, so
+most of this is analysis, not new compute. Expect several existing nulls to
+become non-null on the cost axis. Add an explicit *acquisition-efficiency*
+column to `metrics/report.py` and the frontier analyser.
+
+### 9b. Dreaming — self-directed task generation (the biggest capability gap)
+
+`clebran/curriculum.py` can already synthesise tasks from a program. **It has
+only ever been pointed outward** (to teach peers), never inward. A learner that
+generates its own practice from what it has seen — DreamCoder's wake/sleep
+"fantasies", self-play's proposer — is the missing self-improvement loop.
+Concretely: after solving, generate variants of and around its own solutions,
+train on them, and measure whether the resulting abstractions are better
+(topsim, cross-task reuse) and whether *later* tasks get cheaper. This is the
+single most implementable big gap: the generator exists, only the loop is
+missing.
+
+### 9c. Pluggable learners — does a curriculum transfer *across architectures*?
+
+The curriculum payload is already substrate-agnostic by construction: it is just
+(input, output) grid pairs, no shared representation assumed. That makes a sharp
+test available that no other payload allows.
+
+- Define a minimal `Learner` interface (`solve(task, budget) -> program|None`,
+  plus whatever library/state it keeps).
+- Back it with ≥3 genuinely different learners: our typed GP; a brute-force
+  depth-bounded enumerator; a retrieval/nearest-neighbour learner over seen
+  solutions; optionally a small neural or LLM-backed solver.
+- **Experiment:** build a curriculum with learner A as the teacher, measure the
+  acquisition-efficiency gain for learners B and C.
+  - Gain transfers across architectures → curricula encode *task structure*, and
+    "how you learned it" is a property of the material, not the student. Strong
+    result, and it is what would make curricula a reusable artefact.
+  - Gain is architecture-specific → teachers overfit their students; teaching
+    must be co-adapted. Also important, and a caution for the whole idea.
+
+This directly answers "does comms-through-curriculum help different model
+architectures", and it is the cleanest way this repo can say something that
+generalises beyond its own learner.
+
+### 9d. What a learner needs before "how you learned it" is even measurable
+
+Honest audit — Chollet's core-knowledge priors are *had* (Hodel's DSL encodes
+objectness, geometry/topology, number); the process capabilities mostly are not.
+
+| capability | status here |
+|---|---|
+| core-knowledge priors (objectness, geometry, number, agentness) | **have** (via the DSL; agentness weakest) |
+| abstraction / compression (MDL, library learning) | **have** (miner, Stitch-style antiunification) |
+| communication & teaching | **have** (4 payloads, prerequisite-ordered curricula) |
+| honest measurement (matched compute, baselines, seeds) | **have** — the repo's real asset |
+| acquisition efficiency as the objective | instrument exists, **not the metric** (9a) |
+| self-directed practice / dreaming | **missing** (9b) |
+| active learning — *choosing* what to practise next | **missing** (learning-progress teacher) |
+| continual learning without rigidity (plasticity) | **missing**, and possibly already violated (8b) |
+| compositional generalisation to novel combinations | **missing** (no OOD split) |
+| generalisation to genuinely unseen tasks | **missing** (eval split untouched) |
+| meta-learning — adapting the *learning algorithm* itself | **missing** |
+| reflection — credit assignment over *how* it learned | **missing**, and the least-explored anywhere |
+
+The last row is the sharpest form of the thesis and is largely open in the
+literature: systems that model *their own acquisition process* and improve it.
+Everything above it is prerequisite scaffolding.
+
+### 9e. One repo or several?
+
+**Recommendation: one repo, pluggable interfaces — do not split.** The asset
+here is not the learner, it is the *measurement rig*: matched compute, strong
+baselines, seed discipline, and a track record of reporting nulls. Splitting
+work across repos either duplicates that rig or creates cross-repo integration
+work, which is where research projects die. Instead factor along capability
+boundaries *inside* the repo:
+
+    core (keep):  tasks/curricula, the protocol, metrics, baselines, honest reporting
+    plugins:      learners (9c), teachers/curriculum generators, payload types
+
+A separate repo is justified only when a direction needs a genuinely different
+substrate *and* has already shown a result worth porting — e.g. an LLM-agent
+study whose compute model makes matched-compute accounting incompatible. Prove
+it here first behind the `Learner` interface; split later if and only if the
+interface stops fitting.
+
+### Build order
+
+9a (re-score existing logs on cost) → 9b (dreaming loop) → 9c (`Learner`
+interface + cross-architecture curriculum transfer) → then the 8b negative-
+transfer test and the eval-split generalisation run, both of which become much
+more informative once cost is the endpoint.

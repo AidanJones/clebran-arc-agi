@@ -6,6 +6,33 @@ The full design is in [emergent-dsl-arc-spec.md](emergent-dsl-arc-spec.md). **Wh
 
 > **Headline result.** At matched compute on ARC, a single population that mines its own solutions into a growing abstraction library (a DreamCoder/Stitch-style central learner, arm **B5**) *significantly* outperforms divergent lineages communicating over a constrained channel (B6): `B5 2.65 > B0 2.25 > B7≈B6 1.8 > B2 1.6 > B1 1.45` evolution-phase solves; B6−B5 = −0.85 (~2.2 se, the only significant comparison). The central hypothesis is not supported — the strongest control wins. A trustworthy negative result, which is exactly what the baselines were built to make believable.
 
+## Research direction: *not what you know, but how you learned it*
+
+The project is pivoting from "does communication raise skill?" to **"does the
+*way* a system acquires knowledge change how well it can use it?"** This is not
+a soft reframe — it is what the benchmark's own author says intelligence *is*:
+
+> "The intelligence of a system is a measure of its **skill-acquisition
+> efficiency** over a scope of tasks, with respect to priors, experience, and
+> generalization difficulty." — Chollet, *On the Measure of Intelligence*
+
+Chollet's companion warning is that **unlimited priors or unlimited training
+data let you "buy" skill**, masking a system's actual generalization power. That
+is the precise sense in which internet-scale pretraining plus task RL sidesteps
+the question rather than answering it — and it is why this repo deliberately
+studies a small, fully-instrumented learner where *acquisition cost* is
+measurable rather than a large one where it is not.
+
+**Our own results independently point the same way.** The transfer probe found
+that a relevant curriculum changes **evals-to-solve** (acquisition cost) while
+leaving **solve count** (skill) unmoved. We had been scoring every arm on skill,
+which is exactly the endpoint Chollet argues is uninformative. The instrument
+was already in the repo; it was not the primary metric. Section 9 of the
+[roadmap](roadmap.md) makes it one, and lays out the capability gaps —
+self-directed practice ("dreaming"), active choice of what to practise,
+retention without rigidity, and reflection on *how* something was learned — that
+a learner needs before "how you learned it" can be studied properly.
+
 ## Hypotheses → baselines
 
 | | Arm | Purpose |
