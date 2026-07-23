@@ -325,3 +325,92 @@ Build order when this item is picked up: 7a-generators (prerequisite-ordered
 forward generation) → 7a-learners (library-persistent, order-aware scheduling)
 → inversion test → 7b `payload="curriculum"` arm → the H2/H3 comparison on
 curriculum transfer.
+
+## 8. Research gaps and scope (post-results synthesis, 2026-07-23)
+
+Everything above was measured as **performance at matched compute on a fixed
+task set**. That design can only ever see teaching as a *cost*, never as a
+benefit, and it conflates two different axes:
+
+- **Discovery scales with concentration.** B5 — one agent, all the compute, all
+  the tasks — significantly beat every communication variant *and* built the
+  better vocabulary (topsim 0.33 vs 0.14; cross-task reuse 0.15 vs 0.05). One
+  learner seeing everything discovers better abstractions than three seeing
+  slices.
+- **Distribution works and is worth ~2×.** The transfer probe: a relevant
+  curriculum makes a target ~2× cheaper to find (p = 0.025) but does **not**
+  expand what is solvable.
+
+So teaching is a **transport mechanism, not a discovery mechanism** — and our
+accounting charges every arm the full teaching cost while letting exactly one
+student reap it. That is the worst possible accounting for the idea.
+
+### 8a. The amortization gap (biggest; directly tests the "leave a curriculum" architecture)
+
+Teaching cost is paid **once**; the benefit is reaped **N times**. At N = 1 (our
+setup) it is a wash — exactly what we measured. **Missing experiment:** total
+compute to bring **N agents** to a competence bar, with vs without a shared
+curriculum, sweeping N. Per-student taught cost is (learn curriculum `L` +
+solve target `T`); untaught is `U`; teacher discovery is `C` paid once.
+Amortisation wins when `C + N(L+T) < N·U`, i.e. `N > C / (U − L − T)` — which
+first requires the per-student condition `L + T < U`. Measure `U`, `L`, `T`
+directly and the crossover is arithmetic. Predicted crossover ≈ 2–4 agents if
+the probe's ~2× holds.
+
+### 8b. The novelty gap (does a curriculum help — or hurt — on *new* abstractions?)
+
+A curriculum is derived from the teacher's solved programs, so its information
+content is **bounded by what the teacher already knows**. Teaching can
+redistribute competence; it cannot create it. Untested, and possibly *negative*:
+a taught vocabulary biases search (library sampling, abstraction pool, signal
+reweighting), so an agent that internalised vocabulary A may search *worse* than
+a naive agent on a task needing disjoint vocabulary B — negative transfer /
+plasticity loss.
+
+**Experiment:** teach concept family A → test on tasks requiring disjoint family
+B → compare against an untaught control at matched compute. All three outcomes
+are informative (generalises / inert off-distribution / causes rigidity). If
+taught < control, that is the most important scoping result available.
+
+### 8c. Other gaps
+
+- **The eval split has never been touched.** All results are training-split. The
+  spec reserved the 400-task eval split for exactly the "does this generalise to
+  genuinely unseen tasks" question.
+- **Compositional-OOD splits** — our own L2T anchor's headline test (do learned
+  primitives recombine into novel compositions?). topsim and cross-task reuse
+  exist; a held-out compositional split does not.
+- **Cost is not an endpoint in any arm.** The probe proved the effect lives in
+  evals-to-solve. Nearly free to add; large interpretive gain.
+- **The loop was never iterated.** One round of sharing only. curriculum₁ →
+  agents₂ → curriculum₂ → … i.e. whether competence *compounds* across
+  generations, is the actual open-endedness question and is untested.
+- **Teacher targeting** — curricula come from what the sender solved, not what
+  the receiver is failing at. Target-directed teaching unbuilt.
+- **Task distribution** — 19 of 34 probe pairs were solved by neither arm. Speed
+  converts to capability only near the budget frontier; no task set is built there.
+
+### 8d. Scope — what this is for, and what it is never for
+
+**Good for**
+- Amortising *known* competence: making the 2nd…Nth agent acquire a capability
+  ~2× cheaper.
+- Distributing competence cheaply and substrate-agnostically (curricula are
+  compact and, unlike code, assume no shared representation).
+- Bootstrapping a starting vocabulary so new agents do not begin at zero.
+- Interpretability/audit: a curriculum is a human-readable statement of what an
+  agent knows.
+- Regimes with many tasks near the budget frontier, where ~2× flips outcomes.
+
+**Never for**
+- Discovering abstractions nobody has found — it cannot create information not
+  present in the teacher.
+- Raising the ceiling on what is solvable at all (probe: speed, not capability).
+- Beating concentrated compute at discovery (B5).
+- Tasks outside the curriculum's vocabulary coverage — neutral at best, possibly
+  harmful (8b).
+
+**One-line scope:** this is a *compression-and-transport layer for competence,
+not an engine of novelty*. A system that must **discover** should look like B5 —
+one learner, maximum compute, maximum task exposure. Teaching is what you bolt
+on afterwards to make that expensive competence cheap to replicate.
