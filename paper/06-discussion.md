@@ -53,13 +53,36 @@ library framing. The next question is therefore the one
 *acquisition-efficient* is the system, and what design choices
 move that number?
 
-A capability audit (§6.4) frames the answer. The process-level
-capabilities that an "acquisition-efficient" learner would need
-— self-directed practice, active choice of what to practise,
-retention without rigidity, reflection on *how* something was
-learned — are the gaps. None of them is fully present in the
-clebran design; together they describe the substrate the
-reorientation would actually need.
+The reorientation is not only a proposal: the order experiment
+(§5.7.3) is a first empirical purchase on it, and it comes back
+*positive*. Holding the taught *content* fixed and varying only
+the *order* of acquisition produces a significant capability
+difference — teaching a curriculum foundations-*last* (reverse)
+halves how much of it is acquired (23% vs 47%) and is no better
+than not teaching at all, while foundations-first (forward) is
+significantly better (paired p = 0.021). This is the cleanest
+statement the substrate can make of "how you learned it": the
+*same* knowledge, acquired in a dependency-violating order, is
+worth significantly less. The effect is asymmetric — *don't teach
+backwards* matters, but fine sequencing beyond "make the
+fundamentals available" does not (forward ≈ shuffled, ns), because
+an adaptive learner self-orders when all steps are on offer. So
+the process axis is real but, in this substrate, shows up mainly
+as a *failure mode to avoid* rather than a lever to optimise. That
+it appears at all — as the project's only significant *process*
+effect, against a wall of null *content* effects — is what marks
+the axis as the one worth pursuing.
+
+A capability audit (§6.4) frames the rest of the answer. The
+process-level capabilities that an "acquisition-efficient" learner
+would need — self-directed practice, active choice of what to
+practise, retention without rigidity, reflection on *how*
+something was learned — are the gaps. None of them is fully
+present in the clebran design; together they describe the
+substrate the reorientation would actually need. The order result
+is a proof of concept that the *axis* is measurable here; the
+capability audit is why measuring it *richly* needs a more capable
+learner than pure GP, for which order this cheaply self-corrects.
 
 ## 6.2 The divergence tax
 
@@ -326,8 +349,8 @@ DreamCoder), but the match-compute comparison against
 divergent multi-agent baselines is, and the win is
 significant.
 
-For *L2T/NEO*, the result is a *partial vindication* of the
-transfer metric. NEO's headline test (transfer, not
+For *L2T/NEO*, the result is *consistent with* the transfer
+metric framing. NEO's headline test (transfer, not
 reconstruction) reappears in the teach→test probe: students
 *learn* the taught concept (reconstruction) but do not deploy
 it on novel tasks (no transfer). The clebran data add a sharp

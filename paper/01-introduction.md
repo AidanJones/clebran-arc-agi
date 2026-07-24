@@ -4,7 +4,7 @@ The Abstraction and Reasoning Corpus (Chollet, 2019) was designed to
 measure a property its author calls *skill-acquisition efficiency*: the
 ability of a system to acquire new competencies quickly, relative to its
 priors, experience, and generalisation difficulty. In *On the Measure of
-Intelligence* (Chollet, 2019) the warning is explicit — *unlimited
+Intelligence* (Chollet, 2019) the warning is explicit â€” *unlimited
 priors or unlimited training data let you "buy" skill*, masking a
 system's actual generalisation power. That framing is what motivates
 ARC's small training set, its held-out evaluation split, and the
@@ -41,7 +41,7 @@ preserves better abstractions than an unconstrained library-dump (H3).
 A later extension (the *recovered-primitive* variant) asked whether
 sharing subroutines a lineage had *discovered for itself* would beat
 sharing raw code over a hand-designed vocabulary (the "given versus
-recovered" comparison, sometimes called §11 in the project).
+recovered" comparison, sometimes called Â§11 in the project).
 
 The promise of the clebran design is closely related to two active
 research literatures. From emergent communication (Lazaridou & Baroni,
@@ -65,85 +65,48 @@ thing a small, well-instrumented study can produce.
 The qualitative headline: across nine arms and twenty seeds at
 matched compute on the frontier subset, the multi-agent arms with a
 constrained channel are not better than the strongest single-agent
-baseline — and the central-library control (the DreamCoder/Stitch
+baseline â€” and the central-library control (the DreamCoder/Stitch
 arm) is significantly *better* than the multi-agent channels. The
 mechanism the clebran design assumed the channel would provide
 (*sharing of recovered abstractions between divergent populations*)
 is real but small, and the *cost of splitting compute across
 populations* is larger than the benefit the channel can pay back.
 H1 (lineages diverge) is supported; H2 (transfer helps) and H3
-(the constraint matters) are null. H1 is supported
-(lineages do diverge) but, in this substrate, divergence is a
-*liability* rather than an asset: the multi-agent arms' mined
-vocabularies are less compositional (mean topographic similarity
-0.14–0.15 vs 0.33 for B5) and less cross-task-reused (0.05 vs 0.15)
-than a single agent's. H2 and H3 are null, in the form that they were
-originally posed. The constraint does not help, because adaptive
-operator selection already self-regulates a failing channel — a
-subtler mechanism than the information-bottleneck story originally
-invoked.
+(the constraint matters) are null.
 
-The result is striking enough that we asked two follow-up questions to
-make sure it was the *channel* that failed rather than the design's
-*measurement*. The first is a controlled teach→test probe (§5.7.1): a
-lineage is taught a curriculum built from the *target's own*
-prerequisite decomposition (an oracle curriculum that maximally targets
-the right concepts) and is then asked to solve the target with the rest
-of the budget. The naive comparison — taught vs a control taught an
-unrelated curriculum — showed an apparent 2× speedup, but adding a
-*cold* arm (no curriculum at all) reveals that the apparent benefit was
-actually the size of the harm to the mis-targeted control. With the
-cold baseline, **taught − cold = −986 evals (permutation p = 0.97)**:
-a relevant curriculum gives no target-solve speedup; an irrelevant
-one is *slower* than not teaching at all. The honest verdict is that
-relevant concept teaching is roughly neutral, irrelevant concept
-teaching causes negative transfer, and the per-student condition
-L + T < U fails by ≈ 56k evals — a number no amortisation across N
-agents can rescue.
+The rest of the paper is the data and the consequences. The
+headline ranking is reported in §5.5; the multi-agent-channel
+results are in §5.4 (recovered-primitive) and §5.6 (curriculum);
+the dose-response and the mechanism behind the H3 null are in
+§5.3; the teach→test probe and the cold-baseline correction that
+exposed a hidden confound in the project’s first attempt at the
+probe are in §5.7. The reorientation to acquisition efficiency —
+which is *why* the headline was hard to see with solve-count as
+the endpoint — is delivered in §6.1, where the data have earned
+it.
+(the constraint matters) are null.
 
-The second follow-up concerns the *endpoint* itself. Throughout the
-project, every arm was scored on solve count at a fixed budget. The
-transfer probe shows that curriculum teaching's benefit lives in
-*evals-to-solve*, not in solve count, and only converts to solve count
-for tasks *near* the budget frontier. The frontier subset has very few
-such tasks. Almost every prior null on the project is therefore a
-null on a *solvable-frontier* metric, not a null on acquisition
-efficiency. Re-scoring on cost is a cheap fix; it does not undo the
-headline ranking, but it does reframe the discussion: the question is
-not whether the channel helps, but how to measure what *does* help.
+The rest of the paper is the data and the consequences. The
+headline ranking is reported in §5.5; the multi-agent-channel
+results are in §5.4 (recovered-primitive) and §5.6 (curriculum);
+the dose-response and the mechanism behind the H3 null are in
+§5.3; the teach->test probe and the cold-baseline correction that
+exposed a hidden confound in the project's first attempt at the
+probe are in §5.7. The reorientation to acquisition efficiency --
+which is *why* the headline was hard to see with solve-count as
+the endpoint -- is delivered in §6.1, where the data have earned
+it.
 
-## 1.3 The reorientation
 
-The result forces a reorientation of the project's scientific question.
-The clebran design tried to buy acquisition efficiency by adding
-*communication* to evolution. The data argue, instead, that the better
-purchase is to *concentrate* the compute: one agent that sees every
-task and reuses its own mined abstractions strictly dominates several
-agents that see task slices and share. Communication has a small,
-real, hard-to-detect effect that lives in evals-to-solve, not in solve
-count, and that is more than wiped out by the divergence tax — the
-cost of splitting a fixed budget across populations.
+## 1.3 The reorientation (preview)
 
-The more interesting question, then, is not "does communication help?"
-but "does the *way a system learns* change how well it can use what
-it learned?" That is Chollet's re-statement of intelligence as
-acquisition efficiency, applied at the level of an individual learner.
-The current paper makes two contributions to that question: it
-delivers a falsification of the multi-agent-with-channel hypothesis
-that any future work in the area will need to address, and it
-proposes a capability audit (core-knowledge priors, abstraction /
-compression, communication and teaching, honest measurement,
-acquisition efficiency as the objective, self-directed practice,
-active learning, continual learning without rigidity, compositional
-generalisation, generalisation to genuinely unseen tasks, meta-learning,
-reflection) that frames what a *process-aware* learner would need to
-have before "how you learned it" can be studied cleanly.
+The headline is striking enough to demand a re-reading of the question. The clebran design tried to buy acquisition efficiency by adding *communication* to evolution; the data argue, instead, that the better purchase is to *concentrate* the compute — one agent that sees every task and reuses its own mined abstractions strictly dominates several agents that see task slices and share. The more interesting question, then, is not "does communication help?" but "does the *way a system learns* change how well it can use what it learned?" That is Chollet’s re-statement of intelligence as acquisition efficiency, applied at the level of an individual learner. The full argument is delivered in §6.1, where the data have earned it; the contribution list (§1.4) names the two deliverable pieces (the falsification, and a capability audit for what an “acquisition-efficient” learner would need before “how you learned it” can be studied cleanly).
 
 ## 1.4 Contributions
 
 Concretely, the paper contributes:
 
-1. **The clebran design** — a typed linear-IR DSL over Hodel's 160
+1. **The clebran design** â€” a typed linear-IR DSL over Hodel's 160
    ARC primitives, with a deterministic interpreter, a typed GP engine
    with phase-1 systematic seeding and adaptive operator selection, a
    Stitch-style compression miner, a blackboard channel with three
@@ -152,25 +115,35 @@ Concretely, the paper contributes:
    spread. The implementation is open-source, deterministic, and
    reproduces 399/400 of Hodel's reference solvers through our
    interpreter.
-2. **A falsified central hypothesis** — the multi-agent-with-channel
+2. **A falsified central hypothesis** â€” the multi-agent-with-channel
    design is dominated by a single agent with a central library at
    matched compute, with the single significant comparison being
-   **B6 − B5 = −0.85 (~2.2 se)**. The null is the headline; the
+   **B6 âˆ’ B5 = âˆ’0.85 (~2.2 se)**. The null is the headline; the
    baselines are strong enough that a null is trustworthy.
-3. **A controlled teach→test protocol and a transfer-vs-reconstruction
-   decomposition** — students acquire the teacher's concepts (78% of
+3. **A controlled teachâ†’test protocol and a transfer-vs-reconstruction
+   decomposition** â€” students acquire the teacher's concepts (78% of
    teaching tasks solved) but do not transfer them to novel tasks
    needing the same concepts. This is the L2T transfer-versus-
    reconstruction gap appearing at the level of whole concepts.
-4. **A re-scoring of every prior arm on cost-to-solve**, exposing that
-   the effect of teaching lives in evals-to-solve and is invisible
-   under solve count at fixed budget.
-5. **A scope claim** — on ARC program synthesis at matched compute,
-   communicating learned content does not help, mis-targeted
-   communication hurts, and *how* a system learns, not what it
-   eventually knows, is the next question the substrate can answer.
-6. **A capability audit** for what an "acquisition-efficient" learner
-   would need before the reorientation can be made operational.
+4. **A cost-to-solve (acquisition-efficiency) endpoint for the teaching
+   experiments**, exposing that the effect of teaching lives in
+   evals-to-solve and is invisible under solve count at fixed budget.
+   (Re-scoring the content arms B0–B9 on the same endpoint is a cheap
+   analysis pass left as follow-up.)
+5. **A first significant process result** — holding taught *content*
+   fixed and varying only the *order* of acquisition, a curriculum
+   taught foundations-first significantly beats the same content taught
+   foundations-last (paired McNemar p = 0.021), because a dependency-
+   violating order halves how much is acquired. It is the study's only
+   significant *process* effect, and it is asymmetric: *don't teach
+   backwards* matters more than teaching in exactly the right order.
+6. **A scope claim** — on ARC program synthesis at matched compute,
+   communicating learned *content* does not help and mis-targeted
+   communication hurts, while *how* a system learns — the *process* —
+   is where the substrate shows real structure and is the next question
+   to pursue.
+7. **A capability audit** for what an "acquisition-efficient" learner
+   would need before the reorientation can be studied richly.
 
 ## 1.5 Outline
 
@@ -181,7 +154,8 @@ Section 3 describes the clebran design in detail. Section 4 states the
 three sub-hypotheses and the arm table, and lays out the match-compute
 protocol and statistical convention. Section 5 reports the results
 across H1, H2, H3, the recovered-primitive and curriculum channels, the
-central-library control, the teach→test probe, and the amortization
+central-library control, the teachâ†’test probe, and the amortization
 result. Section 6 discusses the reorientation, the divergence tax, the
 role of measurement, and the scope. Section 7 lays out limitations.
 Section 8 concludes.
+

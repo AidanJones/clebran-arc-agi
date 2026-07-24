@@ -52,17 +52,29 @@ teaching tasks are solved by their peers) but do not transfer
 them to novel tasks needing them — the L2T
 transfer-vs-reconstruction gap at the level of whole concepts.
 
+**A first purchase on process.** Holding taught *content* fixed
+and varying only the *order* of acquisition, a curriculum taught
+foundations-first significantly outperforms the same curriculum
+taught foundations-last (paired McNemar p = 0.021) — a
+dependency-violating order halves how much of the same content is
+acquired (23% vs 47%). This is the study's only significant
+*process* effect, against a wall of null *content* effects, and it
+is asymmetric: *don't teach backwards* matters more than teaching
+in exactly the right order, because an adaptive learner self-orders
+when the material is merely available.
+
 **The contribution.** The paper is a falsification plus a
 reorientation. The falsification is that, on ARC program
 synthesis at matched compute, a single agent with a central
 library strictly dominates divergent lineages with a
 constrained channel. The reorientation is to the question
 Chollet argues is the right one — the *skill-acquisition
-efficiency* of a system, not its skill — and to a small set of
+efficiency* of a system, not its skill — with a first significant
+process result (order matters, at the extreme) and a small set of
 process-level capabilities (self-directed practice, active
 choice of what to practise, retention without rigidity,
 reflection on how something was learned) that must be present
-before "how you learned it" can be studied cleanly. The asset
+before "how you learned it" can be studied richly. The asset
 of the work is the matched-compute measurement rig: a
 deterministic typed IR, a reproducible per-task RNG substream
 scheme, an audited candidate-evaluation budget, and a track

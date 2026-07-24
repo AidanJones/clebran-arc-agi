@@ -46,5 +46,21 @@ specific design choice is in question.
 
 ## Status
 
-First draft. Reviewers have been spawned in parallel; their notes are in
-`reviews/` and the consolidated log of edits in `review-summary.md`.
+First draft, with one full pass of four parallel reviewer agents
+(rigor, narrative, related work, reproducibility) incorporated.
+Their notes are in `reviews/` and the consolidated log of edits in
+`review-summary.md`. The `scripts/` subdirectory contains a
+small Python helper that was used during the editing process; it
+can be deleted once the paper is finalised.
+
+**Update (2026-07-24):** incorporated the completed order/process
+experiment [exp: 2026-07-24_order_process] — the paper's first
+significant *process* result (foundations-first vs foundations-last,
+paired McNemar p = 0.021). Touched: `00-abstract`, `01-introduction`
+(contributions), `05-results` §5.7.3 (rewritten from "in progress" to
+the full 216-run result), `06-discussion` §6.1, `08-conclusion`. The
+transfer-probe/amortization correction (relevant teaching ≈ neutral,
+irrelevant teaching harmful) was already in the draft (§5.7.2) and is
+unchanged. Known defect not yet fixed: `01-introduction.md` contains
+mojibake (`â€"`, `âˆ'`, `â†'` for —, −, →) from an encoding slip in an
+earlier edit; the other section files are clean.

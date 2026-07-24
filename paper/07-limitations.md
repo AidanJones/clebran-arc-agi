@@ -78,6 +78,25 @@ arm). The clebran result therefore *understates* the
 advantage of the central library; the falsification is
 robust to this concern.
 
+**Missing B0+library control.** The B5 win is confounded
+between three factors: (a) centralisation (one agent vs
+three lineages), (b) library-pool size (B5's pool is built
+from ~2.65 mean solves, ~4× the per-lineage pool of B6/B7),
+and (c) the library mechanism itself. The cleanest
+isolation of the library mechanism is a *B0 + library* arm
+(a single population with the same compression miner, no
+multi-agent framing), which is the obvious follow-up that
+would isolate the contribution of the library mechanism
+from the contribution of centralisation. This arm is listed
+in the project's roadmap but has not been run; the B5
+headline should be read as "centralisation plus the library
+mechanism dominates divergence plus any channel," not as
+"the library mechanism alone is what wins." Until the
+B0+library control is run, the clebran paper's
+library-learning framing (§6.2, §6.5) is supported by the
+vocabulary-quality metrics but not by a clean solve-count
+contrast.
+
 **No statistical power analysis.** The standard errors are
 *descriptive*, not a power analysis. A power analysis would
 let us say "X more seeds are needed to detect effect size d
@@ -96,14 +115,24 @@ later task; the right metric for "is the library useful" may
 also include the *availability* rate. The reported numbers
 are therefore a *lower bound* on cross-task utility.
 
-**The order experiment is incomplete.** A 67-row pilot on 3
-targets, 4–6 seeds, four order arms (forward / reverse /
-shuffled / cold) shows a directional ordering forward >
-reverse > shuffled > cold on solve rate, but the seed
-count is too small to call any comparison. The experiment
-is in progress and is reported in the paper as a *next
-measurement* rather than as a result; the full writeup
-will follow in a separate paper.
+**The order experiment is small and narrowly scoped.** The
+completed run is 216 rows — 9 targets (depth ≥ 3, ≥ 2
+prerequisite steps) × 6 seeds × four order arms
+(forward / reverse / shuffled / cold, §5.7.3). Two paired
+comparisons are significant (forward − reverse and
+forward − cold, both McNemar p = 0.021), but the discordant
+counts are small (9–17 pairs), the significant effects are on
+*capability* (solve rate) rather than the pre-registered
+cost-to-solve endpoint (all order-vs-order evals contrasts are
+null), and the significant "well-ordered teaching helps" result
+(forward − cold) is scoped to targets with ≥ 2-step
+decompositions — it does not generalise to tasks without
+compositional structure, where amortization found teaching
+neutral. A preliminary partial-data read had shown a larger
+forward-vs-shuffled gap that regressed to non-significance at
+full n, a caution against reading early cells. The result is
+reported as the first *process* effect, honestly bounded, not as
+a general claim that curriculum ordering optimises learning.
 
 **Honest reporting of nulls.** The project has a track
 record of correcting its own nulls: the transfer probe

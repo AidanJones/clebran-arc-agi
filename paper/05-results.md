@@ -469,18 +469,89 @@ decomposition — the *oracle upper bound*. Real peer curricula are
 strictly worse targeted, so ≈ 2× is a ceiling on the speed
 benefit, not a typical value.
 
-### 5.7.3 The order experiment (in progress)
+### 5.7.3 The order experiment — the first significant process effect
 
-A *pristine* test of the "how you learned it" thesis varies only
-the *order* in which the same prerequisite sub-tasks are
-acquired. Four arms hold the curriculum content fixed and vary
-only the schedule (forward prerequisite / reverse / shuffled /
-cold); the endpoint is cost-to-solve. A 67-row pilot across
-3 targets and 4–6 seeds shows a directional ordering
-forward > reverse > shuffled > cold on solve rate, but the seed
-count is too small to call any comparison. The experiment is
-in progress and will be written up in a follow-up paper once
-the target seed count is reached.
+The teach→test and amortization results close the *content*
+question: relevant teaching is neutral, irrelevant teaching
+harms. They say nothing about *process*. The order experiment is
+the pristine test of the "how you learned it" thesis: it holds
+the curriculum *content* fixed — a target's k prerequisite
+sub-tasks — and varies *only* the order in which they are
+acquired. Four arms, identical content and identical total
+budget (500k), with cost-to-solve as the primary endpoint:
+**cold** (no curriculum), **forward** (foundations first, gated),
+**reverse** (hardest first, gated), **shuffled** (all steps at
+once, ungated). The three teaching arms differ only in the
+prerequisite `score` handed to the order-aware gate — so order is
+isolated and nothing else changes. 9 targets (depth ≥ 3, ≥ 2 grid
+prerequisite steps) × 6 seeds → 216 runs.
+
+| order | curriculum acquired | target solve rate |
+|---|---|---|
+| **forward** (foundations first) | **47%** | **48.1%** |
+| shuffled (unordered) | 45% | 38.9% |
+| reverse (hardest first) | **23%** | 33.3% |
+| cold (no curriculum) | — | 29.6% |
+
+Paired McNemar (by target × seed), the correct test for the
+paired binary solve outcome:
+
+| comparison | wins | p | reads as |
+|---|---|---|---|
+| **forward − reverse** | 9 vs 1 | **0.021** | right order ≫ wrong order (same content) |
+| **forward − cold** | 13 vs 3 | **0.021** | well-ordered teaching beats none |
+| forward − shuffled | 7 vs 2 | 0.180 | ordering vs merely-available: **ns** |
+| reverse − cold | 5 vs 3 | 0.727 | **wrong-order teaching ≈ no teaching** |
+
+Two significant results, and both are about the *wrong* order. The
+mechanism is mechanistically legible: teaching foundations-*last*
+lets the learner acquire only **23%** of the same curriculum —
+half of forward's 47% — because a gate that demands the hard
+composition before its parts stalls, and you cannot learn a
+composition before the pieces it is built from. That halved
+acquisition shows up as a significantly lower solve rate: forward
+beats reverse (p = 0.021), and reverse is *no better than not
+teaching at all* (p = 0.727). Same content, same budget, reversed
+order → the curriculum's value is destroyed.
+
+But *fine-grained ordering is not the active ingredient*. forward
+vs shuffled is not significant (p = 0.18), and shuffled acquires
+45% ≈ forward's 47% — because when all steps are available at
+once, the fundamentals are the *easy* ones and get solved first
+anyway. The learner self-orders; strict prerequisite gating only
+matters when it can do *harm* (reverse), not when it enforces an
+order the learner would have found regardless.
+
+As with teaching-vs-not (§5.7.2), the effect is on *capability*,
+not speed: every paired evals-to-solve contrast between the order
+arms is null (forward − shuffled = +16k, p = 0.41). Order changes
+*which* targets are reachable — through how much of the curriculum
+is acquired — not how fast an already-reachable target is found.
+Different interventions surface on different endpoints: teaching-
+vs-not lived in speed, order lives in capability.
+
+[exp: 2026-07-24_order_process]
+
+**Scope and one honest tension.** forward − cold is significant
+here (p = 0.021) where the amortization taught − cold was neutral
+(§5.7.2). The difference is target selection: this experiment
+filters to targets with ≥ 2-step decompositions, where order can
+matter; amortization did not. So "well-ordered teaching helps" is
+scoped to targets with real compositional structure, not tasks in
+general — a qualification, not a contradiction. The discordant
+counts are small (9–17 pairs); the two significant results are the
+paired forward-vs-reverse and forward-vs-cold, both p = 0.021. A
+preliminary partial-data read had shown a larger forward-vs-
+shuffled gap that regressed to non-significance at full n — a
+caution recorded against reading early cells.
+
+This is the project's **first significant process effect** and its
+first empirical purchase on the reorientation (§6.1). It is a
+*qualified* yes for "how you learned it": on compositionally-
+structured tasks, the order of acquisition significantly changes
+capability with content held constant — asymmetrically, *don't
+teach backwards* matters more than *teach in exactly the right
+order*.
 
 ## 5.8 Vocabulary quality
 

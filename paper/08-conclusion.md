@@ -42,30 +42,45 @@ frontier with few marginal tasks.
 The reorientation is therefore from "does communication raise
 skill?" to "does the *way* a system learns change how well it can
 use what it learned?" That is the question Chollet's *On the
-Measure of Intelligence* argues is the right one. The clebran
-substrate has *measurement* as its asset, and the reorientation
-requires capabilities it does not yet have: self-directed
+Measure of Intelligence* argues is the right one, and the order
+experiment (§5.7.3) is the paper's first evidence that the
+substrate can answer it: with taught *content* held fixed, varying
+only the *order* of acquisition produces a significant capability
+difference (foundations-first beats foundations-last, paired
+p = 0.021), because a dependency-violating order halves how much of
+the same curriculum is acquired. The effect is asymmetric — *don't
+teach backwards* matters more than *teach in exactly the right
+order* — but it is real and significant, and it is the only
+significant *process* effect against a wall of null *content*
+effects. That contrast is the reorientation's warrant.
+
+The substrate has *measurement* as its asset, and studying process
+*richly* requires capabilities it does not yet have: self-directed
 practice, active choice of what to practise, retention without
 rigidity, compositional generalisation, generalisation to
 genuinely unseen tasks, meta-learning, and reflection on *how*
 something was learned. The capability audit is a "what would
 have to be true?" list; the substrate is currently missing most
-of the rows.
+of the rows — which is also why order self-corrects so cheaply
+here (a richer learner would not).
 
 Three open work items are the most directly productive.
 
-1. **The order experiment (§5.7.3).** A pristine test of
-   "how you learned it" varies only the *order* of acquisition
-   with content held constant. A 67-row pilot on 3 targets
-   shows forward > reverse > shuffled > cold on solve rate;
-   finishing the seed count and writing it up is the cheapest,
-   most directly publishable unit of work on the table.
+1. **Push the process axis past order.** The order result shows
+   the axis is measurable but that pure GP self-orders too easily
+   for fine sequencing to matter; the natural next tests are
+   *active* choice of what to practise (a learning-progress
+   teacher) and *retention without rigidity* — the plasticity
+   question the amortization negative-transfer result suggests is
+   already violated (a taught vocabulary may bias later search).
 
-2. **9a: make cost the primary endpoint everywhere.** Re-score
-   every existing log on evals-to-solve + evals-per-solve. The
-   data is already in the JSONL; it is an analysis pass, not
-   new compute. Expect several prior nulls to wake up. Add the
-   column to `metrics/report.py` and the frontier analyser.
+2. **9a: make cost the primary endpoint everywhere.** The teach→
+   test and order experiments already use cost-to-solve; the
+   remaining pass is to re-score the *content* arms (B0–B9) on
+   evals-to-solve + evals-per-solve. The data is already in the
+   JSONL; it is an analysis pass, not new compute. Expect some
+   prior nulls to wake up on the cost axis. Add the column to
+   `metrics/report.py` and the frontier analyser.
 
 3. **9b: point `clebran.curriculum` inward (dreaming).** The
    task generator already exists and is only ever pointed
