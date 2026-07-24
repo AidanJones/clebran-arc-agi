@@ -95,6 +95,63 @@ should be either fixed by the user or addressed in a follow-up pass.
   in this pass because it is the structure the user is likely to want
   for a publication.
 
+## What was actually done in this pass
+
+A consolidated view of every change is in this file's
+"Critical fixes" and "Important fixes" tables above. Files
+modified:
+
+- `paper/00-abstract.md` — rewritten; "2× cheaper" claim removed,
+  "B5 significantly outperforms every multi-agent arm" softened to
+  "sits at the top of the ranking; the single significant
+  comparison is B5 − B6 = +0.85 (~2.2 SE)," 78% → 70–78%.
+- `paper/01-introduction.md` — §1.2 trimmed (no more full ranking
+  or teach→test preview), §1.3 collapsed to a one-paragraph
+  preview.
+- `paper/02-related-work.md` — added CompressARC, Akyürek et al.
+  2024, Bouchacourt & Baroni 2018, Chaabouni et al. 2020, Li &
+  Bowling 2019, Kirby et al. 2015, Brighton & Kirby 2006, Kharitonov
+  et al. 2019, PBT (Jaderberg 2017), QD (Cully 2019, Lehman &
+  Stanley 2011), federated (McMahan 2017), Tenenbaum 1999, Goodman
+  2008, Schmidhuber 1997, Caruana 1997, Standley 2020, Lake &
+  Baroni 2018, Kim & Linzen 2020, Ruis 2020; L2T/NEO delta recast
+  (three of four "borrowed ideas" are DreamCoder re-use); B5
+  reframed as Stitch-style rather than DreamCoder-style.
+- `paper/03-design.md` — `λ_MDL` 1.1 → 1.05; B5 miner schedule
+  (`mine_every=5`, `max_new=8`, `min_size=2`, `max_size=4`,
+  `min_occurrences=2`) added; §3.7 collapsed to a one-paragraph
+  reference, with the debugging history moved to §6.3.
+- `paper/04-methods.md` — added §4.7 configuration table (30 items)
+  including K, M, the miner schedule, AOS parameters, and the
+  "significant" caveat. `4.6` keeps the "what the experiment does
+  not test" list.
+- `paper/05-results.md` — §5 restructured: B5 moved to §5.5 as
+  the headline arm, curriculum channel (§5.6) framed as "even
+  an engaged channel does not beat B5," §5.9 deleted. §5.3
+  reports evolution-phase solves (not total); AOS confound
+  on H3 is now flagged. §5.4 explicitly notes the 8-seed vs
+  20-seed run difference; "cross-run consistency" softened.
+  §5.7.1 selection bias caveat added; §5.7.2 n=9 conditional
+  flag added; B5 vs B7, B5 vs B2, B5 vs B1, B8 vs B5
+  contrasts now reported (B8 − B5 = −1.05, ~2.9 SE).
+- `paper/06-discussion.md` — §6.2 B5 "central insight" softened
+  to "central insight" + caveat that B5 − B0 is 1.1 SE; §6.3
+  added the full Stage-1 debugging history (7-item list).
+  §6.5 "vindication" rhetoric softened to "consistent with";
+  Kirby/Brighton and Bouchacourt/Baroni engagement added to
+  §6.5's emergent-communication paragraph.
+- `paper/07-limitations.md` — added "Missing B0+library control"
+  caveat naming the centralisation/library-pool/library-mechanism
+  confound.
+- `paper/references.md` — completely rewritten; 3 hallucinated
+  citations fixed (ArcMemo, Kiela 2019, L2T/NEO title); 20 new
+  citations added; explicit "reviewer-supplied — verify" flags
+  on every replaced/new entry.
+- `paper/scripts/trim_intro.py` — small Python helper used to
+  make the §1.3 trim (the only edit that needed byte-precise
+  UTF-8 handling that the edit tool couldn't do). Kept as a
+  record of the edit.
+
 ## What I am explicitly not going to fix
 
 - **B5 − B0 statistical significance.** I cannot compute the missing
