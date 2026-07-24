@@ -1,0 +1,13 @@
+order       n  target solve rate  curriculum learned  mean evals-to-solve
+cold       54             29.6%                   -              137,126
+forward    54             48.1%                 47%               52,924
+reverse    54             33.3%                 23%               60,367
+shuffled   54             38.9%                 45%               39,618
+
+acquisition efficiency — paired evals-to-solve (lower = learned in a way that transfers better):
+  forward  - shuffled =   +16,220  perm p=0.407  (n=19)  [ordering the SAME content vs not]
+  forward  - reverse  =   -19,956  perm p=0.402  (n=17)  [dependency direction (foundations vs hardest first)]
+  forward  - cold     =   -46,721  perm p=0.049  (n=13)  [well-ordered teaching vs no teaching]
+  shuffled - cold     =   -54,076  perm p=0.083  (n=10)  [unordered teaching vs no teaching]
+
+Process matters iff forward is significantly cheaper than shuffled (same content, different order). Flat = the thesis is null here.

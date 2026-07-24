@@ -121,6 +121,34 @@ unconstrained — sits below simply not dividing the compute.**
   0.05 for the multi-agent arms. **Divergence degrades vocabulary quality:**
   partial views yield task-idiomatic abstractions.
 
+## Process, not content: the first significant "how you learned it" effect
+
+Every finding above is about *what* is communicated, and all are null-or-harmful.
+The reorientation (roadmap §9) asks instead whether the *way* knowledge is
+acquired matters. The order/process experiment holds content fixed (a target's k
+prerequisite sub-tasks) and varies only acquisition order:
+
+- **A dependency-violating order is destructive and significant.** Teaching the
+  same curriculum foundations-*last* (reverse) lets the learner acquire only 23%
+  of it vs 47% foundations-first — you cannot learn a composition before its
+  parts. That halves capability: **forward beats reverse (paired p = 0.021), and
+  reverse is no better than not teaching at all (p = 0.73).** Same content, same
+  budget, reversed order → the curriculum's value is destroyed.
+- **But fine sequencing is not the active ingredient.** forward vs shuffled is
+  not significant (p = 0.18); when all steps are available at once the
+  fundamentals are the easy ones and get solved first anyway — the learner
+  self-orders. Strict ordering matters when it can do *harm* (reverse), not when
+  it enforces an order the learner would find regardless.
+- **The effect is on capability, not speed** (all evals-to-solve contrasts null):
+  order changes *which* targets are reachable, not how fast reachable ones are
+  found. Different interventions surface on different endpoints.
+
+Qualified yes for the reorientation: on compositionally-structured tasks, *how*
+(the order) you learn significantly changes capability with *what* held constant
+— asymmetrically, "don't teach backwards" matters more than "teach in exactly
+the right order." Scoped to targets with real decompositions; see
+[experiments/2026-07-24_order_process](experiments/2026-07-24_order_process/README.md).
+
 ## What was actually built (all pure-symbolic, no neural component)
 
 A complete, reproducible research prototype: a typed linear-IR DSL over Michael
