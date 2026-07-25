@@ -1,0 +1,7 @@
+{
+  "title": "On the Cost of Communication in Divergent Program Evolution",
+  "subtitle": "Matched-compute evidence from ARC-AGI-1 that a single agent with a central abstraction library strictly dominates divergent lineages communicating over a constrained channel",
+  "author": "Aidan Jones",
+  "date": "July 2026",
+  "footnote": "Source: clebran-arc-agi. Evidence reproduction in this directory's REPRODUCE.md; per-experiment data under experiments/2026-07-2*."
+}
