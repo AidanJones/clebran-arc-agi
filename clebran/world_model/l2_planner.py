@@ -125,23 +125,32 @@ def _default_candidates(state: tuple, target: tuple) -> list[tuple[str, tuple]]:
     primitives in the Hodel reference solvers, with smart
     default-argument strategies that match how the Hodel solvers
     typically use them.
+
+    Coverage of the top 20 grid→grid primitives in the trace
+    dataset (1,731 grid→grid transitions across 400 tasks):
+    fill, vconcat, paint, replace, hconcat, vmirror, hmirror, rot90,
+    tophalf, bottomhalf, lefthalf, crop, rot270, righthalf, rot180,
+    dmirror, upscale, switch, compress, downscale.
     """
     mc = _most_common_color(state)
     cands: list[tuple[str, tuple]] = []
 
     # 1-arg grid→grid primitives — apply to the state itself.
-    for name in ("vmirror", "hmirror", "rot90", "rot180", "rot270",
+    # Includes the 16 most common in the trace dataset.
+    for name in ("vmirror", "hmirror", "dmirror", "rot90", "rot180", "rot270",
                  "tophalf", "bottomhalf", "lefthalf", "righthalf",
-                 "trim", "hconcat", "vconcat", "replace",
-                 "fill", "paint", "cover", "normalize"):
+                 "trim", "compress", "normalize", "hconcat", "vconcat",
+                 "replace", "fill", "paint", "cover"):
         sig = PRIMITIVES.get(name)
         if sig is None or sig.arity != 1:
             continue
         cands.append((name, (state,)))
 
-    # 2-arg self-compositions — typical Hodel patterns.
+    # 2-arg self-compositions — typical Hodel patterns (vconcat,
+    # hconcat with self / mirror).
     for second_arg in (state, _safe_call("vmirror", state) or state,
                       _safe_call("hmirror", state) or state,
+                      _safe_call("dmirror", state) or state,
                       _safe_call("rot90", state) or state):
         if second_arg is None:
             continue
@@ -152,14 +161,39 @@ def _default_candidates(state: tuple, target: tuple) -> list[tuple[str, tuple]]:
             cands.append((name, (state, second_arg)))
             cands.append((name, (second_arg, state)))
 
+    # 2-arg downscale / hupscale / upscale — typical factor=2.
+    for name in ("downscale", "hupscale", "upscale"):
+        sig = PRIMITIVES.get(name)
+        if sig is None:
+            continue
+        cands.append((name, (state, 2)))
+
     # 3-arg fill / paint / replace with common defaults.
     cands.append(("fill", (state, mc, ((mc,),))))
     cands.append(("fill", (state, 0, ((0,),))))
+    cands.append(("fill", (state, 0, state)))   # clear
     cands.append(("paint", (state, ((0, 0),), mc)))
-    for c in (0, 1, 2, 3):
+    cands.append(("paint", (state, ((0, 0),), 0)))
+    cands.append(("underfill", (state, mc, ((mc,),))))
+    cands.append(("underpaint", (state, ((0, 0),), mc)))
+    for c in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9):
         if c != mc:
             cands.append(("replace", (state, mc, c)))
             cands.append(("replace", (state, c, mc)))
+    # 3-arg switch(c1, c2) — only useful when c1 != c2; try the
+    # two most common colors.
+    if mc != 0:
+        cands.append(("switch", (state, mc, 0)))
+        cands.append(("switch", (state, 0, mc)))
+
+    # 3-arg crop(grid, start, dims) — try origin and full size, which
+    # is a no-op (so the planner will skip it via infinite distance).
+    # Try a small interior crop too.
+    h, w = len(state), len(state[0]) if state else 0
+    if h > 1 and w > 1:
+        cands.append(("crop", (state, (0, 0), (h - 1, w - 1))))
+        cands.append(("crop", (state, (0, 0), (1, w))))
+        cands.append(("crop", (state, (0, 0), (h, 1))))
 
     return cands
 
