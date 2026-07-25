@@ -7,7 +7,8 @@ divergent agents (§2.3), and the Learning-to-Theorize / Neural
 Theorizer (L2T/NEO) framework for primitive recovery under partial
 observability (§2.4). A short note on multi-agent program synthesis
 (§2.5) and on curriculum / machine-teaching (§2.6) closes the
-section.
+section. A new subsection (§2.7) scopes the world-modeling
+literature and the substrate for the §9f direction.
 
 ## 2.1 DSL program synthesis for ARC
 
@@ -367,3 +368,64 @@ a negative-transfer result in this lineage, and the
 2018), COGS (Kim & Linzen, 2020), gSCAN (Ruis et al., 2020) —
 provide the controlled-distribution probe the clebran paper has
 not run (see §7).
+
+## 2.7 World models and learned simulators for ARC
+
+The world-modeling literature (Ha & Schmidhuber, 2018; Hafner et al.,
+2019, 2020, 2023; Ye et al., 2021) frames an agent as a system
+that *predicts* the result of its actions in an internal simulator
+and *plans* in that simulator. The *Agentic World Modeling* taxonomy
+(Ye et al., 2026, arXiv:2604.22748) organises the field into three
+levels: an **L1 Predictor** — a learned `(state, action) → next_state`
+function; an **L2 Simulator** — multi-step rollout for planning; an
+**L3 Evolver** — revise the model on failed predictions
+(self-supervised improvement, the "dreaming" loop). The clebran
+interpreter is a perfect L1 for the clebran DSL: `interpreter.run_trace`
+returns every register as a grid, and each register-pair with the
+k-th statement is a labelled transition. The clebran substrate
+therefore sits naturally on the L1/L2/L3 axis, with the B5+planner
+arm (§3.7) as the L2 integration test.
+
+Two external resources are the most directly usable substrate for
+this direction on ARC. **ARCTraj** (Kim, Choi, Lee & Kim, KDD 2026
+Datasets and Benchmarks, arXiv:2511.11079) provides ~10,000 human
+step-by-step object-level trajectories across all 400 ARC-AGI-1
+training tasks, collected via the O2ARC web interface, MDP-
+formatted for PPO / DreamerV3 / GFlowNets / Decision Transformers /
+diffusion-augmented RL. The O2ARC actions are object-level (move,
+rotate, flip, colour) and need a mapping layer onto Hodel's
+primitives; many will not map, which is fine — they are a separate
+modality that gives a cross-modality signal. **ARC-AGI-3**
+(arXiv:2603.24621) is the new interactive turn-based benchmark.
+Four required capabilities: *Exploration, Modeling, Goal-Setting,
+Planning and Execution*. The *Modeling* capability is exactly
+"the ability to build a world model that represents how the
+environment works and can predict the results of unseen actions."
+ARC-AGI-3 is the natural long-term testbed for whatever clebran
+builds next; the typed-IR substrate and library-mining mechanism
+transfer directly.
+
+The closest *learned* baselines on ARC are **CompressARC** (Liao &
+Gu, 2025, arXiv:2512.06104, 3rd place ARC Prize 2025, 76K params,
+no pretraining) and **Akyürek et al.'s Test-Time Training for
+ARC** (arXiv:2411.07279, 2nd place ARC Prize 2024). Both are
+purely neural; both treat ARC as a compression problem; neither
+exposes the symbolic state representation the clebran planner
+relies on. **Grid-JEPA** (arXiv, 2025) is a recent JEPA + RSSM
++ TTT architecture targeted at ARC-AGI-3; the *learned-L1-replaces-
+interpreter* design pattern is the same one the clebran §9f build
+order targets, but in a fully-neural substrate. The clebran
+*contribution* on this axis is the deterministic, perfect-L1
+upper bound: a learned L1 can be measured against the interpreter's
+predictions, and a planner using the interpreter as L1 establishes
+the ceiling any learned L1 has to recover.
+
+The *methodological* pattern is shared with **CATER** (Girdhar &
+Ramanan, ICLR 2020) — synthetic 3D scenes with full per-frame state
+and atomic / compositional action annotations. The "procedurally
+generate, log every intermediate state" workflow is what Hodel's
+*re-arc* repository enables for ARC at scale: per-task generators
+that produce unlimited synthetic (input, target) pairs, and
+`run_trace` to log the full state trajectory. The §9f build-order
+item 4 (re-arc-generated trace candidates) is the CATER pattern
+applied to ARC.

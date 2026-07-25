@@ -90,6 +90,35 @@ Three open work items are the most directly productive.
    whether later solves get cheaper. This is the single most
    implementable big missing capability.
 
+A fourth, the **world-modeling direction** (§9f in `roadmap.md`),
+is the natural *next substrate* the clebran rig is well-positioned
+to measure. The clebran interpreter is a perfect L1 world model:
+`interpreter.run_trace` returns every register as a grid, and the
+trace dataset (`data/traces.jsonl`, 16,149 rows from 400 Hodel
+solvers) is a labelled `(state, action, next_state)` corpus
+ready to train a learned L1. The L2 planning arm — *B5 + planner-
+seeded initial population* — is a directly testable new arm:
+the planner rolls out candidate primitives through the perfect L1
+(the clebran interpreter), picks the first step that decreases
+multi-pair Hamming distance to the target, and seeds the
+resulting program into B5's population. The pilot at 500K and 1M
+candidate-evaluations on the 30-task frontier subset (3 seeds)
+places the planner-seeded arm **at parity with B5** (10.00 vs
+9.67 mean solves), with +0.33 evolution-phase solves and 1 unique
+task that B5 misses in any of the 3 seeds. The result is the
+first *positive* integration result on the clebran rig, and it
+sets up three follow-ups: (i) the 20-seed 4M-eval B5+planner
+frontier sweep that matches the headline B5 result, (ii) an
+object-aware distance metric that scores primitives on structural
+match (counting matching objects) rather than cell-wise Hamming,
+and (iii) the learned L1 — a small neural or programmatic
+approximation of the interpreter that generalises across
+(state, action) pairs and replaces the perfect-but-slow interpreter
+as the planner's rollout engine. The §9f build order is the
+6-step plan in `roadmap.md`; items 1-3 are complete (trace
+dataset, KnnL1 baseline, B5+planner arm) and items 4-6 are the
+natural next push.
+
 The negative result is the paper's contribution. It is what the
 clebran design's baselines were built to make believable, and it
 is the result that any future work in the area has to address.

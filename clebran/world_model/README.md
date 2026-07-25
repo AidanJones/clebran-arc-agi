@@ -228,18 +228,19 @@ planner's best linear sequence of primitives. The seed is
 evaluated by the standard fitness function (which counts against
 the budget) and inserted at the front of the population.
 
-### Pilot result (3 seeds, 500K candidate-evaluations, frontier subset)
+### Pilot result (3 seeds, 500K and 1M candidate-evaluations, frontier subset)
 
 ```
                               solved  evo-solved  test-exact  mean length
-B5 (control)                   9.67        2.67          9.67        1.61
-B5+planner (L=1)              10.00        3.00          9.67        2.03
-B5+planner (L=2)              10.00        3.00          9.67        1.70
+B5 (control, 500K)             9.67        2.67          9.67        1.61
+B5+planner (L=1, 500K)        10.00        3.00          9.67        2.03
+B5+planner (L=2, 500K)        10.00        3.00          9.67        1.70
+B5+planner (L=1, 1M)          10.00        3.00          9.67        2.03
 ```
 
 ### Reading
 
-The B5+planner arm is now **at parity with B5 at 500K-eval
+The B5+planner arm is **at parity with B5 at 500K and 1M-eval
 budget** (10.00 vs 9.67 mean solves), with **+0.33 evolution-
 phase solves** (the planner seed is genuinely contributing to
 discovery, not just sitting in the population as a no-op) and
@@ -247,6 +248,15 @@ discovery, not just sitting in the population as a no-op) and
 seeds. The planner-seeded programs are slightly longer (2.0 vs
 1.6 statements), which is the cost of carrying a non-trivial
 seeded individual.
+
+At 1M budget the numbers don't change (10/10/10 for B5+planner),
+which is a ceiling: B5+planner at the current candidate set has
+extracted most of what's possible from the planner seed, and
+further compute doesn't help. The next lever is to expand the
+planner's *coverage* (object-aware distance, re-arc-generated
+trace candidates) or to scale the seed from 1 individual to N
+planner-seeded individuals (e.g., the top-K candidates from the
+multi-pair evaluation).
 
 The key design choices that flipped the result from "slight
 null" to "parity":
@@ -271,39 +281,47 @@ null" to "parity":
 This is a **publishable positive result on the integration**:
 with a multi-pair planner and a wide enough candidate set, the
 planner-seeded arm matches B5 at this budget, with at least one
-task B5 can't solve in 3 seeds. The natural next step is to
-re-test on a 20-seed 4M-eval frontier sweep to see if the parity
-holds at higher budgets.
+task B5 can't solve in 3 seeds. The natural next step is the
+20-seed 4M-eval frontier sweep that matches the headline B5
+result; the per-seed 1M pilot is already at the ceiling, so the
+remaining question is whether the parity is consistent across
+many more seeds.
 
 ## What's next on §9f
 
 1. **20-seed 4M-eval B5+planner frontier sweep** — match the
    headline B5 result. This is the integration test that
    matters: does the parity hold at higher budgets and across
-   more seeds?
-2. **Re-arc generated trace candidates** — expand the planner's
+   more seeds? (Per-seed 1M is already at the ceiling of 10/30,
+   so the sweep is a question of consistency, not magnitude.)
+2. **Top-K planner seeds** — instead of seeding 1 planner-
+   generated individual per task, seed the top-K candidates
+   from the multi-pair evaluation. This expands the planner
+   contribution from 1 to K individuals at a small cost (the
+   planner call is shared; only the program evaluation differs).
+3. **Re-arc generated trace candidates** — expand the planner's
    candidate set with primitives inferred from re-arc's
    per-task generators, not just Hodel's reference solvers. The
    re-arc generators give unlimited synthetic (input, target)
    pairs per task, so the planner can pattern-match on the
    specific task structure, not just generic primitives.
-3. **Object-aware distance metric** — a structural / object-
+4. **Object-aware distance metric** — a structural / object-
    aware distance (counting matching objects by color and shape)
    would likely score the right primitive higher on tasks where
    Hamming distance is too coarse.
-4. **Design a learned L1** that beats the KnnL1 baseline
+5. **Design a learned L1** that beats the KnnL1 baseline
    (currently 0% exact-match out-of-distribution). The learned
    model is the *substrate* the planner uses; a faster L1 means
    a faster planner. The trace dataset (16K steps from 400
    Hodel solvers) is the training data; a small neural net or
    a programmatic approximation evolved by clebran's own GP
    would be the model.
-5. **Integrate ARCTraj** as a cross-modality signal — the 10k
+6. **Integrate ARCTraj** as a cross-modality signal — the 10k
    human step-by-step ARC trajectories are the right training
    data for an ARC-specific world model. The clebran planner can
    use ARCTraj as a heuristic for *what humans do*, complementing
    the clebran interpreter's *what's geometrically possible*.
-6. **Target ARC-AGI-3** — the new interactive turn-based benchmark
+7. **Target ARC-AGI-3** — the new interactive turn-based benchmark
    that explicitly requires *Modeling* (world-model construction) as
    one of four required capabilities. The L2 direction is exactly
    what ARC-AGI-3 was designed to test.

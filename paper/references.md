@@ -276,3 +276,64 @@
     Kaggle competition context; the clebran design's compute
     target is the Kaggle envelope (~12h wall-clock, 4×L4 GPUs,
     offline only).
+
+47. **Ha, D., & Schmidhuber, J.** (2018). *World Models.* arXiv:
+    1803.10122. The original "world model" framing for
+    reinforcement learning: a compressed sensory representation
+    (V), a predictive model of next-state (M), and a small
+    controller (C) trained inside the simulator. The
+    *learned-L1-then-plan-in-it* methodology the clebran §9f
+    build order inherits.
+
+48. **Hafner, D., Lillicrap, T., Ba, J., & Norouzi, M.** (2019).
+    *Dream to Control: Learning Behaviors by Latent Imagination.*
+    ICLR 2020. arXiv:1912.01603. Dreamer / DreamerV2 / DreamerV3
+    line: learn the world model in latent space, plan by
+    backpropagating value gradients through it. The closest
+    existing instance of the L2-simulator / L3-evolver pattern
+    on a continuous-control task. *(reviewer-supplied — verify)*
+
+49. **Ye, W., Liu, S., Kurutach, T., Abbeel, P., & Gao, Y.**
+    (2021). *Mastering Atari Games with Limited Data.* NeurIPS
+    2021. EfficientZero; the data-efficient world-model +
+    planning line. *(reviewer-supplied — verify)*
+
+50. **Ye, W., et al.** (2026). *Agentic World Modeling.* arXiv:
+    2604.22748. The L1 Predictor / L2 Simulator / L3 Evolver
+    taxonomy the §9f framing in `roadmap.md` is built on.
+
+51. **Kim, S., Choi, S., Lee, J., & Kim, J.** (2026). *ARCTraj:
+    A Dataset and Benchmark for Agentic Reasoning with
+    Step-Wise Trajectories on ARC-AGI.* KDD 2026 Datasets and
+    Benchmarks. arXiv:2511.11079. HuggingFace
+    `SejinKimm/ARCTraj` — ~10,000 human step-by-step object-
+    level trajectories across all 400 ARC-AGI-1 training tasks,
+    collected via the O2ARC web interface, MDP-formatted for
+    PPO / DreamerV3 / GFlowNets / Decision Transformers /
+    diffusion-augmented RL. The most directly usable external
+    dataset for the §9f direction.
+
+52. **ARC-AGI-3.** (2026). arXiv:2603.24621. The new
+    interactive turn-based benchmark. Four required
+    capabilities: Exploration, Modeling, Goal-Setting, Planning
+    and Execution. The *Modeling* capability is exactly "the
+    ability to build a world model that represents how the
+    environment works and can predict the results of unseen
+    actions." The natural long-term testbed for the §9f
+    direction; the clebran typed-IR substrate and library-
+    mining mechanism transfer directly.
+
+53. **Girdhar, R., & Ramanan, D.** (2020). *CATER: A dataset
+    and benchmark for Compositional Actions and TEmporal
+    Reasoning.* ICLR 2020. arXiv:1910.11644. Synthetic 3D
+    scenes with full per-frame state (5,500 videos, atomic and
+    compositional action annotations). The methodological
+    pattern (procedurally generate, log every intermediate
+    state) is what re-arc + `run_trace` enables for ARC at
+    scale. *(reviewer-supplied — verify)*
+
+54. **Grid-JEPA.** (2025). arXiv: TBD. HuggingFace Grid-JEPA:
+    JEPA + RSSM + TTT for ARC-AGI-3. The fully-neural instance
+    of the *learned-L1-replaces-interpreter* design pattern
+    that the clebran §9f build order targets in a deterministic,
+    symbolic substrate.
