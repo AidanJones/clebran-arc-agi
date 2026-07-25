@@ -154,6 +154,52 @@ to every arm, so none of them bias the H2/H3 comparison:
   targets, plain per-cell accuracy let `canvas(ZERO, 3x3)` — a blank grid — outrank
   every content-bearing program.
 
+## Next direction: world modeling and step-level ARC
+
+The falsification (H1 supported, H2/H3 null, central library wins) closed the
+original clebran question. The "how you learned it" reorientation (§9 in the
+roadmap) opened a new one. The next concrete capability on the list is a
+**learned world model** — an internal simulator the agent uses to *imagine*
+the result of an action before it commits to it. The substrate is already in
+place: `interpreter.run_trace` returns every register as a grid, so a
+`(state, action, next_state)` training set is one script away. See
+[roadmap.md §9f](roadmap.md) for the framing, the cited literature, and the
+build order.
+
+**What the world model would enable (per the L1/L2/L3 taxonomy in the
+Agentic World Modeling literature, arXiv:2604.22748):**
+
+- **L1 Predictor** — learn a `(state, action) → next_state` function. The
+  clebran interpreter is already a perfect L1, so the *learned* version is a
+  compression / generalisation experiment, not a necessity.
+- **L2 Simulator** — multi-step rollout for *planning*. The agent rolls out
+  candidate programs through the world model, picks the first step that moves
+  toward the target, repeats. This is a directly testable new arm:
+  "B5 + world-model-guided search" vs B5 + outcome-reward search.
+- **L3 Evolver** — revise the model on failed predictions. Closing the
+  "self-directed practice / dreaming" row in the §9d capability audit.
+
+**Closest external resources** the project should engage with:
+
+- **ARCTraj** (Kim, Choi, Lee & Kim, KDD 2026, arXiv:2511.11079,
+  [HuggingFace `SejinKimm/ARCTraj`](https://huggingface.co/datasets/SejinKimm/ARCTraj))
+  — ~10,000 human step-by-step object-level trajectories across all 400
+  ARC-AGI-1 training tasks, MDP-formatted, designed for PPO / DreamerV3 /
+  GFlowNets / Decision Transformers. This is the most directly usable
+  external dataset for what this direction needs.
+- **ARC-AGI-3** (arXiv:2603.24621) — the new interactive turn-based ARC
+  benchmark. "Modeling" is one of four required capabilities; the world-model
+  direction is exactly what ARC-AGI-3 is designed to test.
+- **CATER** (Girdhar & Ramanan, ICLR 2020) — synthetic 3D scenes with full
+  per-frame state; the design pattern (procedurally generate, log every
+  intermediate state) is what re-arc + `run_trace` can do for ARC at scale.
+- **PRM800K / EpicPRM / process-supervision line** — the methodology for
+  training models on intermediate supervision is well-established in math and
+  code; ARCTraj is the ARC instantiation.
+- **Hodel's re-arc** — already provides task generators that, combined with
+  `run_trace`, can produce unlimited additional trace data beyond the 400
+  Hodel solvers.
+
 ## Setup
 
 ```sh

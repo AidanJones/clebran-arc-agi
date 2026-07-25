@@ -242,6 +242,63 @@ class Lineage:
             pop.individuals.append(Individual(prog, fit))
         self._sort(pop)
 
+    def seed_with_planner(self, tid: str, max_steps: int = 20,
+                          lookahead: int = 1) -> bool:
+        """Run the L2 planner on *all* of the task's demo pairs and
+        add the resulting program to the population as a
+        high-priority seed. Returns True if the planner produced a
+        non-empty program; False otherwise (e.g. the planner
+        couldn't find any improving candidate at the first step).
+
+        The planner uses the clebran interpreter as a perfect L1
+        world model (§9f in `roadmap.md`); the seeded program is
+        the planner's best linear sequence of primitives. It is
+        evaluated by the standard fitness function (which counts
+        against the budget) and inserted at the front of the
+        population so it survives the next ``_sort``.
+
+        Parameters
+        ----------
+        tid : str
+            The task ID to seed.
+        max_steps : int, default 20
+            Maximum number of planning steps (i.e. the maximum
+            length of the seeded program).
+        lookahead : int, default 1
+            Planning depth passed to ``L2Planner``. ``1`` = greedy
+            one-step (default). ``2`` = two-step lookahead.
+        """
+        from .world_model.l2_planner import L2Planner
+        task = self.tasks[tid]
+        pop = self.pops[tid]
+        if not task.train:
+            return False
+        # Build a list of (input, target) demo pairs from the task.
+        demos: list[tuple] = []
+        for input_grid, target_grid in task.train:
+            demos.append((
+                tuple(tuple(r) for r in input_grid),
+                tuple(tuple(r) for r in target_grid),
+            ))
+        # All demos must be grid→grid (the planner only handles
+        # grid→grid transitions).
+        for st, tg in demos:
+            if not (isinstance(st, tuple) and st and isinstance(st[0], tuple)):
+                return False
+            if not (isinstance(tg, tuple) and tg and isinstance(tg[0], tuple)):
+                return False
+        planner = L2Planner(lookahead=lookahead)
+        result = planner.plan_to_program(demos, max_steps=max_steps)
+        prog = result["program"]
+        if not prog.statements:
+            return False
+        fit = self.evaluator.evaluate(prog, task)
+        # Insert at the front; the next _sort will keep it if it's
+        # competitive.
+        pop.individuals.insert(0, Individual(prog, fit))
+        self._sort(pop)
+        return True
+
     # ---------- one generation on one task ----------
 
     def step_generation(self, tid: str) -> None:

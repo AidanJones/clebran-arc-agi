@@ -487,7 +487,7 @@ objectness, geometry/topology, number); the process capabilities mostly are not.
 | communication & teaching | **have** (4 payloads, prerequisite-ordered curricula) |
 | honest measurement (matched compute, baselines, seeds) | **have** — the repo's real asset |
 | acquisition efficiency as the objective | instrument exists, **not the metric** (9a) |
-| self-directed practice / dreaming | **missing** (9b) |
+| self-directed practice / dreaming | **missing** (9b) — closed by 9f (world model) once L2/L3 are built |
 | active learning — *choosing* what to practise next | **missing** (learning-progress teacher) |
 | continual learning without rigidity (plasticity) | **missing**, and possibly already violated (8b) |
 | compositional generalisation to novel combinations | **missing** (no OOD split) |
@@ -509,7 +509,7 @@ work, which is where research projects die. Instead factor along capability
 boundaries *inside* the repo:
 
     core (keep):  tasks/curricula, the protocol, metrics, baselines, honest reporting
-    plugins:      learners (9c), teachers/curriculum generators, payload types
+    plugins:      learners (9c), teachers/curriculum generators, payload types, world models
 
 A separate repo is justified only when a direction needs a genuinely different
 substrate *and* has already shown a result worth porting — e.g. an LLM-agent
@@ -517,9 +517,113 @@ study whose compute model makes matched-compute accounting incompatible. Prove
 it here first behind the `Learner` interface; split later if and only if the
 interface stops fitting.
 
+### 9f. World modeling — the next substrate
+
+The §9d capability audit's "self-directed practice / dreaming" row is the
+biggest single missing capability in clebran. The natural way to close it
+is a *learned world model* — an internal simulator the agent uses to imagine
+the result of an action before committing to it. This subsection scopes the
+direction, the cited literature, and the build order.
+
+**Framing.** The world-model direction is the natural L1/L2/L3 progression of
+the *Agentic World Modeling* literature (arXiv:2604.22748):
+
+- **L1 Predictor.** A learned function `(state, action) → next_state`. The
+  clebran interpreter is already a perfect L1 — `interpreter.run_trace`
+  returns every register as a grid, and each register-pair `(x_k, x_{k+1})`
+  with the k-th statement is a labelled transition. The *learned* L1 is a
+  *compression* experiment: a small neural approximator that generalises
+  across tasks is a scientific contribution even if it never matches the
+  interpreter's accuracy.
+- **L2 Simulator.** Multi-step rollout for planning. The agent rolls out
+  candidate programs through the world model, picks the first step that
+  moves toward the target, repeats. This is a directly testable new arm:
+  *B5 + world-model-guided search* vs *B5 + outcome-reward search*. The
+  endpoint is cost-to-solve (acquisition efficiency), not solve count.
+- **L3 Evolver.** Revise the world model on failed predictions. The
+  "self-directed practice / dreaming" row of §9d — an agent that practices
+  *inside* its own simulator, hypothesises new worlds, and refines them
+  when they fail.
+
+**Closest external resources.**
+
+- **ARCTraj** (Kim, Choi, Lee & Kim, KDD 2026 Datasets and Benchmarks,
+  arXiv:2511.11079, [HuggingFace `SejinKimm/ARCTraj`](https://huggingface.co/datasets/SejinKimm/ARCTraj))
+  — ~10,000 human step-by-step object-level trajectories across all 400
+  ARC-AGI-1 training tasks, collected via the O2ARC web interface, MDP-
+  formatted for PPO / DreamerV3 / GFlowNets / Decision Transformers /
+  diffusion-augmented RL. *The most directly usable external dataset for
+  this direction.* The O2ARC actions are object-level (move, rotate, flip,
+  colour) and need a mapping layer onto Hodel's primitives; many will not
+  map, which is fine — they are a separate modality that gives a
+  cross-modality signal.
+- **ARC-AGI-3** (arXiv:2603.24621) — the new interactive turn-based
+  benchmark. Four required capabilities: *Exploration, Modeling, Goal-Setting,
+  Planning and Execution*. The *Modeling* capability is exactly "the
+  ability to build a world model that represents how the environment works
+  and can predict the results of unseen actions." ARC-AGI-3 is the natural
+  long-term testbed for whatever clebran builds next; the typed-IR
+  substrate and library-mining mechanism transfer directly.
+- **CATER** (Girdhar & Ramanan, ICLR 2020) — synthetic 3D scenes with full
+  per-frame state (5,500 videos, atomic and compositional action
+  annotations). The methodological pattern (procedurally generate, log
+  every intermediate state) is what re-arc + `run_trace` can do for ARC at
+  scale.
+- **Process-supervision line** — PRM800K (OpenAI, 2023), EpicPRM (2025),
+  RAG-ProGuide (NeurIPS 2025), code process supervision (EMNLP 2025). The
+  *methodology* for training on intermediate supervision is well-
+  established in math and code; ARCTraj is the ARC instantiation.
+- **Hodel's re-arc** — the existing per-task generators. Combined with
+  `run_trace`, they produce unlimited additional trace data beyond the 400
+  Hodel reference solvers. The first deliverable is the trace dataset
+  built from just the 400 solvers; re-arc is a follow-up.
+
+**Build order.**
+
+1. *Trace dataset.* Run all 400 Hodel reference solvers through
+   `interpreter.run_trace` and write `data/traces.jsonl` — one row per
+   trace step, each with `(task_id, step_index, state, action, next_state)`.
+   The substrate is already there; this is one Python script.
+2. *L1 predictor baseline.* Train a small learned approximator on the
+   trace data; measure next-state prediction accuracy against the
+   interpreter. This is a sanity-check / compression experiment, not a
+   capability claim.
+3. *L2 planning arm.* Modify the GP search to use a learned value
+   function (predicted distance to target under the world model) instead
+   of pure outcome reward. The agent rolls out candidate programs through
+   the model, picks the first step that decreases the predicted distance,
+   repeats. Compare against B5 + outcome-reward search at matched
+   candidate-evaluations on the existing 30-task frontier subset.
+4. *L3 evoker.* If L2 shows a positive result, the natural next step is
+   to *revise* the world model on failed predictions — the dreaming
+   loop. The agent practices inside its own simulator, refines the
+   world model when reality contradicts it, and re-rolls.
+5. *ARCTraj integration.* Download ARCTraj, parse the CSV, align the
+   O2ARC object-level actions to Hodel's primitives where possible.
+   Many will not map; the un-mapped portion is a separate modality that
+   gives a cross-modality signal for the world model.
+6. *ARC-AGI-3 evaluation.* Once the L2 arm is built, ARC-AGI-3 is the
+   natural benchmark. The clebran substrate (typed IR, deterministic
+   interpreter, library miner) transfers; the gap is the planning loop.
+
+**Shortest path to a publishable result.** Steps 1–3 in the build order
+form a single experiment: *does an L1-trained world model improve
+search on ARC-AGI-1 at matched candidate-evaluations?* If yes, the
+direction is alive and the next three steps are the natural follow-up.
+If no, the null is informative and the clebran substrate stays
+useful as a measurement rig for world-model research on ARC-AGI-3.
+Either way it's a paper.
+
 ### Build order
 
 9a (re-score existing logs on cost) → 9b (dreaming loop) → 9c (`Learner`
 interface + cross-architecture curriculum transfer) → then the 8b negative-
 transfer test and the eval-split generalisation run, both of which become much
 more informative once cost is the endpoint.
+
+**9f (world modeling) is its own build order** (§9f, build-order list 1–6):
+the trace dataset is the cheap first deliverable; the L2 planning arm is
+the testable new contribution; the L3 evoker and ARC-AGI-3 evaluation are
+the long-horizon follow-ups. 9f depends on 9a (the cost endpoint is what
+the L2 planning arm reports against) but is otherwise independent of the
+9b/9c track.
