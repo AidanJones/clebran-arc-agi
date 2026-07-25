@@ -544,6 +544,65 @@ class L2Planner:
 
     # -- lookahead ---------------------------------------------------------
 
+    def top_k_candidates(self, demos: list[tuple[tuple, tuple]],
+                          k: int = 3) -> list[dict]:
+        """Return the top-K multi-pair candidates, sorted by ascending
+        mean distance. Each entry is a dict::
+
+            {
+              "primitive":  <name of the primitive>,
+              "args":       <tuple of args (with the first-state substituted)>,
+              "next_state": <the predicted next state for the first demo>,
+              "distance":   <mean multi-pair distance under the configured metric>,
+              "_per_demo_distances": <list of per-demo distances>,
+            }
+
+        Used by ``Lineage.seed_with_planner_topk`` to seed the
+        top-K planner candidates (one planner call, K program
+        evaluations).
+
+        ``k`` is clamped to the number of valid candidates. If
+        ``k <= 0`` or there are no valid candidates, the result
+        is an empty list.
+        """
+        if k <= 0 or not demos:
+            return []
+        # Replicate the multi-pair candidate evaluation from
+        # plan_demos, but collect all valid candidates and sort.
+        first_state, first_target = demos[0]
+        valid: list[dict] = []
+        for name, args in self.candidate_fn(first_state, first_target):
+            dists: list[float] = []
+            next_states: list = []
+            bad = False
+            for st, tg in demos:
+                remapped = tuple(st if a is first_state else a for a in args)
+                result = _safe_call(name, *remapped)
+                if result is None or not isinstance(result, tuple):
+                    bad = True; break
+                if not result or not isinstance(result[0], tuple):
+                    bad = True; break
+                d = self.distance_fn(result, tg)
+                if d == float("inf"):
+                    bad = True; break
+                dists.append(d)
+                next_states.append(result)
+            if bad:
+                continue
+            mean_d = _mean_dists(dists)
+            valid.append({
+                "primitive": name,
+                "args": args,
+                "next_state": next_states[0],
+                "distance": mean_d,
+                "_per_demo_distances": dists,
+                "_per_demo_next_states": next_states,
+            })
+        # Sort by distance, then by primitive name for stable
+        # ordering of ties.
+        valid.sort(key=lambda c: (c["distance"], c["primitive"]))
+        return valid[:k]
+
     def _lookahead_best(self, demos: list[tuple[tuple, tuple]],
                         depth: int,
                         forbid_states: set | None = None) -> dict:

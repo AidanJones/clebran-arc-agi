@@ -512,6 +512,75 @@ def test_l2_planner_component_distance_ranks_fill_better_than_hamming():
     # (the *gap* is what matters for the planner's choice).
 
 
+# ---- top-K planner tests -----------------------------------------------
+
+def test_l2_planner_top_k_candidates_returns_k_sorted():
+    """``top_k_candidates`` should return at most K candidates
+    sorted by ascending distance."""
+    state = ((1, 0, 1),
+             (0, 1, 0),
+             (1, 0, 1))
+    target = ((1, 0, 1),
+              (0, 1, 0),
+              (1, 0, 1))   # identity — many candidates have 0 distance
+    planner = L2Planner()
+    top_3 = planner.top_k_candidates([(state, target)], k=3)
+    assert len(top_3) == 3
+    # Sorted by ascending distance.
+    for i in range(len(top_3) - 1):
+        assert top_3[i]["distance"] <= top_3[i+1]["distance"]
+
+
+def test_l2_planner_top_k_candidates_returns_at_most_k():
+    """If k is larger than the number of valid candidates, the
+    result is the full list (no error)."""
+    state = ((1, 0), (0, 1))
+    target = ((0, 1), (1, 0))   # hmirror / vmirror produce this
+    planner = L2Planner()
+    top_100 = planner.top_k_candidates([(state, target)], k=100)
+    # We don't know exactly how many, but it should be > 0
+    # (multiple primitives produce same-shape grids).
+    assert len(top_100) > 0
+    # And all entries are valid (have a primitive, args, distance).
+    for c in top_100:
+        assert "primitive" in c
+        assert "args" in c
+        assert "distance" in c
+        assert c["distance"] < float("inf")
+
+
+def test_l2_planner_top_k_candidates_clamps_to_zero_for_k_zero():
+    """``k=0`` should return an empty list."""
+    state = ((1, 0), (0, 1))
+    target = ((0, 1), (1, 0))
+    planner = L2Planner()
+    top = planner.top_k_candidates([(state, target)], k=0)
+    assert top == []
+
+
+def test_l2_planner_top_k_candidates_returns_empty_for_no_demos():
+    """An empty demos list should return an empty list."""
+    planner = L2Planner()
+    top = planner.top_k_candidates([], k=3)
+    assert top == []
+
+
+def test_l2_planner_top_k_candidates_does_not_include_failed_candidates():
+    """Candidates that fail on any demo (wrong shape, exception)
+    should not appear in the top-K list."""
+    # 1x2 vs 2x1 — no 1-arg grid→grid primitive can match this
+    # shape change, so all candidates should be filtered out.
+    state = ((1, 0),)
+    target = ((0, 1),
+              (1, 0))
+    planner = L2Planner()
+    top = planner.top_k_candidates([(state, target)], k=5)
+    # All candidates have inf distance, so they should be filtered.
+    # (The function returns the top-K with finite distance, so the
+    # result should be empty if no candidate is valid.)
+    assert all(c["distance"] < float("inf") for c in top)
+
+
 @pytest.mark.slow
 def test_l2_planner_evaluate_against_real_trace_dataset():
     from clebran.world_model.l2_planner import evaluate as evaluate_l2

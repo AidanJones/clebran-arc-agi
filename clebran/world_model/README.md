@@ -281,6 +281,37 @@ The distance metric is configurable via
 (default `hamming`); see the *Distance metrics* section above
 for the trade-offs.
 
+The number of planner candidates seeded is configurable via
+`--planner-top-k K` (default 1). With K=1, the planner's *best*
+candidate is seeded; with K>1, the top-K candidates are seeded
+(one planner call, K program evaluations) via
+`Lineage.seed_with_planner_topk`. The K-1 runners-up are
+capped at `pop_size // 4` to avoid swamping the random initial
+population.
+
+**Pilot result (3 seeds, 500K candidate-evaluations, frontier
+subset, by top-K):**
+
+| K | solved | evo-solved | test-exact | mean length |
+|---|---|---|---|---|
+| 1 (default) | **10.00** | **3.00** | 9.67 | 2.03 |
+| 3 | 9.67 | 2.67 | 9.33 | 1.70 |
+| 5 | 9.67 | 2.67 | **9.67** | 1.79 |
+
+K=1 (the default, just the planner's best) is the best at this
+budget. The K-1 runners-up are usually not much better than the
+random initial population's other seeds, and adding them
+dilutes the pop's quality. K=5 has a peak (seed 2 hits 11
+solves, including 0d3d703e which is one of B5's unique solves
+across 3 seeds), but the mean is the same as K=3.
+
+**The lesson: the planner's *best* candidate captures most of
+the planner's value; the runners-up don't add much at this
+budget.** The hypothesis that "more planner seeds = more
+solves" is null at 500K / 3 seeds — the variance is too high
+to distinguish K=1 from K>1. The 20-seed 4M-eval sweep is the
+proper test of whether top-K helps at scale.
+
 ### Pilot result (3 seeds, 500K and 1M candidate-evaluations, frontier subset)
 
 ```

@@ -52,6 +52,75 @@ def test_seed_with_planner_adds_individual_to_population():
         assert ind.fit is not None
 
 
+def test_seed_with_planner_topk_adds_multiple_individuals():
+    """``seed_with_planner_topk(k=3)`` should add up to 3
+    individuals to the population — the top-3 planner
+    candidates."""
+    tasks = subset_tasks()
+    if not tasks:
+        pytest.skip("no subset tasks available")
+    first_tid = next(iter(tasks))
+    task = {first_tid: tasks[first_tid]}
+    from clebran.dsl.solver_parse import parse_all_solvers
+    progs = parse_all_solvers()
+    pool = sorted(progs[first_tid].primitives_used())
+    ev = Evaluator()
+    lin = Lineage(
+        lineage_id="test-b5p-topk",
+        pool=pool,
+        tasks=task,
+        seed=1,
+        pop_size=20,
+        evaluator=ev,
+    )
+    lin.seed_population(first_tid)
+    n_before = len(lin.pops[first_tid].individuals)
+    added = lin.seed_with_planner_topk(first_tid, k=3)
+    n_after = len(lin.pops[first_tid].individuals)
+    # The planner should have added up to 3 individuals.
+    assert added <= 3
+    assert added >= 0
+    assert n_after == n_before + added
+    if added > 0:
+        # All added individuals should have a valid program and
+        # fitness. The first K individuals in the population
+        # (after the random initial ones) are the planner seeds.
+        # Check the first K are non-empty.
+        for i in range(min(added, 3)):
+            ind = lin.pops[first_tid].individuals[i]
+            assert ind.prog is not None
+            assert ind.fit is not None
+
+
+def test_seed_with_planner_topk_k1_behaves_like_seed_with_planner():
+    """``seed_with_planner_topk(k=1)`` should behave like
+    ``seed_with_planner`` (1 individual added)."""
+    tasks = subset_tasks()
+    if not tasks:
+        pytest.skip("no subset tasks available")
+    first_tid = next(iter(tasks))
+    task = {first_tid: tasks[first_tid]}
+    from clebran.dsl.solver_parse import parse_all_solvers
+    progs = parse_all_solvers()
+    pool = sorted(progs[first_tid].primitives_used())
+    ev = Evaluator()
+    lin1 = Lineage(
+        lineage_id="test-b5p-k1",
+        pool=pool, tasks=task, seed=1, pop_size=20, evaluator=ev,
+    )
+    lin2 = Lineage(
+        lineage_id="test-b5p-k1b",
+        pool=pool, tasks=task, seed=1, pop_size=20, evaluator=ev,
+    )
+    lin1.seed_population(first_tid)
+    lin2.seed_population(first_tid)
+    a1 = lin1.seed_with_planner(first_tid, max_steps=10)
+    a2 = lin2.seed_with_planner_topk(first_tid, k=1)
+    # Both should add either 0 or 1 individual.
+    assert a1 in (0, 1)
+    assert a2 in (0, 1)
+
+
 def test_plan_to_program_round_trip():
     """The planner-to-program conversion should produce a Program
     that can be serialised and run."""

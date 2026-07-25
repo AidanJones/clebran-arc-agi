@@ -17,10 +17,46 @@ from dataclasses import dataclass, field, replace
 
 from .data.loader import Task
 from .dsl.program import Program, Statement
-from .dsl.registry import CONSTANTS
+from .dsl.registry import CONSTANTS, PRIMITIVES
 from .fitness import Evaluator, Fitness
 from .genome import GenomeOps, Fragment
 from .dsl.abstraction import mine_compressing
+
+
+# ---- helpers -------------------------------------------------------------
+
+# Build a reverse map: int value -> constant name. Used by
+# ``_classify_arg_for_seed`` to identify whether an arg value is
+# a known arc-dsl constant.
+_CONST_BY_VALUE: dict = {}
+for _name, (_val, _t) in CONSTANTS.items():
+    if isinstance(_val, int) and not isinstance(_val, bool):
+        _CONST_BY_VALUE.setdefault(_val, []).append(_name)
+
+
+def _classify_arg_for_seed(value, input_grid) -> tuple:
+    """Classify an evaluated argument value into an IR arg tuple
+    for a planner-seeded 1-statement program.
+
+    ``input_grid`` is the task's input grid (the IR's `I`
+    reference). Returns the appropriate ``(kind, payload)`` tuple:
+
+      1. The input grid -> ``("in", None)``
+      2. A constant int value in arc-dsl -> ``("const", name)``
+      3. A primitive function (callable from PRIMITIVES) -> ``("prim", name)``
+      4. Anything else (a tuple / grid / frozenset / etc.) -> ``("lit", value)``
+    """
+    if value is input_grid:
+        return ("in", None)
+    if isinstance(value, int) and not isinstance(value, bool):
+        names = _CONST_BY_VALUE.get(value)
+        if names:
+            return ("const", names[0])
+    if callable(value):
+        for name, sig in PRIMITIVES.items():
+            if sig.fn is value:
+                return ("prim", name)
+    return ("lit", value)
 
 
 @dataclass
@@ -307,6 +343,91 @@ class Lineage:
         pop.individuals.insert(0, Individual(prog, fit))
         self._sort(pop)
         return True
+
+    def seed_with_planner_topk(self, tid: str, k: int = 3,
+                                lookahead: int = 1,
+                                distance: str = "hamming") -> int:
+        """Top-K variant of ``seed_with_planner``: seed the top-K
+        planner candidates as K individuals in the population. The
+        planner call is shared (one rollout); only the program
+        evaluation differs across the K seeds, so the cost is K
+        candidate-evaluations (counted against the budget) rather
+        than K planner calls.
+
+        Each seed is a single-statement program (the candidate
+        primitive applied to the first demo's input). The K
+        candidates are sorted by ascending mean distance, so the
+        best is at the front of the population after the next
+        ``_sort``.
+
+        Returns the number of seeds actually added (0 if no valid
+        candidates were found, up to ``k`` if all K were valid).
+        The maximum is bounded by the population size; we cap at
+        ``pop_size // 4`` to avoid swamping the random initial
+        population with planner seeds.
+
+        Parameters
+        ----------
+        tid : str
+            The task ID to seed.
+        k : int, default 3
+            Number of top candidates to seed.
+        lookahead, distance
+            Forwarded to ``L2Planner``.
+        """
+        from .world_model.l2_planner import L2Planner
+        task = self.tasks[tid]
+        pop = self.pops[tid]
+        if not task.train:
+            return 0
+        # Build a list of (input, target) demo pairs from the task.
+        demos: list[tuple] = []
+        for input_grid, target_grid in task.train:
+            demos.append((
+                tuple(tuple(r) for r in input_grid),
+                tuple(tuple(r) for r in target_grid),
+            ))
+        for st, tg in demos:
+            if not (isinstance(st, tuple) and st and isinstance(st[0], tuple)):
+                return 0
+            if not (isinstance(tg, tuple) and tg and isinstance(tg[0], tuple)):
+                return 0
+        # Cap at a quarter of the pop size — too many seeds would
+        # crowd out the random initial population.
+        max_seeds = max(1, self.pop_size // 4)
+        k_eff = min(k, max_seeds)
+        planner = L2Planner(lookahead=lookahead, distance=distance)
+        top_k = planner.top_k_candidates(demos, k=k_eff)
+        if not top_k:
+            return 0
+        # Build a 1-statement program for each candidate and
+        # evaluate it. The first-state (from the first demo) is
+        # the IR's `I` reference; subsequent positions are
+        # auto-classified by _classify_arg.
+        from .dsl.interpreter import _invoke, _check_size
+        added = 0
+        first_state = demos[0][0]
+        for cand in top_k:
+            name = cand["primitive"]
+            args = cand["args"]
+            try:
+                classified = tuple(
+                    _classify_arg_for_seed(a, first_state)
+                    for a in args
+                )
+                statement = Statement(
+                    fn=("prim", name), args=classified
+                )
+                prog = Program(statements=[statement])
+                fit = self.evaluator.evaluate(prog, task)
+            except Exception:
+                continue
+            # Insert at the front (sorted by fitness descending,
+            # so the best is at index 0).
+            pop.individuals.insert(0, Individual(prog, fit))
+            added += 1
+        self._sort(pop)
+        return added
 
     # ---------- one generation on one task ----------
 

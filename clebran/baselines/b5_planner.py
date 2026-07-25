@@ -44,6 +44,7 @@ def run_single(
     planner_max_steps: int = 20,
     planner_lookahead: int = 1,
     planner_distance: str = "hamming",
+    planner_top_k: int = 1,
 ) -> dict:
     """Run the B5+planner arm on the frontier subset for a single seed.
 
@@ -65,6 +66,11 @@ def run_single(
       (number of disconnected disagreement regions) rather than
       cell-wise Hamming, which is the right metric for tasks that
       change a small region of the grid.
+    * ``planner_top_k`` controls how many planner candidates are
+      seeded. ``1`` (default) seeds just the planner's best
+      program. ``3`` or ``5`` seeds the top-K candidates (one
+      planner call, K program evaluations) — see
+      ``Lineage.seed_with_planner_topk``.
     """
     tasks = subset_tasks()
     pool = subset_pool()
@@ -83,16 +89,23 @@ def run_single(
                "pool_size": len(pool), "pop_size": pop_size,
                "self_mine": self_mine, "planner_max_steps": planner_max_steps,
                "planner_lookahead": planner_lookahead,
-               "planner_distance": planner_distance})
+               "planner_distance": planner_distance,
+               "planner_top_k": planner_top_k})
 
     # First seeding — standard phase-1 closure, then planner seeds
     # on top. The planner uses ALL demo pairs, not just the first,
     # and uses loop avoidance so it doesn't oscillate.
     for tid in tasks:
         lin.seed_population(tid)
-        lin.seed_with_planner(tid, max_steps=planner_max_steps,
-                              lookahead=planner_lookahead,
-                              distance=planner_distance)
+        if planner_top_k > 1:
+            lin.seed_with_planner_topk(
+                tid, k=planner_top_k,
+                lookahead=planner_lookahead, distance=planner_distance,
+            )
+        else:
+            lin.seed_with_planner(tid, max_steps=planner_max_steps,
+                                  lookahead=planner_lookahead,
+                                  distance=planner_distance)
 
     sched_rng = random.Random(seed + 777)
     epoch = 0
@@ -171,6 +184,10 @@ def main() -> int:
                          "component=connected components in symmetric "
                          "difference, color_set=color-set overlap, "
                          "structural=hybrid)")
+    ap.add_argument("--planner-top-k", type=int, default=1,
+                    help="Number of top planner candidates to seed as "
+                         "individuals in the initial population (1 = "
+                         "just the planner's best; 3 or 5 = top-K).")
     ap.add_argument("--no-self-mine", action="store_true",
                     help="Disable central library mining (B0 mode)")
     args = ap.parse_args()
@@ -182,6 +199,7 @@ def main() -> int:
         planner_max_steps=args.planner_max_steps,
         planner_lookahead=args.planner_lookahead,
         planner_distance=args.planner_distance,
+        planner_top_k=args.planner_top_k,
     )
     print()
     print(f"B5+planner (seed={args.seed}, budget={args.budget}):")
