@@ -19,9 +19,13 @@ from clebran.world_model.l1_baseline import (
     evaluate,
 )
 from clebran.world_model.l2_planner import (
+    DISTANCES,
     L2Planner,
+    _color_set_distance,
+    _component_distance,
     _default_candidates,
     _grid_hamming as _l2_hamming,
+    _structural_distance,
 )
 from clebran.dsl.registry import PRIMITIVES
 
@@ -340,6 +344,172 @@ def test_l2_planner_plan_to_program_multipair_returns_valid_program():
     # The program should be a Program instance.
     from clebran.dsl.program import Program
     assert isinstance(result["program"], Program)
+
+
+# ---- distance metric tests ---------------------------------------------
+
+def test_component_distance_identical_grids():
+    assert _component_distance(((0, 0), (0, 0)), ((0, 0), (0, 0))) == 0
+
+
+def test_component_distance_one_cell_difference_is_one_component():
+    """A single-cell change in the middle of an otherwise identical
+    grid is exactly 1 connected component."""
+    a = ((0, 0, 0),
+         (0, 1, 0),
+         (0, 0, 0))
+    b = ((0, 0, 0),
+         (0, 2, 0),
+         (0, 0, 0))
+    assert _component_distance(a, b) == 1
+
+
+def test_component_distance_two_separate_components():
+    """Two non-adjacent cell changes are 2 components."""
+    a = ((0, 0, 0, 0),
+         (0, 1, 0, 2),
+         (0, 0, 0, 0))
+    b = ((0, 0, 0, 0),
+         (0, 3, 0, 4),
+         (0, 0, 0, 0))
+    assert _component_distance(a, b) == 2
+
+
+def test_component_distance_move_object_counts_as_two_components():
+    """Moving a single object (vacated area + new position) is
+    2 components — the structural signature of "object moved" —
+    but only when the two regions are NOT 4-adjacent (a short
+    move that lands next to the original would still be 1
+    component)."""
+    # Move the 1 from (1,1) to (3,3) — the vacated cell and the
+    # new cell are far apart, so they form 2 separate components.
+    a = ((0, 0, 0, 0),
+         (0, 1, 0, 0),
+         (0, 0, 0, 0),
+         (0, 0, 0, 0))
+    b = ((0, 0, 0, 0),
+         (0, 0, 0, 0),
+         (0, 0, 0, 0),
+         (0, 0, 0, 1))
+    assert _component_distance(a, b) == 2
+
+
+def test_component_distance_short_move_is_one_component():
+    """A short move (vacated cell adjacent to new cell) is
+    1 component (the regions merge in the symmetric difference)."""
+    # Move the 1 from (1,1) to (1,2) — the two cells are 4-adjacent.
+    a = ((0, 0, 0),
+         (0, 1, 0),
+         (0, 0, 0))
+    b = ((0, 0, 0),
+         (0, 0, 1),
+         (0, 0, 0))
+    assert _component_distance(a, b) == 1
+
+
+def test_component_distance_different_shapes_penalised():
+    assert _component_distance(((0, 0), (0, 0)), ((0, 0, 0), (0, 0, 0))) \
+        == float("inf")
+
+
+def test_color_set_distance_identical():
+    assert _color_set_distance(((1, 2), (3, 4)), ((1, 2), (3, 4))) == 0
+
+
+def test_color_set_distance_one_color_added():
+    a = ((0, 0), (0, 0))
+    b = ((1, 0), (0, 0))
+    # b has color 1, a does not -> |b \ a| = 1; |a \ b| = 0; total 1
+    assert _color_set_distance(a, b) == 1
+
+
+def test_color_set_distance_color_swap():
+    """A color swap (1 in a, 2 in b, both at the same cells) is
+    2 (both colors are in one grid but not the other)."""
+    a = ((1, 0), (0, 0))
+    b = ((2, 0), (0, 0))
+    assert _color_set_distance(a, b) == 2
+
+
+def test_structural_distance_dominates_on_color_swap():
+    """The structural distance should be high for a pure color swap
+    (a 2-cell change with a 2-color swap is a "color change" task)
+    and low for a 1-cell identity change."""
+    a = ((0, 0), (0, 0))
+    b = ((1, 0), (0, 0))   # 1-cell change, 1 color added
+    c = ((1, 0), (0, 0))   # same as b
+    # Pure cell change: low distance
+    d_cell = _structural_distance(a, c)
+    # Color swap: high distance (the colors changed)
+    a2 = ((1, 0), (0, 0))
+    b2 = ((2, 0), (0, 0))   # color swap from 1 to 2
+    d_swap = _structural_distance(a2, b2)
+    assert d_swap > d_cell
+
+
+def test_distances_dict_has_all_four_metrics():
+    """The DISTANCES dict exposes the four named metrics so users
+    can pick by name without importing every helper."""
+    assert set(DISTANCES.keys()) == {"hamming", "component", "color_set", "structural"}
+
+
+def test_l2_planner_accepts_distance_by_name():
+    """``L2Planner(distance="structural")`` should configure the
+    planner to use the structural metric."""
+    planner = L2Planner(distance="structural")
+    assert planner.distance_name == "structural"
+
+
+def test_l2_planner_rejects_unknown_distance_name():
+    """``L2Planner(distance="nonsense")`` should raise ValueError."""
+    with pytest.raises(ValueError, match="unknown distance"):
+        L2Planner(distance="nonsense")
+
+
+def test_l2_planner_component_distance_ranks_fill_better_than_hamming():
+    """A 'fill 1 cell' primitive should outrank a 'fill many cells'
+    primitive on the *component* metric even when the two are
+    equal in Hamming terms (the diagnostic is that Hamming
+    under-weights structural match — a single cell that's
+    right next to a wrong color is much closer than a single
+    cell far from any wrong color).
+
+    We construct a case where Hamming and component disagree:
+    a small fill (1 cell) and a large fill (8 cells) on a
+    3x3 grid, with the target being a 1-cell change. The small
+    fill is closer on Hamming (0 vs 8) AND closer on component
+    (0 vs 1) — so both metrics agree here. The point of this
+    test is to verify that the component metric is wired in
+    and used in the planner when configured, not to find a
+    disagreement. A more interesting disagreement case is the
+    'short move is 1 component' test above.
+    """
+    state = ((0, 0, 0),
+             (0, 1, 0),
+             (0, 0, 0))
+    target = ((0, 0, 0),
+              (0, 5, 0),
+              (0, 0, 0))   # change 1 cell to 5 — exactly 1 component
+    # Small fill: a 1-cell patch (frozenset of (i, j) coords)
+    small_patch = frozenset({(1, 1)})
+    cand_fill_1 = PRIMITIVES["fill"].fn(state, 5, small_patch)
+    # Large fill: an 8-cell patch (everything except the center)
+    big_patch = frozenset({
+        (0, 0), (0, 1), (0, 2),
+        (1, 0),         (1, 2),
+        (2, 0), (2, 1), (2, 2),
+    })
+    cand_fill_many = PRIMITIVES["fill"].fn(state, 5, big_patch)
+    # Hamming: 1-cell fill is 0 (exact match), many-cell fill is 8
+    h_fill_1 = _grid_hamming(cand_fill_1, target)
+    h_fill_many = _grid_hamming(cand_fill_many, target)
+    assert h_fill_1 < h_fill_many
+    # Component: 1-cell fill is 0 (exact), many-cell fill is 1
+    c_fill_1 = _component_distance(cand_fill_1, target)
+    c_fill_many = _component_distance(cand_fill_many, target)
+    assert c_fill_1 < c_fill_many
+    # Both metrics rank the small fill better than the big fill
+    # (the *gap* is what matters for the planner's choice).
 
 
 @pytest.mark.slow

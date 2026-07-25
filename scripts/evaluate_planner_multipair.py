@@ -36,6 +36,8 @@ def main():
                     default=REPO_ROOT / "data" / "traces.jsonl")
     ap.add_argument("--max-steps", type=int, default=20)
     ap.add_argument("--lookahead", type=int, default=1)
+    ap.add_argument("--distance", default="hamming",
+                    choices=["hamming", "component", "color_set", "structural"])
     args = ap.parse_args()
 
     rows = [json.loads(l) for l in args.traces.read_text(encoding="utf-8").splitlines()]
@@ -75,7 +77,7 @@ def main():
     print(f"  tasks: {n_tasks}, total demos: {n_total_demos}")
     print()
 
-    planner = L2Planner(lookahead=args.lookahead)
+    planner = L2Planner(lookahead=args.lookahead, distance=args.distance)
 
     n_solved = 0
     n_partial = 0
@@ -103,6 +105,8 @@ def main():
         else:
             n_no_program += 1
 
+    print(f"  distance:                       {args.distance}")
+    print(f"  lookahead:                      {args.lookahead}")
     print(f"  finite-shape tasks evaluated: {n_with_finite_demos}")
     print(f"  planner solves (all demos exactly): "
           f"{n_solved} / {n_with_finite_demos} "

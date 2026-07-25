@@ -83,6 +83,117 @@ def _grid_hamming(a: tuple, b: tuple) -> int | float:
     return d
 
 
+def _connected_components(diff_cells: set) -> int:
+    """Count the number of 4-connected components in a set of (i, j)
+    cell coordinates. Used as the *object-aware* distance: each
+    component is one "object change" between state and target."""
+    if not diff_cells:
+        return 0
+    visited: set = set()
+    components = 0
+    for cell in diff_cells:
+        if cell in visited:
+            continue
+        components += 1
+        # Iterative BFS so deep grids don't blow the recursion limit.
+        stack = [cell]
+        while stack:
+            c = stack.pop()
+            if c in visited:
+                continue
+            visited.add(c)
+            i, j = c
+            for di, dj in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                ni, nj = i + di, j + dj
+                if (ni, nj) in diff_cells and (ni, nj) not in visited:
+                    stack.append((ni, nj))
+    return components
+
+
+def _component_distance(a: tuple, b: tuple) -> int | float:
+    """Object-aware distance: number of 4-connected components in the
+    symmetric difference of two same-shape grids, or +inf if shapes
+    differ. Each component represents one "object change" — a moved
+    object contributes 2 components (vacated area + new position); a
+    fill of one region contributes 1 component.
+
+    This is the diagnostic for *why* Hamming fails: a 50-cell fill
+    scores 1.0 here but 50.0 in Hamming, so a candidate that fills a
+    small region in the right way outranks a candidate that fills a
+    large region in the wrong way.
+    """
+    if len(a) != len(b):
+        return float("inf")
+    diff: set = set()
+    for i, (ra, rb) in enumerate(zip(a, b)):
+        if len(ra) != len(rb):
+            return float("inf")
+        for j, (xa, xb) in enumerate(zip(ra, rb)):
+            if xa != xb:
+                diff.add((i, j))
+    return _connected_components(diff)
+
+
+def _color_set_distance(a: tuple, b: tuple) -> int | float:
+    """Color-set distance: number of distinct colors present in one
+    grid but not the other. A task that *adds* a new color scores 1;
+    a task that *replaces* a color scores 2; a task that preserves
+    the color set scores 0.
+
+    Useful for tasks like "change all red to blue" (replace-style)
+    where the color set matters but the cell positions don't.
+    """
+    if len(a) != len(b) or not a or not a[0]:
+        return float("inf")
+    colors_a = {c for row in a for c in row}
+    colors_b = {c for row in b for c in row}
+    # |A \ B| + |B \ A|
+    return len(colors_a - colors_b) + len(colors_b - colors_a)
+
+
+def _structural_distance(a: tuple, b: tuple,
+                          alpha: float = 1.0,
+                          beta: float = 0.05,
+                          gamma: float = 2.0) -> float:
+    """Structural / object-aware distance that combines:
+
+      * component_count: number of disconnected regions of
+        disagreement (each is one "object change");
+      * hamming / 20.0: scaled cell-wise disagreement, capped at
+        one extra "object change" per 20 cells of mismatch
+        (empirically chosen so a 5-cell fix costs ~0.25 components);
+      * color_set_distance: number of colors in one but not the
+        other (multiplied by 2 so color mismatches dominate
+        positional jitter).
+
+    Both alpha, beta, gamma are tunable but the defaults are
+    chosen so the metric stays in the same magnitude as the raw
+    component_count (~1–5 for "object-changed" tasks), and the
+    hamming penalty is bounded so a single 5-cell move doesn't
+    outscore a 50-cell fill.
+
+    Returns +inf if the grids differ in shape.
+    """
+    comp = _component_distance(a, b)
+    ham = _grid_hamming(a, b)
+    cols = _color_set_distance(a, b)
+    if comp == float("inf") or ham == float("inf") or cols == float("inf"):
+        return float("inf")
+    return alpha * comp + beta * ham + gamma * cols
+
+
+# ---- the named distance functions ----------------------------------------
+
+# A dict mapping distance name -> callable, so callers (CLI, REPL, tests)
+# can switch by name without importing every metric.
+DISTANCES: dict[str, Callable] = {
+    "hamming":     _grid_hamming,
+    "component":   _component_distance,
+    "color_set":   _color_set_distance,
+    "structural":  _structural_distance,
+}
+
+
 def _mean_dists(dists: list[float]) -> float:
     """Mean of a list of distances, treating +inf as a hard veto
     (the result is +inf if any distance is +inf)."""
@@ -280,6 +391,13 @@ class L2Planner:
         A function ``(state, target) -> [(name, args), ...]`` returning
         the candidate actions to consider. Defaults to
         ``_default_candidates``.
+    distance : str or callable, default "hamming"
+        The distance metric. Either a name from ``DISTANCES``
+        (``"hamming"``, ``"component"``, ``"color_set"``,
+        ``"structural"``) or a callable ``(state, target) -> float``.
+        See the module docstring for the metric definitions; the
+        default is cell-wise Hamming, which is too coarse for many
+        ARC tasks — the structural metric is the natural upgrade.
     lookahead : int, default 1
         Planning depth. ``1`` = greedy one-step (the default; cheap
         and effective for most ARC tasks). ``2`` rolls out every
@@ -293,11 +411,23 @@ class L2Planner:
     """
 
     def __init__(self, candidate_fn: Callable | None = None,
+                 distance: "str | Callable" = "hamming",
                  lookahead: int = 1,
                  loop_penalty: float = 1e9):
         if lookahead < 1:
             raise ValueError("lookahead must be >= 1")
         self.candidate_fn = candidate_fn or _default_candidates
+        if isinstance(distance, str):
+            if distance not in DISTANCES:
+                raise ValueError(
+                    f"unknown distance {distance!r}; "
+                    f"choose from {sorted(DISTANCES)} or pass a callable"
+                )
+            self.distance_fn = DISTANCES[distance]
+            self.distance_name = distance
+        else:
+            self.distance_fn = distance
+            self.distance_name = getattr(distance, "__name__", "custom")
         self.lookahead = lookahead
         self.loop_penalty = loop_penalty
 
@@ -316,7 +446,7 @@ class L2Planner:
               "primitive":  <name of the chosen primitive>,
               "args":       <tuple of args passed to the primitive>,
               "next_state": <the predicted next state (a grid tuple)>,
-              "distance":   <Hamming distance to target>,
+              "distance":   <distance to target under the configured metric>,
             }
 
         If no candidate produces a valid grid→grid transition, the
@@ -330,9 +460,9 @@ class L2Planner:
                 continue
             if not result or not isinstance(result[0], tuple):
                 continue
-            if _grid_hamming(result, target) == float("inf"):
+            d = self.distance_fn(result, target)
+            if d == float("inf"):
                 continue
-            d = _grid_hamming(result, target)
             if forbid_states and result in forbid_states:
                 d += self.loop_penalty
             if d < best["distance"]:
@@ -391,10 +521,10 @@ class L2Planner:
                 if not result or not isinstance(result[0], tuple):
                     bad = True
                     break
-                if _grid_hamming(result, tg) == float("inf"):
+                d = self.distance_fn(result, tg)
+                if d == float("inf"):
                     bad = True
                     break
-                d = _grid_hamming(result, tg)
                 dists.append(d)
                 next_states.append(result)
             if bad:
@@ -459,9 +589,9 @@ class L2Planner:
                     bad = True; break
                 if not result or not isinstance(result[0], tuple):
                     bad = True; break
-                if _grid_hamming(result, tg) == float("inf"):
+                d = self.distance_fn(result, tg)
+                if d == float("inf"):
                     bad = True; break
-                d = _grid_hamming(result, tg)
                 dists.append(d)
                 next_states.append(result)
             if bad:

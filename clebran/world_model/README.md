@@ -151,6 +151,54 @@ planner no-program:                  0
 mean steps per task:               19.3  (near the 20-step cap)
 ```
 
+### Distance metrics — single-pair diagnostic (815 same-shape pairs)
+
+Four distance metrics are now exposed via `L2Planner(distance=...)`:
+
+| metric | improves over identity | Hodel match (in-cand) | mean dist |
+|---|---|---|---|
+| `hamming` (default) | 35.2% | 36.7% | 19.87 |
+| `component` | 97.9% | 35.4% | 1.22 |
+| `color_set` | 98.4% | 20.3% | 0.67 |
+| `structural` | 87.5% | 36.7% | 5.77 |
+
+The component / color_set metrics have *much* higher improve rates
+because they're easier to satisfy (most primitives change at most
+a few components, so the bar is low). But the Hodel match rate
+is similar (component 35.4% vs hamming 36.7%) and the multi-pair
+iterative solve rate is **unchanged** across all four metrics
+(3.4% / 9 / 263). **The distance metric is not the bottleneck
+for the multi-pair solve rate** — the bottleneck is the candidate
+set. The 28.2% Hodel match rate is the diagnostic: when the
+planner is *allowed* to pick the right primitive (because it's in
+the candidate set), it only matches the Hodel solver 36.7% of
+the time, regardless of the metric. The remaining 63% is the
+planner picking a *lower-distance* primitive that the Hodel
+solver wouldn't have picked — a metric / planning problem, not
+a candidate-coverage problem.
+
+The structural distance is exposed as the natural upgrade for
+users who want object-aware behavior (it scores primitives on
+structural match rather than cell-wise Hamming), and the
+component / color_set metrics are exposed for diagnostic
+experiments. The default stays `hamming` for backward
+compatibility and because Hamming is the metric the B5 fitness
+function optimizes at the integration level — see §3.3 below.
+
+### B5+planner integration by distance metric (3 seeds, 500K)
+
+The B5+planner arm with the *structural* distance (3 seeds, 500K
+budget, frontier subset): 9.33 mean solves (2.33 evo, mean length
+1.6). Hamming: 10.0 / 3.0 / 2.03. The Hamming-based planner
+produces programs that more directly compete with the GP search
+(because B5's fitness function is Hamming-based per-cell
+accuracy), so the structural distance is a slight regression at
+the integration level despite the better per-step matching. The
+takeaway: **the planner's distance metric should match the
+fitness function's distance metric** for the integration to
+work; the structural distance is a useful diagnostic but not
+the right default for B5+planner.
+
 ### Reading
 
 * **One-step planner beats identity by ~24%** (26.29 → 19.87) on
@@ -227,6 +275,11 @@ simultaneously (the multi-pair API). The seeded program is the
 planner's best linear sequence of primitives. The seed is
 evaluated by the standard fitness function (which counts against
 the budget) and inserted at the front of the population.
+
+The distance metric is configurable via
+`--planner-distance {hamming,component,color_set,structural}`
+(default `hamming`); see the *Distance metrics* section above
+for the trade-offs.
 
 ### Pilot result (3 seeds, 500K and 1M candidate-evaluations, frontier subset)
 

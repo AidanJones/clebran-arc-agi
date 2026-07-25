@@ -43,6 +43,7 @@ def run_single(
     mine_every: int = 5,
     planner_max_steps: int = 20,
     planner_lookahead: int = 1,
+    planner_distance: str = "hamming",
 ) -> dict:
     """Run the B5+planner arm on the frontier subset for a single seed.
 
@@ -57,6 +58,13 @@ def run_single(
     * ``planner_lookahead`` controls the planner's depth. ``1`` =
       greedy one-step (default). ``2`` = two-step lookahead (more
       compute, fewer local-optimum traps).
+    * ``planner_distance`` controls the planner's distance metric.
+      ``"hamming"`` (default), ``"component"``, ``"color_set"``, or
+      ``"structural"``. The structural / component metrics are
+      *object-aware* — they score primitives on structural match
+      (number of disconnected disagreement regions) rather than
+      cell-wise Hamming, which is the right metric for tasks that
+      change a small region of the grid.
     """
     tasks = subset_tasks()
     pool = subset_pool()
@@ -74,7 +82,8 @@ def run_single(
     log.write({"event": "start", "arm": arm, "seed": seed, "budget": budget,
                "pool_size": len(pool), "pop_size": pop_size,
                "self_mine": self_mine, "planner_max_steps": planner_max_steps,
-               "planner_lookahead": planner_lookahead})
+               "planner_lookahead": planner_lookahead,
+               "planner_distance": planner_distance})
 
     # First seeding — standard phase-1 closure, then planner seeds
     # on top. The planner uses ALL demo pairs, not just the first,
@@ -82,7 +91,8 @@ def run_single(
     for tid in tasks:
         lin.seed_population(tid)
         lin.seed_with_planner(tid, max_steps=planner_max_steps,
-                              lookahead=planner_lookahead)
+                              lookahead=planner_lookahead,
+                              distance=planner_distance)
 
     sched_rng = random.Random(seed + 777)
     epoch = 0
@@ -155,6 +165,12 @@ def main() -> int:
     ap.add_argument("--planner-max-steps", type=int, default=20)
     ap.add_argument("--planner-lookahead", type=int, default=1,
                     help="L2 planner depth (1=greedy, 2=two-step lookahead)")
+    ap.add_argument("--planner-distance", default="hamming",
+                    choices=["hamming", "component", "color_set", "structural"],
+                    help="L2 planner distance metric (hamming=cell-wise, "
+                         "component=connected components in symmetric "
+                         "difference, color_set=color-set overlap, "
+                         "structural=hybrid)")
     ap.add_argument("--no-self-mine", action="store_true",
                     help="Disable central library mining (B0 mode)")
     args = ap.parse_args()
@@ -165,6 +181,7 @@ def main() -> int:
         self_mine=not args.no_self_mine,
         planner_max_steps=args.planner_max_steps,
         planner_lookahead=args.planner_lookahead,
+        planner_distance=args.planner_distance,
     )
     print()
     print(f"B5+planner (seed={args.seed}, budget={args.budget}):")

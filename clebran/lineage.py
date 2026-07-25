@@ -243,7 +243,8 @@ class Lineage:
         self._sort(pop)
 
     def seed_with_planner(self, tid: str, max_steps: int = 20,
-                          lookahead: int = 1) -> bool:
+                          lookahead: int = 1,
+                          distance: str = "hamming") -> bool:
         """Run the L2 planner on *all* of the task's demo pairs and
         add the resulting program to the population as a
         high-priority seed. Returns True if the planner produced a
@@ -267,6 +268,14 @@ class Lineage:
         lookahead : int, default 1
             Planning depth passed to ``L2Planner``. ``1`` = greedy
             one-step (default). ``2`` = two-step lookahead.
+        distance : str, default "hamming"
+            Distance metric passed to ``L2Planner``. One of
+            ``"hamming"``, ``"component"``, ``"color_set"``,
+            ``"structural"``. The structural / component metrics
+            are *object-aware* — they score primitives on structural
+            match (number of disconnected disagreement regions)
+            rather than cell-wise Hamming, which is the right
+            metric for tasks that change a small region of the grid.
         """
         from .world_model.l2_planner import L2Planner
         task = self.tasks[tid]
@@ -287,7 +296,7 @@ class Lineage:
                 return False
             if not (isinstance(tg, tuple) and tg and isinstance(tg[0], tuple)):
                 return False
-        planner = L2Planner(lookahead=lookahead)
+        planner = L2Planner(lookahead=lookahead, distance=distance)
         result = planner.plan_to_program(demos, max_steps=max_steps)
         prog = result["program"]
         if not prog.statements:
