@@ -8,7 +8,7 @@ g2g = [r for r in rows if r["state"]["kind"] == "grid" and r["next_state"]["kind
 heads = Counter(r["action"]["fn"] for r in g2g)
 print(f"grid->grid transitions: {len(g2g)} / {len(rows)}")
 print()
-print("Top 25 grid->grid primitives:")
-for h, c in heads.most_common(25):
-    print(f"  {h:20s} {c}")
-
+print("Top 35 grid->grid primitives:")
+for h, c in heads.most_common(35):
+    h_str = str(h) if h is not None else "<None>"
+    print(f"  {h_str:20s} {c}")

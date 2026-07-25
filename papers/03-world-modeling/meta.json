@@ -1,0 +1,7 @@
+{
+  "title": "A World-Model Substrate for ARC Program Synthesis",
+  "subtitle": "The clebran interpreter as a perfect L1 oracle, an L2 multi-pair planner, and the first positive integration result on the clebran rig",
+  "author": "Aidan Jones",
+  "date": "July 2026",
+  "footnote": "Source: clebran-arc-agi. Evidence reproduction in this directory's REPRODUCE.md; trace dataset at data/traces.jsonl; per-experiment data under experiments/2026-07-2*."
+}
