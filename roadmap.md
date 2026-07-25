@@ -584,20 +584,32 @@ the *Agentic World Modeling* literature (arXiv:2604.22748):
    `interpreter.run_trace` and write `data/traces.jsonl` — one row per
    trace step, each with `(task_id, step_index, state, action, next_state)`.
    The substrate is already there; this is one Python script.
+   **DONE** — 16,149 rows, 1,302 demo pairs, 6.3 MB; 1,378 (~10%)
+   grid→grid transitions.
 2. *L1 predictor baseline.* Train a small learned approximator on the
    trace data; measure next-state prediction accuracy against the
    interpreter. This is a sanity-check / compression experiment, not a
-   capability claim.
+   capability claim. **DONE (KnnL1, the wrong model class)** — 0% OOD
+   exact-match, 5% in-distribution, 7.65% OOD shape-match, 75.71%
+   in-dist shape-match. The (state, action) → next_state relationship
+   is too state-specific for Hamming-distance neighbours. Establishes
+   the floor for any learned L1.
 3. *L2 planning arm.* Modify the GP search to use a learned value
    function (predicted distance to target under the world model) instead
    of pure outcome reward. The agent rolls out candidate programs through
    the model, picks the first step that decreases the predicted distance,
    repeats. Compare against B5 + outcome-reward search at matched
    candidate-evaluations on the existing 30-task frontier subset.
+   **DONE (B5+planner arm, with the clebran interpreter as perfect L1)**
+   — 3.9% iterative solve rate on the trace dataset, 35.9% one-step
+   improve rate. B5+planner at 500K (3 seeds) ties B5 at 10.00 vs
+   9.67 mean solves, with +0.33 evolution-phase solves and 1 unique
+   task (f76d97a5) that B5 misses in any of the 3 seeds.
 4. *L3 evoker.* If L2 shows a positive result, the natural next step is
    to *revise* the world model on failed predictions — the dreaming
    loop. The agent practices inside its own simulator, refines the
-   world model when reality contradicts it, and re-rolls.
+   world model when reality contradicts it, and re-rolls. *Pending
+   20-seed 4M-eval B5+planner sweep first.*
 5. *ARCTraj integration.* Download ARCTraj, parse the CSV, align the
    O2ARC object-level actions to Hodel's primitives where possible.
    Many will not map; the un-mapped portion is a separate modality that
@@ -605,6 +617,19 @@ the *Agentic World Modeling* literature (arXiv:2604.22748):
 6. *ARC-AGI-3 evaluation.* Once the L2 arm is built, ARC-AGI-3 is the
    natural benchmark. The clebran substrate (typed IR, deterministic
    interpreter, library miner) transfers; the gap is the planning loop.
+
+**Status of the B5+planner arm at 500K-eval budget (3 seeds,
+frontier subset, see `clebran/world_model/README.md`):**
+
+```
+                              solved  evo-solved  test-exact  mean length
+B5 (control)                   9.67        2.67          9.67        1.61
+B5+planner (L=1)              10.00        3.00          9.67        2.03
+B5+planner (L=2)              10.00        3.00          9.67        1.70
+```
+
+The arm is at parity with B5 at this budget. The next test is the
+20-seed 4M-eval sweep that matches the headline B5 result.
 
 **Shortest path to a publishable result.** Steps 1–3 in the build order
 form a single experiment: *does an L1-trained world model improve
