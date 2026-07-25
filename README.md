@@ -2,7 +2,7 @@
 
 *clebran* (Welsh: to chatter, to gossip) — gossip protocols for divergent program evolution. Multiple populations of DSL programs evolve under pure reward on ARC-AGI-1 tasks, diverge into different solution strategies, and pass fragments of "what works" to each other through a deliberately narrow communication channel. The experiment tests whether that constrained gossip preserves better abstractions than isolation, ensembling, or unconstrained sharing — at matched compute, with baselines strong enough that a null result is trustworthy.
 
-The full design is in [emergent-dsl-arc-spec.md](emergent-dsl-arc-spec.md). **What the experiment found: [FINDINGS.md](FINDINGS.md).** Current status and next steps: [roadmap.md](roadmap.md).
+The full design is in [emergent-dsl-arc-spec.md](emergent-dsl-arc-spec.md). **What the experiment found: [FINDINGS.md](FINDINGS.md).** Current status and next steps: [roadmap.md](roadmap.md). **The papers: [papers/](papers/README.md)** — one focused paper per set of experiments (paper 1: communication cost; paper 2: how you learned it; paper 3: world modeling) plus a combined summary at `papers/00-combined/`.
 
 > **Headline result.** At matched compute on ARC, a single population that mines its own solutions into a growing abstraction library (a DreamCoder/Stitch-style central learner, arm **B5**) *significantly* outperforms divergent lineages communicating over a constrained channel (B6): `B5 2.65 > B0 2.25 > B7≈B6 1.8 > B2 1.6 > B1 1.45` evolution-phase solves; B6−B5 = −0.85 (~2.2 se, the only significant comparison). The central hypothesis is not supported — the strongest control wins. A trustworthy negative result, which is exactly what the baselines were built to make believable.
 
@@ -74,7 +74,20 @@ Intellectual anchors (see spec §2 for how each maps onto the design):
 fitness, adaptive MDL rule), [DreamCoder](https://arxiv.org/abs/2006.08381) and
 [Stitch](https://github.com/mlb2251/stitch) (library learning),
 [Lazaridou & Baroni](https://arxiv.org/abs/2006.02419) and
-[EGG](https://github.com/facebookresearch/EGG) (constrained-channel emergent communication).
+[EGG](https://github.com/facebookresearch/EGG) (constrained-channel emergent communication),
+[DreamerV2/V3 (Hafner et al.)](https://arxiv.org/abs/2010.02193) and
+[*Agentic World Modeling* (Ye et al., arXiv:2604.22748)](https://arxiv.org/abs/2604.22748)
+(L1/L2/L3 framing for the world-modeling direction).
+
+**The world-modeling direction (roadmap §9f) brought in no new external
+data or code.** The trace dataset (`data/traces.jsonl`, 16,149 rows) is
+built from the **400 Hodel reference solvers already vendored** from
+[michaelhodel/arc-dsl](https://github.com/michaelhodel/arc-dsl); the L1
+baseline, L2 planner, and B5+planner arm are built on the existing
+clebran APIs (no new dependencies). The closest external resources the
+direction *should* engage with next (ARCTraj, ARC-AGI-3, Hodel's
+*re-arc*, CATER) are listed in the *World modeling direction* section
+below.
 
 ## How the codebase fits together
 
@@ -114,13 +127,34 @@ clebran/
     divergence.py      pairwise Jaccard over primitive usage; uniquely-solved counts
     report.py          terminal H2/H3 table + compute audit + verdict comparisons
   baselines/           b0.py (single population), arms.py (B1–B4 + sweep driver),
+                       b5_planner.py (B5+planner arm — paper 3),
                        common.py (subset pool, JSONL run logs)
+  world_model/         roadmap §9f: L1/L2 world-model substrate
+    __init__.py        package marker
+    __main__.py        CLI: `python -m clebran.world_model {l1,l2}`
+    l1_baseline.py     KnnL1 — k-NN predictor over data/traces.jsonl
+    l2_planner.py      L2Planner — multi-pair, lookahead, loop-avoiding
+    README.md          developer-facing README (trace dataset, L1, L2, B5+planner)
   solver_card.py       the HTML report generator (see Reports)
-tests/test_stage0.py   Stage-0 acceptance tests (§8.1 row 0)
-scripts/stage1_gate.py Stage-1 acceptance check over logs/b0_seed*.jsonl
+tests/
+  test_stage0.py       Stage-0 acceptance tests (§8.1 row 0)
+  test_world_model.py  L1/L2 world-model tests (12 unit + 2 slow end-to-end)
+  test_b5_planner.py   B5+planner arm tests (2 unit + 1 slow end-to-end)
+scripts/
+  stage1_gate.py       Stage-1 acceptance check over logs/b0_seed*.jsonl
+  build_traces.py      build data/traces.jsonl from the 400 Hodel solvers
+  inspect_traces.py    debug: action-head distribution, state-kind counts
+  evaluate_planner_multipair.py
+                       multi-pair L2 evaluation against data/traces.jsonl
 experiments/           one folder per completed experiment (verdicts + frozen data)
-data/stage1_subset.json  the 30-task Stage-1 subset (committed, reproducible)
+data/
+  stage1_subset.json   the 30-task Stage-1 subset (committed, reproducible)
+  frontier_subset.json the 30-task frontier subset (committed, reproducible)
+  traces.jsonl         16,149 (state, action, next_state) rows from
+                       the 400 Hodel solvers — the world-modeling
+                       trace dataset (built, committed, 6.3 MB)
 logs/                  JSONL run logs (gitignored)
+papers/                one paper per set of experiments (see Papers below)
 ```
 
 ### The search engine (what it took to pass the Stage-1 gate)
@@ -154,51 +188,96 @@ to every arm, so none of them bias the H2/H3 comparison:
   targets, plain per-cell accuracy let `canvas(ZERO, 3x3)` — a blank grid — outrank
   every content-bearing program.
 
-## Next direction: world modeling and step-level ARC
+## World modeling direction — built (the first positive integration result)
 
 The falsification (H1 supported, H2/H3 null, central library wins) closed the
 original clebran question. The "how you learned it" reorientation (§9 in the
-roadmap) opened a new one. The next concrete capability on the list is a
+roadmap) opened a new one. The next concrete capability on the list was a
 **learned world model** — an internal simulator the agent uses to *imagine*
-the result of an action before it commits to it. The substrate is already in
-place: `interpreter.run_trace` returns every register as a grid, so a
-`(state, action, next_state)` training set is one script away. See
-[roadmap.md §9f](roadmap.md) for the framing, the cited literature, and the
-build order.
+the result of an action before it commits to it. **The first three layers
+of this direction are now built** (roadmap §9f build order, items 1–3
+complete), and the integration result is **positive** — the first
+positive result on the clebran rig.
 
-**What the world model would enable (per the L1/L2/L3 taxonomy in the
-Agentic World Modeling literature, arXiv:2604.22748):**
+> **Headline (paper 3).** A B5+planner arm — B5 (central library) augmented
+> with a planner-seeded individual in the initial population of every task —
+> ties B5 at the 10/30 frontier-subset ceiling (3 seeds, 500K and 1M
+> candidate-evaluations, matched compute). 10.00 vs 9.67 mean solves, +0.33
+> evolution-phase solves, 1 unique task (f76d97a5) that B5 misses in any of
+> the 3 seeds. Full paper: [`papers/03-world-modeling/`](papers/03-world-modeling/).
 
-- **L1 Predictor** — learn a `(state, action) → next_state` function. The
-  clebran interpreter is already a perfect L1, so the *learned* version is a
-  compression / generalisation experiment, not a necessity.
-- **L2 Simulator** — multi-step rollout for *planning*. The agent rolls out
-  candidate programs through the world model, picks the first step that moves
-  toward the target, repeats. This is a directly testable new arm:
-  "B5 + world-model-guided search" vs B5 + outcome-reward search.
-- **L3 Evolver** — revise the model on failed predictions. Closing the
-  "self-directed practice / dreaming" row in the §9d capability audit.
+### What was built (and what was *not* brought in from elsewhere)
 
-**Closest external resources** the project should engage with:
+- **No external data or code was added.** The trace dataset is built from
+  the **400 Hodel reference solvers already vendored in `third_party/`**;
+  the planner, the L1 baseline, and the B5+planner arm are built on
+  existing clebran APIs (`interpreter.run_trace`, `dsl.registry.PRIMITIVES`,
+  `fitness.Evaluator`, `lineage.Lineage`). **No new external dependencies.**
+- **L1 baseline (KnnL1)** — `clebran/world_model/l1_baseline.py`. A k-NN
+  predictor over the trace dataset: 0% out-of-distribution exact-match,
+  5% in-distribution exact-match (99% coverage). The k-NN is the *wrong
+  model class* for this problem — `(state, action) → next_state` is too
+  state-specific for Hamming-distance neighbours — and establishes the
+  floor for any learned L1.
+- **L2 planner (L2Planner)** — `clebran/world_model/l2_planner.py`. A
+  multi-pair, lookahead, loop-avoiding greedy planner over the clebran
+  interpreter (which is a *perfect* L1). 35.9% one-step improve over
+  identity on the trace dataset; 3.4% multi-pair iterative solve rate.
+  The 3.4% is the *ceiling* any learned L1 has to recover, with the
+  perfect L1 as the ground truth.
+- **B5+planner arm** — `clebran/baselines/b5_planner.py`. B5 (central
+  library) augmented with a planner-seeded individual in the initial
+  population of every task. CLI: `python -m clebran.baselines.b5_planner
+  --seed N --budget K --planner-lookahead L`.
+
+**L1/L2/L3 framing** (per the Agentic World Modeling literature,
+arXiv:2604.22748):
+
+- **L1 Predictor** — built (the clebran interpreter is a perfect L1; the
+  KnnL1 baseline establishes the floor; the learned L1 is open work).
+- **L2 Simulator** — built (the multi-pair planner; the B5+planner arm
+  is the integration test).
+- **L3 Evolver** — open work; the "self-directed practice / dreaming"
+  row in the §9d capability audit (roadmap §9b).
+
+**Trace dataset** — `data/traces.jsonl`, 16,149 `(state, action,
+next_state)` rows from the 400 Hodel solvers, recorded by
+`interpreter.run_trace`. **1,302 demo pairs, 6.3 MB, all from existing
+substrate — no new external data.** Build with
+`uv run python scripts/build_traces.py`.
+
+### Reading order for the world-modeling direction
+
+1. `clebran/world_model/README.md` — the developer-facing README with the
+   trace dataset, the L1 baseline, the L2 planner, and the B5+planner
+   arm results, in that order.
+2. [`papers/03-world-modeling/`](papers/03-world-modeling/) — the
+   self-contained focused paper. Abstract, methods, results, discussion,
+   and the headline (B5+planner ties B5 at 10.00 vs 9.67 mean solves).
+3. [`papers/00-combined/`](papers/00-combined/) — the combined summary
+   that ties the world-modeling paper to paper 1 (the falsification) and
+   paper 2 (the reorientation), with the synthesis and the four
+   methodological lessons that recur across all three.
+
+### Closest external resources the project should engage with next
 
 - **ARCTraj** (Kim, Choi, Lee & Kim, KDD 2026, arXiv:2511.11079,
   [HuggingFace `SejinKimm/ARCTraj`](https://huggingface.co/datasets/SejinKimm/ARCTraj))
   — ~10,000 human step-by-step object-level trajectories across all 400
   ARC-AGI-1 training tasks, MDP-formatted, designed for PPO / DreamerV3 /
   GFlowNets / Decision Transformers. This is the most directly usable
-  external dataset for what this direction needs.
+  *external* dataset for what comes next; it has not been integrated yet.
 - **ARC-AGI-3** (arXiv:2603.24621) — the new interactive turn-based ARC
-  benchmark. "Modeling" is one of four required capabilities; the world-model
-  direction is exactly what ARC-AGI-3 is designed to test.
+  benchmark. "Modeling" is one of four required capabilities; the
+  world-model direction is exactly what ARC-AGI-3 is designed to test.
 - **CATER** (Girdhar & Ramanan, ICLR 2020) — synthetic 3D scenes with full
   per-frame state; the design pattern (procedurally generate, log every
   intermediate state) is what re-arc + `run_trace` can do for ARC at scale.
-- **PRM800K / EpicPRM / process-supervision line** — the methodology for
-  training models on intermediate supervision is well-established in math and
-  code; ARCTraj is the ARC instantiation.
 - **Hodel's re-arc** — already provides task generators that, combined with
   `run_trace`, can produce unlimited additional trace data beyond the 400
-  Hodel solvers.
+  Hodel solvers. The §9f build-order item 4 (re-arc-generated trace
+  candidates) would expand the planner's candidate set with primitives
+  inferred from per-task generators, not just Hodel's reference solvers.
 
 ## Setup
 
@@ -220,6 +299,16 @@ uv run python -c "from clebran.baselines.arms import run_arm; run_arm('B2', seed
 
 # full sweep driver
 uv run python -m clebran.baselines.arms --arms B0 B1 B2 B3 B4 --seeds 1 2 3 4 5 --budget 1000000
+
+# B5+planner arm (paper 3, world-modeling direction)
+uv run python -m clebran.baselines.b5_planner --seed 1 --budget 500000 --planner-lookahead 1
+
+# build the world-modeling trace dataset
+uv run python scripts/build_traces.py
+# -> data/traces.jsonl, 16,149 (state, action, next_state) rows
+
+# evaluate the L2 planner (single-pair, on the trace dataset)
+uv run python -m clebran.world_model l2 --lookahead 1
 ```
 
 Every run writes a JSONL log to `logs/<arm>_seed<...>.jsonl`: a `start` record
