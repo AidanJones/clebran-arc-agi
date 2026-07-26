@@ -84,7 +84,16 @@ def run_single(
         evaluator=ev,
         p_fragment=p_fragment,
     )
-    log = RunLog(run_name or f"{run_prefix()}{arm.lower()}_seed{seed}")
+    # Include the planner_top_k in the run name when it's
+    # non-default, so the sweep doesn't overwrite the K=1 log
+    # with the K=3 / K=5 results.
+    if run_name is None:
+        prefix = run_prefix()
+        suffix = f"k{planner_top_k}" if planner_top_k > 1 else ""
+        log_name = f"{prefix}{arm.lower()}{suffix}_seed{seed}"
+    else:
+        log_name = run_name
+    log = RunLog(log_name)
     log.write({"event": "start", "arm": arm, "seed": seed, "budget": budget,
                "pool_size": len(pool), "pop_size": pop_size,
                "self_mine": self_mine, "planner_max_steps": planner_max_steps,
