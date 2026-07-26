@@ -312,15 +312,16 @@ solves" is null at 500K / 3 seeds — the variance is too high
 to distinguish K=1 from K>1. The 20-seed 4M-eval sweep is the
 proper test of whether top-K helps at scale.
 
-### Pilot result (3 seeds, 500K and 1M candidate-evaluations, frontier subset)
+### Pilot result (3 seeds at 500K-1M; 5 seeds at 4M, frontier subset)
 
 ```
-                              solved  evo-solved  test-exact  mean length
-B5 (control, 500K)             9.67        2.67          9.67        1.61
-B5+planner (L=1, 500K)        10.00        3.00          9.67        2.03
-B5+planner (L=2, 500K)        10.00        3.00          9.67        1.70
-B5+planner (L=1, 1M)          10.00        3.00          9.67        2.03
-B5+planner (L=1, 4M, seed=1)  13          6             11          2.54
+                              solved  evo-solved  test-exact  mean length  n
+B5 (control, 500K)             9.67        2.67          9.67        1.61        3
+B5+planner (L=1, 500K)        10.00        3.00          9.67        2.03        3
+B5+planner (L=2, 500K)        10.00        3.00          9.67        1.70        3
+B5+planner (L=1, 1M)          10.00        3.00          9.67        2.03        3
+B5+planner (L=1, 4M)          12.40        5.20         11.80        2.37        5
+B5 (control, 4M, seed=1)      14           7            12          2.57        1
 ```
 
 ### Reading
@@ -334,14 +335,42 @@ seeds. The planner-seeded programs are slightly longer (2.0 vs
 1.6 statements), which is the cost of carrying a non-trivial
 seeded individual.
 
-**At 4M budget (seed=1 only, the 5-seed sweep is in progress)
-the B5+planner arm pulls ahead**: 13 solves (6 evolution-phase,
-11 test-exact) vs the 500K result of 10/3/9 — a **30% gain from
-8x compute**. This is a stronger signal than the 500K-1M
-plateau, and the natural next test is the 5-seed 4M-eval sweep
-(see *Next push* below). The 4M result includes 0d3d703e (B5's
-unique task at 500K), f76d97a5 (B5+planner's unique task at
-500K), and 1f85a75f (new at 4M).
+**At 4M budget the picture changes. The planner seed's
+marginal value diminishes at higher compute, because B5's
+phase-1 closure already finds most of the same solutions the
+planner finds.**
+
+- B5+planner (K=1) at 4M (5 seeds): 12.4 ± 0.55 solves, 5.2
+  evo, 11.8 test-exact.
+- B5 (control) at 4M (seed=1, in-progress sweep): 14 solves,
+  7 evo, 12 test-exact.
+
+B5 alone is **at parity or slightly better** than B5+planner
+at the headline 4M budget. The 30% gain from 8x compute (500K
+to 4M, B5+planner) is matched by B5 alone — both arms scale
+at roughly the same rate, and B5's phase-1 closure narrows the
+gap.
+
+**Honest interpretation.** The planner seed is a useful seed
+*when the rest of the GP is starved* (500K-1M budget on the
+30-task frontier, where B5's phase-1 closure saturates at ~7
+shallow tasks). At the headline 4M budget, the phase-1
+closure already finds 7-9 tasks and the evolutionary loop
+finds the rest, leaving little for the planner seed to add.
+The planner seed is a *parity* arm at 4M, not a *win*. The
+**first positive integration result** (parity at 500K-1M with
+1 unique task) holds at 500K-1M but dissolves at 4M.
+
+This is the cleanest answer to the open question
+*roadmap §9f build order item 6* asked: does the L1/L2
+direction help at the headline configuration? **The answer is
+*parity*, not because the planner is wrong, but because B5's
+phase-1 closure is already strong enough to find the same
+solutions the planner would seed.** The world-model
+direction's value is in the trace dataset (L1 baseline + KnnL1
+characterization) and the planner-as-substrate (the L2
+planner can be reused outside the B5 integration); the
+B5+planner integration specifically is at parity at scale.
 
 The key design choices that flipped the result from "slight
 null" to "parity":
