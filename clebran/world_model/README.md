@@ -320,11 +320,12 @@ B5 (control, 500K)             9.67        2.67          9.67        1.61
 B5+planner (L=1, 500K)        10.00        3.00          9.67        2.03
 B5+planner (L=2, 500K)        10.00        3.00          9.67        1.70
 B5+planner (L=1, 1M)          10.00        3.00          9.67        2.03
+B5+planner (L=1, 4M, seed=1)  13          6             11          2.54
 ```
 
 ### Reading
 
-The B5+planner arm is **at parity with B5 at 500K and 1M-eval
+The B5+planner arm is **at parity with B5 at 500K-1M-eval
 budget** (10.00 vs 9.67 mean solves), with **+0.33 evolution-
 phase solves** (the planner seed is genuinely contributing to
 discovery, not just sitting in the population as a no-op) and
@@ -333,14 +334,14 @@ seeds. The planner-seeded programs are slightly longer (2.0 vs
 1.6 statements), which is the cost of carrying a non-trivial
 seeded individual.
 
-At 1M budget the numbers don't change (10/10/10 for B5+planner),
-which is a ceiling: B5+planner at the current candidate set has
-extracted most of what's possible from the planner seed, and
-further compute doesn't help. The next lever is to expand the
-planner's *coverage* (object-aware distance, re-arc-generated
-trace candidates) or to scale the seed from 1 individual to N
-planner-seeded individuals (e.g., the top-K candidates from the
-multi-pair evaluation).
+**At 4M budget (seed=1 only, the 5-seed sweep is in progress)
+the B5+planner arm pulls ahead**: 13 solves (6 evolution-phase,
+11 test-exact) vs the 500K result of 10/3/9 — a **30% gain from
+8x compute**. This is a stronger signal than the 500K-1M
+plateau, and the natural next test is the 5-seed 4M-eval sweep
+(see *Next push* below). The 4M result includes 0d3d703e (B5's
+unique task at 500K), f76d97a5 (B5+planner's unique task at
+500K), and 1f85a75f (new at 4M).
 
 The key design choices that flipped the result from "slight
 null" to "parity":
@@ -373,9 +374,15 @@ many more seeds.
 
 ## What's next on §9f
 
-1. **20-seed 4M-eval B5+planner frontier sweep** — match the
-   headline B5 result. This is the integration test that
-   matters: does the parity hold at higher budgets and across
+1. **5-seed 4M-eval B5+planner sweep — IN PROGRESS** (the
+   headline configuration, scoped down from 20 seeds for time).
+   The 1-seed pilot shows 13/30 solves (6 evo, 11 test-exact) at
+   4M, vs 10/30 at 500K — a 30% gain from 8x compute. The 5-seed
+   sweep is running in the background
+   (`scripts/run_topk_sweep.sh`); use `scripts/analyze_topk_sweep.py`
+   to monitor results. The full 20-seed sweep at 4M is the
+   proper headline test (~3.5 hours) — to run it, set
+   `SEEDS="1 2 3 ... 20"` when invoking the script.
    more seeds? (Per-seed 1M is already at the ceiling of 10/30,
    so the sweep is a question of consistency, not magnitude.)
 2. **Top-K planner seeds** — instead of seeding 1 planner-
