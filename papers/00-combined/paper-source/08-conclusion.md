@@ -101,23 +101,43 @@ seeded initial population* — is a directly testable new arm:
 the planner rolls out candidate primitives through the perfect L1
 (the clebran interpreter), picks the first step that decreases
 multi-pair Hamming distance to the target, and seeds the
-resulting program into B5's population. The pilot at 500K and 1M
-candidate-evaluations on the 30-task frontier subset (3 seeds)
-places the planner-seeded arm **at parity with B5** (10.00 vs
-9.67 mean solves), with +0.33 evolution-phase solves and 1 unique
-task that B5 misses in any of the 3 seeds. The result is the
-first *positive* integration result on the clebran rig, and it
-sets up three follow-ups: (i) the 20-seed 4M-eval B5+planner
-frontier sweep that matches the headline B5 result, (ii) an
-object-aware distance metric that scores primitives on structural
-match (counting matching objects) rather than cell-wise Hamming,
-and (iii) the learned L1 — a small neural or programmatic
-approximation of the interpreter that generalises across
-(state, action) pairs and replaces the perfect-but-slow interpreter
-as the planner's rollout engine. The §9f build order is the
-6-step plan in `roadmap.md`; items 1-3 are complete (trace
-dataset, KnnL1 baseline, B5+planner arm) and items 4-6 are the
-natural next push.
+resulting program into B5's population. **The integration is
+budget-conditional — and the headline is a null at the headline
+budget.** At 500K and 1M candidate-evaluations on the 30-task
+frontier subset (3 seeds), the planner-seeded arm *ties* B5
+(10.00 vs 9.67 mean solves, +0.33 evolution-phase solves, 1 unique
+task `f76d97a5` that B5 misses in any of the 3 seeds) — the
+*only* positive comparison in the study, scoped to starved-GP
+budgets. At the headline 4M budget (5 seeds), **B5 alone wins
+by 1.0 solve** (13.40 ± 0.89 vs 12.40 ± 0.55, ~1.8 SE on the
+per-seed delta), and the B5+planner's solved set is a *strict
+subset* of B5's — B5 solves 2 unique tasks (`0b148d64`, `f25fbde4`)
+that B5+planner never solves in any of the 5 seeds, while
+B5+planner has zero unique-to-it tasks. The planner seed is
+*useful when the GP is starved* (500K-1M) and a slight
+*regression when the GP has enough budget to do the work
+itself* (4M). The result is the first integration on the rig
+that is *conditional* on the GP's budget, and it sets up four
+follow-ups: (i) the **20-seed 4M-eval B5+planner frontier
+sweep** that turns the ~1.8 SE directional result into a 2+ SE
+rejection (or rejects the direction, which would be a
+publication-grade result either way); (ii) an object-aware
+distance metric that scores primitives on structural match
+(counting matching objects) rather than cell-wise Hamming —
+implemented as a configuration option in the planner, but null
+at the integration level on a 4M seed=1 pilot; (iii) the
+**learned L1** — a small neural or programmatic approximation
+of the interpreter that generalises across `(state, action)`
+pairs and replaces the perfect-but-slow interpreter as the
+planner's rollout engine; and (iv) re-vendoring Hodel's
+`re-arc` to expand the planner's candidate set with primitives
+inferred from per-task generators, not just Hodel's reference
+solvers. The §9f build order is the 10-step plan in
+`roadmap.md`; items 1-6 are complete (trace dataset, KnnL1
+baseline, L2 planner, B5+planner arm, multi-pair/lookahead/
+loop-avoidance/top-K refinements, 5-seed 4M-eval B5+B5+planner
+sweep with per-seed analysis) and items 7-10 are the natural
+next push.
 
 The negative result is the paper's contribution. It is what the
 clebran design's baselines were built to make believable, and it
