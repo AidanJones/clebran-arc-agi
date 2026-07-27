@@ -315,13 +315,13 @@ proper test of whether top-K helps at scale.
 ### Pilot result (3 seeds at 500K-1M; 5 seeds at 4M, frontier subset)
 
 ```
-                              solved  evo-solved  test-exact  mean length  n
+                              solved       evo-solved  test-exact  mean length  n
 B5 (control, 500K)             9.67        2.67          9.67        1.61        3
 B5+planner (L=1, 500K)        10.00        3.00          9.67        2.03        3
 B5+planner (L=2, 500K)        10.00        3.00          9.67        1.70        3
 B5+planner (L=1, 1M)          10.00        3.00          9.67        2.03        3
 B5+planner (L=1, 4M)          12.40        5.20         11.80        2.37        5
-B5 (control, 4M, seed=1)      14           7            12          2.57        1
+B5 (control, 4M)              13.40        6.20         12.40        2.46        5
 ```
 
 ### Reading
@@ -335,42 +335,48 @@ seeds. The planner-seeded programs are slightly longer (2.0 vs
 1.6 statements), which is the cost of carrying a non-trivial
 seeded individual.
 
-**At 4M budget the picture changes. The planner seed's
-marginal value diminishes at higher compute, because B5's
-phase-1 closure already finds most of the same solutions the
-planner finds.**
+**At 4M budget the picture is clear. B5 alone beats
+B5+planner by 1.0 solve on average (13.4 vs 12.4)**, with
++1.0 evolution-phase solves (6.2 vs 5.2) and 2 more unique
+tasks solved across the 5 seeds (16 vs 14). The planner seed
+is **not helping at the headline configuration**, and the
+B5+planner arm's unique tasks are a strict subset of B5's.
 
-- B5+planner (K=1) at 4M (5 seeds): 12.4 ± 0.55 solves, 5.2
-  evo, 11.8 test-exact.
-- B5 (control) at 4M (seed=1, in-progress sweep): 14 solves,
-  7 evo, 12 test-exact.
+The 30% gain from 8x compute (500K → 4M) holds for both arms.
+Both scale at roughly the same rate, but B5 alone scales
+*slightly better*: at 500K they're within 0.33 of each
+other; at 4M the gap widens to 1.0.
 
-B5 alone is **at parity or slightly better** than B5+planner
-at the headline 4M budget. The 30% gain from 8x compute (500K
-to 4M, B5+planner) is matched by B5 alone — both arms scale
-at roughly the same rate, and B5's phase-1 closure narrows the
-gap.
-
-**Honest interpretation.** The planner seed is a useful seed
-*when the rest of the GP is starved* (500K-1M budget on the
-30-task frontier, where B5's phase-1 closure saturates at ~7
-shallow tasks). At the headline 4M budget, the phase-1
+**Honest interpretation.** The planner seed is a useful
+seed *when the rest of the GP is starved* (500K-1M budget on
+the 30-task frontier, where B5's phase-1 closure saturates
+at ~7 shallow tasks). At the headline 4M budget, the phase-1
 closure already finds 7-9 tasks and the evolutionary loop
 finds the rest, leaving little for the planner seed to add.
-The planner seed is a *parity* arm at 4M, not a *win*. The
-**first positive integration result** (parity at 500K-1M with
-1 unique task) holds at 500K-1M but dissolves at 4M.
+The planner seed is a *regression* arm at 4M (-1.0 solve,
+-1.0 evo), not a *win*. The **first positive integration
+result** (parity at 500K-1M with 1 unique task) holds at
+500K-1M but **reverses** at 4M.
 
 This is the cleanest answer to the open question
 *roadmap §9f build order item 6* asked: does the L1/L2
 direction help at the headline configuration? **The answer is
-*parity*, not because the planner is wrong, but because B5's
-phase-1 closure is already strong enough to find the same
-solutions the planner would seed.** The world-model
-direction's value is in the trace dataset (L1 baseline + KnnL1
-characterization) and the planner-as-substrate (the L2
-planner can be reused outside the B5 integration); the
-B5+planner integration specifically is at parity at scale.
+*no at scale*, not because the planner is wrong, but because
+B5's phase-1 closure is already strong enough to find the
+same solutions the planner would seed — and stronger, in
+fact.** The world-model direction's value is in the trace
+dataset (L1 baseline + KnnL1 characterization) and the
+planner-as-substrate (the L2 planner can be reused outside
+the B5 integration); the B5+planner integration specifically
+is a *negative result at the headline 4M budget*.
+
+The K=3 and K=5 sweeps were not run (each would add ~80
+min). At 500K they were tied with K=1, so the headline at
+4M is unlikely to differ. The planner seed's value is at
+parity-or-better at starved budgets (500K-1M) and a slight
+regression at the headline budget (4M); the integration is
+*useful when the GP is starved, neutral-or-negative when the
+GP has enough budget to do the work itself*.
 
 The key design choices that flipped the result from "slight
 null" to "parity":
