@@ -47,7 +47,7 @@ study's first significant *process* effect against a wall of null
 *content* effects, and it reorients the question from what a
 system knows to how it learned it.
 
-**Paper 3 — the first positive integration result.** A
+**Paper 3 — a budget-conditional integration result.** A
 *world-modeling* direction is built on the substrate: the clebran
 interpreter is a *perfect L1* world model, and a thin L2 planner
 on top (multi-pair, lookahead, loop-avoiding) picks the
@@ -60,11 +60,14 @@ L1 baseline is the wrong model class (0% out-of-distribution
 exact-match, 5% in-distribution, 99% coverage), establishing the
 floor for any learned L1. The **B5+planner arm** — B5 augmented
 with a planner-seeded individual in the initial population of
-every task — is the first positive integration result on the
-clebran rig: at 500K and 1M candidate-evaluation budgets on the
-30-task frontier subset, 3 seeds, **B5+planner ties B5 at 10.00
-vs 9.67 mean solves** with +0.33 evolution-phase solves and 1
-unique task (f76d97a5) that B5 misses in any of the 3 seeds.
+every task — is *budget-conditional*: at 500K and 1M
+candidate-evaluation budgets on the 30-task frontier subset,
+3 seeds, **B5+planner ties B5 at 10.00 vs 9.67 mean solves**
+with +0.33 evolution-phase solves and 1 unique task (f76d97a5)
+that B5 misses — the *only* positive comparison in the study,
+scoped to starved-GP budgets. At the headline 4M budget (5
+seeds), B5 alone wins by 1.0 solve (13.4 ± 0.89 vs 12.4 ± 0.55),
+with the B5+planner's solved set a *strict subset* of B5's.
 The planner is exactly what ARC-AGI-3 was designed to test
 (arXiv:2603.24621, *Modeling* is one of four required
 capabilities), and the clebran typed-IR substrate and
@@ -72,7 +75,9 @@ library-mining mechanism transfer directly.
 
 **The contribution.** A falsification (paper 1), a reorientation
 (paper 2), and a substrate-integrated world-modeling direction
-that produces the first positive result (paper 3). The asset of
+that produces a budget-conditional integration result (paper 3:
+positive at starved-GP budgets, slight regression at the
+headline 4M budget). The asset of
 the work is the matched-compute measurement rig: a deterministic
 typed IR, a reproducible per-task RNG substream scheme, an
 audited candidate-evaluation budget, and a track record of
@@ -114,9 +119,11 @@ knows. Paper 2 turns the question to *how* a system learns, and
 shows that the order of acquisition is the only axis that moves
 capability with content held fixed. Paper 3 builds the substrate
 for a *next* question — whether a learned world model, used to
-plan, helps the search — and produces the first positive
-integration result on the rig. Read in order, the three
-together say: communication between divergent agents does not
+plan, helps the search — and produces a **budget-conditional
+integration result**: positive at starved-GP budgets (500K-1M,
+ties B5 with 1 unique task) and slightly negative at the
+headline 4M budget (B5 alone wins by 1.0 solve). Read in order,
+the three together say: communication between divergent agents does not
 help; the process of learning matters, and is where the
 remaining purchase is; and the substrate's perfect L1 is the
 right place to start building a world-model direction.
@@ -348,12 +355,18 @@ model for the clebran DSL. A thin L2 planner on top
 primitive whose multi-pair predicted next-state is closest to
 the target. The **B5+planner arm** — B5 augmented with a
 planner-seeded individual in the initial population of every
-task — is the **first positive integration result on the clebran
-rig**: at 500K and 1M candidate-evaluation budgets on the
-30-task frontier subset, 3 seeds, **B5+planner ties B5 at
-10.00 vs 9.67 mean solves** with +0.33 evolution-phase solves
-and 1 unique task (f76d97a5) that B5 misses in any of the 3
-seeds.
+task — is **budget-conditional** in its result. At 500K and 1M
+candidate-evaluation budgets on the 30-task frontier subset
+(3 seeds), B5+planner *ties* B5 at **10.00 vs 9.67** mean
+solves with +0.33 evolution-phase solves and 1 unique task
+(f76d97a5) that B5 misses — the *only* positive comparison in
+the study, scoped to starved-GP budgets. At the headline 4M
+budget (5 seeds), **B5 alone wins by 1.0 solve** (13.4 ± 0.89
+vs 12.4 ± 0.55, ~1.8 SE on the per-seed delta), with the
+B5+planner's solved set a *strict subset* of B5's (2 unique
+B5 tasks: 0b148d64, f25fbde4). The planner seed is *useful
+when the GP is starved* (500K-1M) and a slight *regression
+when the GP has enough budget to do the work itself* (4M).
 
 **The trace dataset.** `data/traces.jsonl` is a JSONL file
 built by `scripts/build_traces.py`, which runs all 400 Hodel
@@ -495,11 +508,14 @@ building a world-model direction.** The clebran interpreter is
 a perfect `(state, action) → next_state` oracle; a thin L2
 planner on top uses it to pick candidate primitives; the
 B5+planner arm, integrating the planner as a seed for B5's
-central-library search, produces the first positive integration
-result on the rig. The world-modeling direction is exactly
-what ARC-AGI-3 was designed to test, and the clebran
-typed-IR substrate and library-mining mechanism transfer
-directly. (Paper 3.)
+central-library search, produces a **budget-conditional**
+result: positive at starved-GP budgets (500K-1M, ties B5 at
++0.33 evo and 1 unique task) and slightly negative at the
+headline 4M budget (B5 alone wins by 1.0 solve, the
+B5+planner's solved set a strict subset of B5's). The
+world-modeling direction is exactly what ARC-AGI-3 was
+designed to test, and the clebran typed-IR substrate and
+library-mining mechanism transfer directly. (Paper 3.)
 
 **Methodological lessons that recur across all three papers.**
 

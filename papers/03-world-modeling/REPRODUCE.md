@@ -107,24 +107,56 @@ for s in 1 2 3; do
 done
 ```
 
-**B5 baseline (the control):**
+**5 seeds, 4M candidate-evaluations, frontier subset, lookahead=1 (the
+headline configuration):**
 
 ```sh
-for s in 1 2 3; do
+for s in 1 2 3 4 5; do
+  uv run python -m clebran.baselines.b5_planner \
+      --seed $s --budget 4000000 --pop-size 100 --planner-lookahead 1
+done
+```
+
+**5 seeds, 4M candidate-evaluations, frontier subset, B5 baseline
+(control):**
+
+```sh
+for s in 1 2 3 4 5; do
   uv run python -m clebran.baselines.frontier_sweep \
-      --run --arm B5 --seed $s --budget 500000
+      --run --arm B5 --seed $s --budget 4000000
 done
 ```
 
 Or use `clebran.baselines.arms` for the Stage-1 subset and B5
 matched-compute control.
 
-**Claims:**
+**Claims (500K-1M, starved-GP regime, 3 seeds):**
 B5 (control, 500K, 3 seeds): 9.67 solved, 2.67 evo, 1.61 mean length.
 B5+planner (L=1, 500K, 3 seeds): 10.00 solved, 3.00 evo, 2.03 mean length.
 B5+planner (L=2, 500K, 3 seeds): 10.00 solved, 3.00 evo, 1.70 mean length.
 B5+planner (L=1, 1M, 3 seeds): 10.00 solved, 3.00 evo, 2.03 mean length.
 B5+planner solves 1 unique task (f76d97a5) that B5 misses in any of the 3 seeds.
+
+**Claims (4M, headline configuration, 5 seeds):**
+
+| seed | B5 solved (evo) | B5+P solved (evo) | delta |
+|---|---|---|---|
+| 1 | 14 (7) | 13 (6) | -1 |
+| 2 | 12 (5) | 13 (6) | +1 |
+| 3 | 14 (7) | 12 (5) | -2 |
+| 4 | 14 (7) | 12 (5) | -2 |
+| 5 | 13 (5) | 12 (4) | -1 |
+| **mean** | **13.40 ± 0.89 (6.20 evo)** | **12.40 ± 0.55 (5.20 evo)** | **-1.00** |
+
+B5 union of solved tasks across 5 seeds: 16 unique.
+B5+planner union: 14 unique.
+B5-only tasks (B5 solves, B5+planner never does): `0b148d64`, `f25fbde4`
+(each a single-seed rare-event solve — B5 seed 1 for 0b148d64, B5 seed 3
+for f25fbde4).
+B5+planner-only tasks: none — the B5+planner's solved set is a *strict
+subset* of B5's.
+
+Inspect the per-seed summary with `uv run python scripts/inspect_4m_sweep.py`.
 
 ## 5. Frozen data
 

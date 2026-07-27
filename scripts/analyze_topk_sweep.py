@@ -28,6 +28,7 @@ def main():
 
     # Find all the b5p_*.jsonl files (the sweep re-uses these names).
     by_k: dict[int, list[dict]] = defaultdict(list)
+    in_progress: list[dict] = []
     for log_path in sorted(LOGS.glob("b5p_*.jsonl")):
         # Read all events; find the start event for K and the
         # final summary event for results.
@@ -44,7 +45,18 @@ def main():
         K = start.get("planner_top_k", "?")
         summary = events[-1]
         if summary.get("event") != "summary":
-            # Run still in progress — skip.
+            # Run still in progress — report as in-progress.
+            latest_epoch = None
+            for e in reversed(events):
+                if e.get("event") == "epoch":
+                    latest_epoch = e
+                    break
+            in_progress.append({
+                "seed": start.get("seed"),
+                "log": log_path.name,
+                "evals": latest_epoch.get("evals") if latest_epoch else None,
+                "solved": latest_epoch.get("solved") if latest_epoch else None,
+            })
             continue
         by_k[K].append(summary)
 
@@ -71,23 +83,36 @@ def main():
         })
 
     if args.json:
-        print(json.dumps(rows, indent=2))
+        print(json.dumps({"rows": rows, "in_progress": in_progress}, indent=2))
     else:
-        if not rows:
-            print("no completed runs yet")
+        if not rows and not in_progress:
+            print("no runs found")
             return
         print(f"{'K':>3s}  {'n':>3s}  {'solved':>14s}  {'evo':>10s}  "
               f"{'texact':>8s}  {'len':>5s}")
         print("-" * 60)
         for r in rows:
+            # n_seeds is the count of *completed* runs (those with
+            # a summary event). The solved_per_seed list may
+            # include in-progress runs as a tail - we slice it.
+            completed_solves = r["solved_per_seed"][:r["n_seeds"]]
+            if completed_solves:
+                r["solved_mean"] = statistics.mean(completed_solves)
+                r["solved_sd"] = (statistics.stdev(completed_solves)
+                                   if len(completed_solves) > 1 else 0.0)
             solved_str = (f"{r['solved_mean']:5.2f} +/- "
                           f"{r['solved_sd']:4.2f}")
             print(f"{r['K']:>3}  {r['n_seeds']:>3}  {solved_str:>14s}  "
                   f"{r['evo_mean']:>10.2f}  {r['test_exact_mean']:>8.2f}  "
                   f"{r['mean_len_mean']:>5.2f}")
-        print()
         for r in rows:
             print(f"K={r['K']} solved per seed: {r['solved_per_seed']}")
+        if in_progress:
+            print()
+            print("in progress (not included in the mean):")
+            for ip in in_progress:
+                print(f"  seed={ip['seed']}  log={ip['log']}  "
+                      f"evals={ip['evals']}  solved={ip['solved']}")
 
 
 if __name__ == "__main__":

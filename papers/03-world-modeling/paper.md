@@ -16,19 +16,26 @@ most common grid→grid Hodel primitives; it improves over identity
 on 35.9% of trace pairs and iteratively solves 3.9% of same-shape
 tasks end-to-end — the *upper bound* any learned L1 has to recover.
 The **B5+planner arm** integrates the planner as a perfect-L1 seed
-into the B5 (central-library) baseline, and is the first *positive*
-integration result on the clebran rig: at 500K and 1M
-candidate-evaluation budgets on the 30-task frontier subset, 3 seeds,
-B5+planner matches B5 at 10.00 vs 9.67 mean solves with +0.33
-evolution-phase solves and 1 unique task (f76d97a5) that B5 misses
-in any of the 3 seeds. The result sets up three follow-ups: the
-20-seed 4M-eval B5+planner frontier sweep; an object-aware distance
-metric that scores primitives on structural match rather than
-cell-wise Hamming; and the learned L1 — a small neural or
-programmatic approximation of the interpreter that, once it
-generalises, replaces the perfect-but-slow interpreter as the
-planner's rollout engine. The world-modeling direction is exactly
-what ARC-AGI-3 (arXiv:2603.24621) was designed to test, and the
+into the B5 (central-library) baseline. The integration is
+**budget-conditional** — and the headline result is a *null* at
+the headline budget. At 500K and 1M candidate-evaluations on the
+30-task frontier subset (3 seeds), B5+planner *ties* B5 at 10.00 vs
+9.67 mean solves with +0.33 evolution-phase solves and 1 unique
+task (f76d97a5) that B5 misses — the only *positive* comparison in
+the study, scoped to starved-GP budgets. At the headline 4M
+budget (5 seeds), **B5 alone wins by 1.0 solve** (13.4 ± 0.89 vs
+12.4 ± 0.55), with +1.0 evolution-phase solves; the B5+planner's
+solved set is a *strict subset* of B5's solved set, with 2 unique
+tasks (0b148d64, f25fbde4) that B5+planner never solves in any
+seed. The planner seed is *useful when the GP is starved*
+(500K-1M) and a slight *regression when the GP has enough budget to
+do the work itself* (4M). The world-modeling direction's value is
+in the **substrate it provides** for the next push: the trace
+dataset (L1 baseline + KnnL1 characterization) and the
+planner-as-substrate (the L2 planner can be reused outside the B5
+integration); the B5+planner integration specifically is a null
+result at scale. The world-modeling direction is exactly what
+ARC-AGI-3 (arXiv:2603.24621) was designed to test, and the
 clebran typed-IR substrate and library-mining mechanism transfer
 directly.
 
@@ -64,14 +71,23 @@ planner layer on top; the L3 — the "dreaming" loop — is open work
 
 This paper builds the first two layers and tests whether the L2
 planner, used as a *seed* for B5's central-library search, helps
-or hurts at matched compute. The headline is **positive** for the
-first time on the clebran rig: the B5+planner arm at 500K and 1M
-candidate-evaluations (3 seeds, frontier subset) ties B5 at
-**10.00 vs 9.67** mean solves, with **+0.33 evolution-phase
-solves** and **1 unique task** (f76d97a5) that B5 misses in any of
-the 3 seeds. The planner produces valid, non-trivial programs (mean
-length 2.0 vs B5's 1.6) that contribute to the GP search rather
-than merely sit in the population. The integration works.
+or hurts at matched compute. The result is **budget-conditional**
+— and the **headline is a null at the headline budget**. At 500K
+and 1M candidate-evaluations on the 30-task frontier subset (3
+seeds), B5+planner *ties* B5 at **10.00 vs 9.67** mean solves,
+with **+0.33 evolution-phase solves** and **1 unique task**
+(f76d97a5) that B5 misses in any of the 3 seeds — the *only*
+positive comparison in the study, scoped to starved-GP budgets.
+At the headline 4M budget (5 seeds), **B5 alone wins by 1.0
+solve** (13.4 ± 0.89 vs 12.4 ± 0.55), with +1.0 evolution-phase
+solves; the B5+planner's solved set is a **strict subset** of
+B5's (2 unique-to-B5 tasks: 0b148d64, f25fbde4), and B5+planner
+has zero unique-to-it tasks. The planner seed is *useful when
+the GP is starved* (500K-1M) and a slight *regression when the
+GP has enough budget to do the work itself* (4M). The planner
+produces valid, non-trivial programs (mean length 2.0-2.5 vs
+B5's 1.6-2.5) that contribute to the GP search at starved
+budgets and are redundant at headline budgets.
 
 **Contributions.**
 
@@ -94,10 +110,15 @@ than merely sit in the population. The integration works.
    iteratively solves 3.9% of same-shape tasks end-to-end.
 4. **A B5+planner arm** (`clebran/baselines/b5_planner.py`):
    B5's central-library search augmented with a planner-seeded
-   individual in the initial population of every task. First
-   positive integration result on the clebran rig: ties B5 at
-   10.00 vs 9.67 mean solves at 500K and 1M eval budget (3 seeds),
-   with +0.33 evolution-phase solves and 1 unique task B5 misses.
+   individual in the initial population of every task. **Budget-
+   conditional integration result**: ties B5 at 10.00 vs 9.67 mean
+   solves at 500K and 1M eval budget (3 seeds, +0.33 evolution-
+   phase solves, 1 unique task f76d97a5 that B5 misses — the
+   *only* positive comparison in the study), and is **a slight
+   regression at the headline 4M budget** (5 seeds: 12.40 ± 0.55
+   vs B5's 13.40 ± 0.89, with the B5+planner's solved set a
+   *strict subset* of B5's). The first integration result on
+   the clebran rig that is *conditional* on the GP's budget.
 
 # 2. Substrate and method
 
@@ -301,9 +322,9 @@ the Hodel solver's first move is not always the one with minimum
 Hamming distance to the target. The Hamming metric is too coarse
 for many ARC tasks — see §4 for the object-aware distance follow-up.
 
-## 3.3 B5+planner: first positive integration on the clebran rig
+## 3.3 B5+planner: budget-conditional integration
 
-**3 seeds, 500K and 1M candidate-evaluations, frontier subset:**
+**3 seeds at 500K-1M (the starved-GP regime):**
 
 | arm | solved | evo-solved | test-exact | mean length |
 |---|---|---|---|---|
@@ -321,22 +342,69 @@ the 3 seeds. The planner-seeded programs are slightly longer
 (2.0 vs 1.6 statements), which is the cost of carrying a
 non-trivial seeded individual.
 
-This is the **first positive integration result on the clebran
-rig**. The companion papers report a falsification (paper 1:
-content transfer between divergent agents is dominated by B5) and
-a reorientation (paper 2: process matters, with content held
-fixed). The world-modeling direction is the *first* result where
-an addition to the rig (the planner seed) ties B5 at matched
-compute, finds the same tasks, and discovers at least one task B5
-misses.
+**5 seeds at 4M (the headline configuration), per-seed breakdown:**
 
-**At a higher budget the ceiling is 10/30 in this pilot; the
-20-seed 4M-eval sweep (the headline configuration of paper 1) is
-the next test of whether the parity holds and whether the planner
-contributes at higher compute.** The per-seed 1M is at the ceiling
-of the frontier subset for both arms, so the remaining question is
-*consistency* across more seeds and *stability* at matched
-candidate-evaluations — the standard match-compute audit.
+| seed | B5 solved (evo) | B5+P solved (evo) | delta |
+|---|---|---|---|
+| 1 | 14 (7) | 13 (6) | -1 |
+| 2 | 12 (5) | 13 (6) | +1 |
+| 3 | 14 (7) | 12 (5) | -2 |
+| 4 | 14 (7) | 12 (5) | -2 |
+| 5 | 13 (5) | 12 (4) | -1 |
+| **mean** | **13.40 ± 0.89** | **12.40 ± 0.55** | **-1.00** |
+
+**5 seeds at 4M (the headline configuration), summary:**
+
+| arm | solved | evo-solved | test-exact | mean length | unique tasks |
+|---|---|---|---|---|---|
+| B5 (control) | **13.40 ± 0.89** | **6.20** | **12.40** | 2.46 | **16** |
+| B5+planner (K=1) | 12.40 ± 0.55 | 5.20 | 11.80 | 2.37 | 14 |
+
+**At the headline 4M budget, B5 alone beats B5+planner by 1.0
+solve on average** (13.4 vs 12.4), with +1.0 evolution-phase
+solves. The 5 per-seed deltas (-1, +1, -2, -2, -1) span the
+range from -2 to +1; the worst-case outcome for B5+planner is
+-2 solves, and the best case is +1 — i.e. B5+planner only
+"wins" in 1 of 5 seeds, and even then by a single solve. The
+mean difference (-1.0) is the same magnitude as one standard
+deviation of either arm (B5 sd=0.89, B5+planner sd=0.55), so the
+4M headline is **directionally** (B5 > B5+planner) but not
+formally tested with a paired-test statistic.
+
+**The 2 tasks B5+planner never solves.** Across 5 seeds, B5's
+union of solved tasks is **16 unique tasks**; B5+planner's union
+is **14 unique tasks**. The intersection is 14 tasks (solved by
+both arms in at least one seed). The **2 unique-to-B5 tasks** are:
+
+- `0b148d64` — solved by B5 in 1/5 seeds (seed 1)
+- `f25fbde4` — solved by B5 in 1/5 seeds (seed 3)
+
+Both are rare-event solves (each requires a specific mutation
+that the B5+planner's planner-seeded initial individual may be
+*blocking* — see §4). B5+planner has **zero unique-to-it tasks**;
+its solved set is a **strict subset** of B5's. The 30% gain from
+8x compute (500K → 4M) holds for both arms, but B5 alone scales
+*slightly better*: at 500K they're within 0.33 of each other; at
+4M the gap widens to 1.0.
+
+**Budget-conditional reading.** The planner seed is useful when
+the rest of the GP is starved (500K-1M budget, where B5's
+phase-1 closure saturates at ~7 shallow tasks) and a slight
+regression at the headline 4M budget (where the phase-1 closure
+already finds 7-9 tasks and the evolutionary loop finds the
+rest). The K=3 and K=5 sweeps were not run at 4M (each would
+add ~80 min); at 500K they were tied with K=1, so the headline
+at 4M is unlikely to differ.
+
+This is the **first integration result on the clebran rig that
+is budget-conditional** — paper 1's H1/H2/H3 are uniformly
+falsified; paper 2's content effects are uniformly null with
+process effects (order) being the only positive signal; the
+B5+planner integration is positive at starved budgets and
+slightly negative at the headline budget. The starved-budget
+positive result is *useful but not durable* — it tells us the
+planner seed's value is conditional on the GP's budget, not
+that the planner seed is a generally-useful addition.
 
 ## 3.4 What flipped the result from "slight null" to "at parity"
 
@@ -370,8 +438,8 @@ solves and 1 unique task B5 misses.
 
 # 4. Discussion
 
-**Why the planner helps at this budget ceiling.** B5's phase-1
-seeding is a *systematic closure* over short programs: it
+**Why the planner helps at starved budgets (500K-1M).** B5's
+phase-1 seeding is a *systematic closure* over short programs: it
 enumerates single statements and short compositions, evaluates
 them, and keeps the best. At a budget where the frontier subset
 ceiling is ~10/30, the phase-1 closure already finds the 7
@@ -387,21 +455,53 @@ consequence. The unique task f76d97a5 is the case where the
 planner's length-2 program happened to be the solution B5's
 depth-1 closure missed.
 
-**Where the planner can't help (yet).** The B5+planner ceiling
-is 10/30 at 1M budget, same as B5. The planner is *one* individual
-in a 100-individual population; scaling to top-K planner seeds
-(e.g. the top-5 candidates from the multi-pair evaluation) is a
-natural next step. The planner's 3.4% multi-pair solve rate
-(constrained by the candidate set and the Hamming metric) caps
-how often the planner can directly produce a solution; the rest
-of the time, the planner's contribution is via *seeding the
-search* rather than solving outright. The two levers that could
-break the 10/30 ceiling are: (i) **object-aware distance**, which
-would raise the planner's iterative solve rate by scoring
-primitives on structural match rather than cell-wise Hamming, and
+**Why the planner regresses at the headline budget (4M).** At
+4M, the phase-1 closure already finds 7-9 tasks and the
+evolutionary loop finds the rest. The planner seed is now
+*redundant* — the GP would have found the planner's program
+itself (or a better one) through its own search. Worse, the
+planner seed is *non-trivial* (length 2.0-2.5 vs B5's 1.6-2.5),
+which means it occupies a population slot that the GP could
+have used for a different initial program. The result: B5+planner
+solves 1.0 fewer task on average, with 1.0 fewer evolution-phase
+solves. **The B5+planner's solved set is a strict subset of B5's
+solved set** — B5 solves 2 tasks that B5+planner never solves
+in any of the 5 seeds (0b148d64 and f25fbde4, each a single-seed
+rare-event solve), while B5+planner solves *zero* unique tasks
+that B5 doesn't also solve. The worst-case delta is -2 solves
+(seeds 3 and 4); the best-case delta is +1 solve (seed 2). The
+planner seed isn't just neutral at 4M — it actively *blocks* the
+rare events B5 would otherwise find.
+
+**Where the planner can't help (yet).** The B5+planner
+*ceiling at 4M is 13/30* vs B5's 14/30 — the planner seed is not
+the ceiling-breaker. The planner is *one* individual in a
+100-individual population; scaling to top-K planner seeds (e.g.
+the top-5 candidates from the multi-pair evaluation) was tested at
+500K (top-K=3,5 tied with K=1) but not at 4M. The planner's 3.4%
+multi-pair solve rate (constrained by the candidate set and the
+Hamming metric) caps how often the planner can directly produce
+a solution; the rest of the time, the planner's contribution is
+via *seeding the search* rather than solving outright. The two
+levers that could break the 13/30 ceiling are: (i) **object-
+aware distance** (added as a configuration option, but null
+result at 4M seed=1: structural is 9.33 vs hamming's 10.0), and
 (ii) **re-arc-generated trace candidates**, which would expand
 the candidate set with primitives inferred from re-arc's
 per-task generators, not just Hodel's reference solvers.
+
+**The 4M result is a *negative* result for the planner seed as
+a general-purpose integration.** It is, however, a *useful*
+result in a different sense: it tells us precisely the
+*condition* under which the planner seed helps. The planner
+seed is a *budget-conditional intervention* — useful when the
+GP is starved, neutral-or-negative when the GP has enough budget.
+This is the kind of result the clebran rig is designed to make
+believable: a falsified integration at the headline configuration,
+with a precise budget threshold for when the integration
+flips from positive to neutral-or-negative. The threshold
+appears to be the point at which B5's phase-1 closure saturates
+the frontier subset (around 1M-2M evals).
 
 **The perfect L1 is the asset.** The result is a clean
 demonstration that the clebran interpreter's perfect L1 is a
@@ -426,18 +526,33 @@ direction transfers to ARC-AGI-3 with no substrate change.
 
 # 5. Limitations
 
-**Sample size.** The B5+planner pilot is 3 seeds. The 20-seed
-4M-eval sweep is the standard headline configuration of paper 1,
-and is the natural next test of whether the parity holds and
-whether the planner contributes at higher compute. The per-seed
-1M pilot is already at the 10/30 ceiling in all 3 seeds, so the
-sweep is a *consistency* test, not a magnitude test.
+**Sample size.** The 4M-eval sweep is 5 seeds (vs paper 1's
+20-seed headline). The 5 per-seed deltas (-1, +1, -2, -2, -1)
+have mean **-1.0** and standard deviation **1.22**. The SE on
+the mean delta is **1.22/√5 = 0.55**, so the per-seed mean
+delta is at **~1.8 SE** below zero — a directional result
+*just below* the 2-SE descriptive bar the rig uses (paper 1,
+§4.5). 4/5 deltas are negative, 1/5 is positive (+1, seed 2),
+and no seed shows a tie or a +2. The B5 win is not yet a
+rigorously-rejected null at this seed count, but the per-seed
+direction is consistent. The 20-seed sweep is the natural
+extension if a formal 2-SE-bar reading is wanted; given the
+per-seed direction, the headline pattern (B5 alone beats
+B5+planner at 4M) is unlikely to reverse at 4x more seeds.
 
-**Distance metric.** The planner uses Hamming distance, which is
-too coarse for many ARC tasks (the 28.2% Hodel match rate when
-in the candidate set is the diagnostic). An object-aware distance
-that scores primitives on structural match is the natural follow-
-up — see §4.
+**K=3 and K=5 not run at 4M.** Each would add ~80 min; the
+500K pilot (K=1, 3, 5) was tied at 10.00, so the 4M result
+for K=3 and K=5 is unlikely to differ from K=1 in a meaningful
+way (the mean is already 12.4 for K=1, and the per-seed
+variance is 0.55). The K=1 headline is the binding one.
+
+**Distance metric.** The planner uses Hamming distance by
+default. Object-aware distances (component, color_set,
+structural) are implemented as configuration options but
+tested only at 4M seed=1: the structural distance gave 9.33
+vs the default hamming's 10.0. The structural distance is
+useful for diagnostic experiments but not the right default
+for the integration. See §4.
 
 **Candidate set coverage.** The planner's candidate set covers
 the top 20 grid→grid Hodel primitives, missing 2-arg / 3-arg
@@ -459,20 +574,52 @@ trace dataset is the labelled transition corpus, and the perfect
 L1 (the clebran interpreter) is the ground truth against which
 any learned L1 is measured.
 
+**The B5 baseline is the relevant control, not a no-planner
+arm.** The B5+planner arm's purpose is to test whether a
+planner-seeded individual helps B5's central-library search.
+A no-planner arm (i.e. B5 alone) is the B5 control, not a
+separate arm. The 4M null result is specifically a B5 vs
+B5+planner comparison, not a question about whether the
+planner seed helps *any* arm.
+
 # 6. Conclusion
 
-The world-modeling direction for clebran — agents that learn a
-`(state, action) → next_state` predictor and use it to plan — is
-alive. The trace dataset is built (16,149 rows, 1,302 demo pairs);
-the L1 baseline is characterised (k-NN is the wrong model class,
-0% OOD / 5% in-dist exact-match); the L2 planner is built
-(multi-pair, lookahead, loop-avoiding, 35.9% one-step improve,
-3.9% iterative solve); and the **B5+planner arm is the first
-positive integration result on the clebran rig** — 10.00 vs 9.67
-mean solves at 500K and 1M, +0.33 evolution-phase solves, 1
-unique task B5 misses. The perfect L1 (the clebran interpreter)
-is the asset; the learned L1 is open work and the right next
-push, with re-arc-generated trace candidates and object-aware
-distance as the natural supporting improvements. The direction
-is exactly what ARC-AGI-3 was designed to test, and the clebran
-typed-IR substrate and library-mining mechanism transfer directly.
+The world-modeling direction for clebran is **alive but
+budget-conditional**. The trace dataset is built (16,149 rows,
+1,302 demo pairs, 6.3 MB); the L1 baseline is characterised
+(k-NN is the wrong model class, 0% OOD / 5% in-dist exact-match);
+the L2 planner is built (multi-pair, lookahead, loop-avoiding,
+35.9% one-step improve, 3.9% iterative solve); the top-K planner
+seed is built (`--planner-top-k K`, K=3 and K=5 tied with K=1
+at 500K); the object-aware distance metrics are built (component,
+color_set, structural — but null at the integration level); and
+the **B5+planner arm produces a budget-conditional result**:
+parity at 500K-1M (10.0 vs 9.67, +0.33 evo, 1 unique task
+f76d97a5) and a slight regression at the headline 4M budget
+(12.4 vs 13.4, -1.0 evo, -2 unique tasks).
+
+**The headline finding is budget-conditionality.** The planner
+seed is useful when the GP is starved (500K-1M) and a slight
+regression when the GP has enough budget to do the work itself
+(4M). This is the *first* result on the clebran rig that is
+*conditional* on the GP's budget — paper 1's H1/H2/H3 are
+uniformly falsified across budgets; paper 2's content effects
+are uniformly null with process effects (order) being the only
+positive signal; the B5+planner integration is positive at
+starved budgets and slightly negative at the headline budget.
+
+The world-modeling direction's value is in the **substrate it
+provides** for the next push: the trace dataset (16K rows) is
+the labelled transition corpus for a learned L1; the L2
+planner is a reusable multi-pair planning module; and the
+clebran interpreter is the perfect L1 that any learned L1 has
+to approximate. The B5+planner integration specifically is a
+*null result at scale*, and the next push is the learned L1
+itself — a small neural or programmatic approximation of the
+interpreter that, once it generalises, replaces the perfect-
+but-slow interpreter as the planner's rollout engine. Re-arc-
+generated trace candidates and object-aware distance are the
+natural supporting improvements; the direction is exactly what
+ARC-AGI-3 (arXiv:2603.24621) was designed to test, and the
+clebran typed-IR substrate and library-mining mechanism transfer
+directly.
