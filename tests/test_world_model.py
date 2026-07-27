@@ -605,3 +605,216 @@ def test_l2_planner_evaluate_against_real_trace_dataset():
     if metrics["mean_planner_distance"] != float("inf"):
         assert metrics["mean_planner_distance"] \
             <= metrics["mean_identity_distance"]
+
+
+# ---------------------------------------------------------------------------
+# Tests for the lookup-table L1 (clebran/world_model/l1_lookup.py)
+# ---------------------------------------------------------------------------
+
+from clebran.world_model.l1_lookup import (
+    LookupTableL1,
+    _grid_key,
+    _row_key,
+    perfect_l1_fallback,
+    safe_perfect_l1,
+)
+
+
+def _make_row(state_grid, action_fn, arg_kinds, next_grid, task_id="t0",
+              input_idx=0, step_index=0, program_len=1):
+    """Build a minimal trace row dict for testing."""
+    return {
+        "task_id": task_id,
+        "input_idx": input_idx,
+        "step_index": step_index,
+        "state": {"kind": "grid", "grid": [list(r) for r in state_grid]},
+        "action": {"fn": action_fn, "fn_kind": "prim", "arg_kinds": arg_kinds},
+        "next_state": {"kind": "grid", "grid": [list(r) for r in next_grid]},
+        "program_len": program_len,
+    }
+
+
+def test_lookup_table_caches_training_rows():
+    """The lookup table should store one entry per training row."""
+    row = _make_row(((1, 2),), "vmirror", ["in"], ((2, 1),))
+    l1 = LookupTableL1([row], fallback=None)
+    assert l1.n_rows == 1
+    assert l1.n_collisions == 0
+
+
+def test_lookup_table_predict_returns_cached_value():
+    """A predict call on a cached key returns the cached next_state."""
+    row = _make_row(((1, 2),), "vmirror", ["in"], ((2, 1),))
+    l1 = LookupTableL1([row], fallback=None)
+    pred = l1.predict(((1, 2),),
+                       {"fn": "vmirror", "fn_kind": "prim", "arg_kinds": ["in"]})
+    assert pred == {"kind": "grid", "grid": [[2, 1]]}
+
+
+def test_lookup_table_predict_raises_on_miss_without_fallback():
+    """A miss without a fallback should raise KeyError."""
+    row = _make_row(((1, 2),), "vmirror", ["in"], ((2, 1),))
+    l1 = LookupTableL1([row], fallback=None)
+    with pytest.raises(KeyError):
+        l1.predict(((3, 4),),
+                     {"fn": "vmirror", "fn_kind": "prim", "arg_kinds": ["in"]})
+
+
+def test_lookup_table_calls_fallback_on_miss():
+    """A miss with a fallback should call the fallback."""
+    row = _make_row(((1, 2),), "vmirror", ["in"], ((2, 1),))
+    calls = []
+    def fallback(state, action):
+        calls.append((tuple(state), action["fn"]))
+        return {"kind": "grid", "grid": [[9, 9]]}
+    l1 = LookupTableL1([row], fallback=fallback)
+    pred = l1.predict(((3, 4),),
+                       {"fn": "hmirror", "fn_kind": "prim", "arg_kinds": ["in"]})
+    assert pred == {"kind": "grid", "grid": [[9, 9]]}
+    assert calls == [(((3, 4),), "hmirror")]
+
+
+def test_lookup_table_collision_counted_not_overwritten():
+    """A second training row with the same key should be a collision
+    (the original entry is kept)."""
+    row_a = _make_row(((1, 2),), "vmirror", ["in"], ((2, 1),))
+    row_b = _make_row(((1, 2),), "vmirror", ["in"], ((9, 9),))
+    l1 = LookupTableL1([row_a, row_b], fallback=None)
+    assert l1.n_rows == 1
+    assert l1.n_collisions == 1
+    pred = l1.predict(((1, 2),),
+                       {"fn": "vmirror", "fn_kind": "prim", "arg_kinds": ["in"]})
+    # First row wins.
+    assert pred == {"kind": "grid", "grid": [[2, 1]]}
+
+
+def test_lookup_table_skips_non_grid_rows():
+    """Non-grid rows are not cached."""
+    row = {
+        "task_id": "t0", "input_idx": 0, "step_index": 0,
+        "state": {"kind": "int", "value": 5},
+        "action": {"fn": "vmirror", "fn_kind": "prim", "arg_kinds": ["in"]},
+        "next_state": {"kind": "int", "value": 5},
+        "program_len": 1,
+    }
+    l1 = LookupTableL1([row], fallback=None)
+    assert l1.n_rows == 0
+
+
+def test_lookup_table_hit_rate_updates():
+    """The hit_rate should reflect predict() calls."""
+    row = _make_row(((1, 2),), "vmirror", ["in"], ((2, 1),))
+    l1 = LookupTableL1([row], fallback=None)
+    l1.predict(((1, 2),),
+                {"fn": "vmirror", "fn_kind": "prim", "arg_kinds": ["in"]})
+    l1.predict(((1, 2),),
+                {"fn": "vmirror", "fn_kind": "prim", "arg_kinds": ["in"]})
+    try:
+        l1.predict(((3, 4),),
+                    {"fn": "vmirror", "fn_kind": "prim", "arg_kinds": ["in"]})
+    except KeyError:
+        pass
+    assert l1._n_hits == 2
+    assert l1._n_misses == 1
+    assert abs(l1.hit_rate - 2/3) < 1e-9
+
+
+def test_perfect_l1_fallback_handles_1arg_primitives():
+    """1-arg primitives are called with the state directly."""
+    pred = perfect_l1_fallback(((1, 2), (3, 4)),
+                                {"fn": "vmirror", "fn_kind": "prim",
+                                 "arg_kinds": ["in"]})
+    assert pred == {"kind": "grid", "grid": [[2, 1], [4, 3]]}
+
+
+def test_perfect_l1_fallback_handles_scaling():
+    """downscale/upscale/hupscale take (state, 2)."""
+    pred = perfect_l1_fallback(((1, 2, 3), (4, 5, 6)),
+                                {"fn": "downscale", "fn_kind": "prim",
+                                 "arg_kinds": ["in"]})
+    # Just check it doesn't raise and returns a grid.
+    assert pred["kind"] == "grid"
+
+
+def test_safe_perfect_l1_returns_none_on_error():
+    """safe_perfect_l1 catches exceptions and returns None."""
+    # fill has no default-arg table entry; should raise, then be caught.
+    pred = safe_perfect_l1(((1, 2),),
+                            {"fn": "fill", "fn_kind": "prim",
+                             "arg_kinds": ["in", "in", "in"]})
+    assert pred is None
+
+
+def test_safe_perfect_l1_returns_value_for_supported_primitives():
+    """safe_perfect_l1 returns the right value for supported primitives."""
+    pred = safe_perfect_l1(((1, 2), (3, 4)),
+                            {"fn": "vmirror", "fn_kind": "prim",
+                             "arg_kinds": ["in"]})
+    assert pred == {"kind": "grid", "grid": [[2, 1], [4, 3]]}
+
+
+# ---------------------------------------------------------------------------
+# Tests for the GP-evolved L1 (clebran/world_model/l1_gp.py)
+# ---------------------------------------------------------------------------
+
+from clebran.world_model.l1_gp import GPL1, EvolvedL1PerPrimitive
+from clebran.dsl.interpreter import run
+
+
+def test_gpl1_evolves_vmirror_perfectly_on_synthetic():
+    """A small synthetic vmirror trace set should be learned perfectly."""
+    # Generate 10 (state, vmirror) pairs.
+    import random
+    rng = random.Random(0)
+    rows = []
+    for _ in range(10):
+        h = rng.randint(1, 4)
+        w = rng.randint(1, 4)
+        state = tuple(tuple(rng.randint(0, 5) for _ in range(w))
+                       for _ in range(h))
+        target = tuple(tuple(row) for row in state[::-1])
+        rows.append(_make_row(state, "vmirror", ["in"], target))
+    gp = GPL1(rows, pop_size=30, n_generations=5, max_program_len=2,
+              seed=0, verbose=False)
+    assert "vmirror" in gp.evolved
+    evo = gp.evolved["vmirror"]
+    assert evo.program is not None
+    # Test on a held-out state.
+    test_state = ((7, 8), (9, 10), (1, 2))
+    pred = evo.predict(test_state)
+    expected = test_state[::-1]
+    assert pred == expected, f"vmirror evolution failed: {pred} vs {expected}"
+
+
+def test_gpl1_returns_none_for_unknown_primitive():
+    """A primitive not in the evolved set should return None."""
+    row = _make_row(((1, 2),), "vmirror", ["in"], ((2, 1),))
+    gp = GPL1([row], primitives=["vmirror"], pop_size=10,
+              n_generations=2, max_program_len=2, seed=0, verbose=False)
+    pred = gp.predict(((1, 2),),
+                       {"fn": "hmirror", "fn_kind": "prim", "arg_kinds": ["in"]})
+    assert pred is None
+
+
+def test_gpl1_predict_dispatches_by_primitive():
+    """The GP L1's predict method should use the right evolved program
+    for the action's primitive."""
+    rows = []
+    # vmirror data
+    for s in [((1, 2),), ((3, 4),)]:
+        rows.append(_make_row(s, "vmirror", ["in"], s[::-1]))
+    # hmirror data
+    for s in [((1, 2),), ((3, 4),)]:
+        rows.append(_make_row(s, "hmirror", ["in"],
+                              tuple(tuple(row[::-1]) for row in s)))
+    gp = GPL1(rows, primitives=["vmirror", "hmirror"],
+              pop_size=30, n_generations=5, max_program_len=2,
+              seed=0, verbose=False)
+    # vmirror
+    vpred = gp.predict(((5, 6), (7, 8)),
+                        {"fn": "vmirror", "fn_kind": "prim", "arg_kinds": ["in"]})
+    assert vpred == ((7, 8), (5, 6))
+    # hmirror
+    hpred = gp.predict(((5, 6), (7, 8)),
+                        {"fn": "hmirror", "fn_kind": "prim", "arg_kinds": ["in"]})
+    assert hpred == ((6, 5), (8, 7))

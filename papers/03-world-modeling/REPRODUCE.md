@@ -45,6 +45,29 @@ uv run python -m clebran.world_model l1
 
 The result is the *floor* any learned L1 has to beat.
 
+**Two programmatic learned L1s** (built and compared head-to-head
+with the k-NN baseline in §3.2.5):
+
+```sh
+# Lookup-table L1: perfect cache over training rows, with
+# interpreter fallback on miss.
+uv run python -m clebran.world_model.l1_lookup
+# -> 0% OOD hit rate, 25.5% OOD exact-match (via fallback),
+#    33.6% in-distribution exact-match (coarse arg_kinds key),
+#    0.6-1.2 us/pred lookup, 27-39 us/pred fallback
+#    (~31-43x speedup at 0% hit rate)
+
+# GP-evolved L1: clebran's own GP evolves a small program per
+# primitive using GenomeOps random_program / mutate / crossover.
+uv run python -m clebran.world_model.l1_gp
+# -> evolves 33 primitives in ~10s, 18.7% OOD exact-match,
+#    52.7% OOD shape-match, 108K pred/s, perfect on rot90 /
+#    hmirror / vmirror / dmirror / cmirror (geometric primitives)
+
+# Full head-to-head comparison (writes logs/l1_comparison.json):
+uv run python scripts/compare_l1_approaches.py
+```
+
 ## 3. The L2 planner (multi-pair, lookahead, loop-avoiding)
 
 `clebran/world_model/l2_planner.py::L2Planner` is the perfect-L1

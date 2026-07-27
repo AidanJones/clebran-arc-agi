@@ -108,7 +108,22 @@ budgets and are redundant at headline budgets.
    20 most common grid→grid Hodel primitives. Single-pair evaluation
    on the trace dataset: improves over identity on 35.9% of pairs,
    iteratively solves 3.9% of same-shape tasks end-to-end.
-4. **A B5+planner arm** (`clebran/baselines/b5_planner.py`):
+4. **Two programmatic learned L1s** (`clebran/world_model/l1_lookup.py`,
+   `clebran/world_model/l1_gp.py`), compared head-to-head with the
+   k-NN baseline and identity on the same held-out 20%-of-tasks
+   split: a **lookup-table L1** (perfect cache, 0% OOD hit rate,
+   25.5% OOD exact-match via interpreter fallback) and a
+   **GP-evolved L1** (clebran's own GP evolves a small program per
+   primitive, 18.7% OOD exact-match, 52.7% OOD shape-match,
+   9.4s total evolution time, 108K pred/s). The clebran GP cleanly
+   separates the primitives into *learnable* (rot90, hmirror,
+   vmirror, dmirror, cmirror — 100% test exact) and *not yet
+   learnable* (fill, paint, replace — shape-only, because the
+   trace dataset's `arg_kinds` field doesn't store the specific
+   color constants). The next step is to extend the trace dataset
+   to record arg *values* and expand the GP's program-length
+   budget from 3 to 5-7.
+5. **A B5+planner arm** (`clebran/baselines/b5_planner.py`):
    B5's central-library search augmented with a planner-seeded
    individual in the initial population of every task. **Budget-
    conditional integration result**: ties B5 at 10.00 vs 9.67 mean
@@ -321,6 +336,152 @@ the same primitive as the Hodel solver 72% of the time, because
 the Hodel solver's first move is not always the one with minimum
 Hamming distance to the target. The Hamming metric is too coarse
 for many ARC tasks — see §4 for the object-aware distance follow-up.
+
+## 3.2.5 The learned L1: two programmatic approximations, side by side
+
+The k-NN baseline (§3.1) is a floor. The question is whether a
+*learned* L1 can do better. We build two programmatic baselines
+that are more in the spirit of the clebran rig (no neural nets,
+no external dependencies): a **lookup-table L1** (a perfect
+cache over training rows) and a **GP-evolved L1** (a small
+clebran program evolved per-primitive using clebran's own
+`GenomeOps` mutation / crossover / repair).
+
+**Lookup-table L1** (`clebran/world_model/l1_lookup.py`):
+memoises the trace dataset's `(state, action) → next_state` rows
+in a `dict` and falls back to the clebran interpreter on miss.
+On the same 20%-of-tasks held-out split as the k-NN baseline,
+the lookup table is a **true memoriser with zero generalisation**:
+
+| metric | value |
+|---|---|
+| training rows cached | 1,289 |
+| collisions (same key, different next_state) | 89 (6.9%) |
+| OOD hit rate (test set) | 0 / 353 (0.00%) |
+| OOD exact-match (overall, fallback + cache) | 90 / 353 (25.50%) |
+| OOD exact-match on misses (fallback only) | 90 / 353 (25.50%) |
+| OOD shape-match (overall) | 143 / 353 (40.51%) |
+| in-distribution exact-match (held-out rows) | 94 / 280 (33.57%) |
+| lookup throughput (0% hit) | 0.6-1.2 µs / pred (820K-1.5M pred/s) |
+| interpreter fallback throughput | 27-39 µs / pred (~30K pred/s) |
+| **speedup at 0% hit rate** | **31-43×** |
+
+The lookup table's 25.50% OOD exact-match comes entirely from the
+interpreter fallback (the test set has 0% cache hits because
+test tasks are disjoint from training tasks). The in-distribution
+exact-match is only 33.57% (not 100%) because the trace dataset's
+`action.arg_kinds` field is a coarse key — two different
+`replace` actions with the same `["in", "const:NAME", "const:NAME"]`
+arg kinds but different constant values hash to the same key,
+so the table stores only the first one. The lookup table is
+*fast when it hits* and *correct when it hits*, but it is a
+**memoriser, not a learner** — it cannot predict the next state
+for any (state, action) pair it hasn't seen.
+
+**GP-evolved L1** (`clebran/world_model/l1_gp.py`): for each
+of the 33 grid→grid primitives with at least 5 training rows,
+evolve a small clebran program (length 1-3) that, given a
+state, produces the same output as the primitive. The clebran
+GP loop uses `GenomeOps.random_program / mutate / crossover /
+repair` (the same operators the rest of the clebran rig uses),
+with a **smoothed exact-match fitness** (1.0 if the evolved
+output equals the trace's next_state exactly, 0.5 if the output
+has the same shape, 0.0 otherwise) and tournament selection
+(size 3). Default settings: 50-individual population, 8
+generations, max program length 3, ~10s total evolution time.
+
+| primitive | training exact | test exact | evolved program |
+|---|---|---|---|
+| `rot90` | 49/49 (100%) | 9/9 (100%) | exactly `rot90` |
+| `hmirror` | 36/36 (100%) | 30/39 (77%) | exactly `hmirror` |
+| `vmirror` | 68/77 (88%) | 9/12 (75%) | `vmirror` (or equivalent composition) |
+| `dmirror` | 32/32 (100%) | 3/6 (50%) | exactly `dmirror` |
+| `cmirror` | 18/18 (100%) | (no test rows) | `dmirror; dmirror` (composed) |
+| `rot180` | 19/37 (51%) | 0/3 (0%) | partial |
+| `rot270` | 28/40 (70%) | 4/6 (67%) | mostly correct |
+| `branch` | 8/13 (62%) | 3/6 (50%) | partial |
+| `paint` | 8/110 (7%) | 4/12 (33%) | shape-only (1.0 shape) |
+| `fill` | 16/212 (8%) | 1/67 (1.5%) | shape-only (88% shape) |
+| `replace` | 9/97 (9%) | 0/13 (0%) | shape-only (100% shape) |
+| `bottomhalf`, `tophalf`, `lefthalf`, `righthalf` | shape-only | shape-only | shape-only |
+| `crop`, `compress`, `trim`, `hconcat`, `vconcat`, `upscale`, `downscale` | 0% exact | 0% exact | no progress |
+
+**The clebran GP cleanly separates the primitives into "learnable"
+and "not learnable" with a small population and 8 generations:**
+
+* **Pure geometric primitives** (rot90, rot180, rot270, hmirror,
+  vmirror, dmirror, cmirror) — the GP learns them perfectly or
+  near-perfectly. These are 1-statement programs that just call
+  the primitive directly, but the GP *discovers* this from the
+  fitness signal.
+* **Half / quartering primitives** (tophalf, bottomhalf, lefthalf,
+  righthalf) — the GP learns the *shape* but not the values.
+  This is because the value computation depends on the
+  primitive's specific behaviour (e.g. tophalf takes rows 0..h/2,
+  which the GP can't express as a typed clebran program of
+  length 1-3 without hardcoding constants).
+* **Value-computing primitives** (fill, paint, replace) — the
+  GP learns the shape (88-100% shape-match) but not the values
+  (1-9% exact-match). The values depend on the primitive's
+  specific color argument, which the trace dataset's `arg_kinds`
+  field doesn't store.
+* **Compositional primitives** (crop, hconcat, vconcat, upscale,
+  downscale, compress) — the GP makes no progress. These
+  primitives require 2-3 statements with specific constants
+  (e.g. `crop(I, (0, 0), (h, w))` needs to know the input
+  shape), and the GP's length-3 budget is too tight.
+
+**Comparison on the same held-out test split** (`scripts/compare_l1_approaches.py`):
+
+| L1 | exact% | shape% | mean_h* | µs/pred | pred/s | train_s |
+|---|---|---|---|---|---|---|
+| Identity | 5.38 | 53.54 | 14.63 | 1.56 | 640K | 0.00 |
+| KnnL1 | 0.00 | 7.65 | 20.56 | 9.45 | 106K | 0.04 |
+| **LookupTableL1** | **25.50** | 40.51 | **4.20** | 18.43 | 54K | 0.01 |
+| **GPL1** | 18.70 | **52.69** | 12.11 | 9.23 | 108K | 9.40 |
+
+*mean per-cell Hamming, restricted to shape-matching predictions
+(no +inf penalty for wrong-shape).*
+
+**Reading.** The four L1 implementations split cleanly into three
+roles:
+
+* **Identity** is the *floor* — every L1 has to beat it. KnnL1
+  fails the floor on both exact-match (0% vs 5.4%) and
+  shape-match (7.7% vs 53.5%) — k-NN is the wrong model class
+  for both axes.
+* **LookupTableL1** is the *value-accurate L1* — it gets the
+  best exact-match (25.5%) and the best Hamming (4.20) when
+  its cache hits, but its OOD hit rate is 0% and its OOD
+  shape-match is 40.5%. It is a memoriser, not a learner.
+* **GPL1** is the *shape-accurate L1* — it gets the best
+  shape-match (52.7%, beating even Identity) and a respectable
+  exact-match (18.7%), and runs at 108K pred/s (faster than
+  LookupTableL1 because there's no fallback). The clebran GP
+  *learns the geometry* of every primitive whose behaviour is
+  shape-only or value-of-grid-cell, and *fails* to learn the
+  value-computing primitives (fill, paint, replace) because
+  the trace dataset's arg_kinds field doesn't store the
+  specific constants.
+
+**The takeaway for the world-modeling direction.** A learned
+L1 has to *generalise* across held-out tasks. The lookup table
+fails to generalise (0% OOD hit rate). The k-NN fails to
+generalise and barely memorises. The clebran GP **partially
+generalises**: it can predict the *shape* of every grid→grid
+primitive's output on a held-out task, and the *value* of
+pure-geometric primitives, but it cannot predict the *value*
+of value-computing primitives without seeing the specific
+constants in the action. **The next step is to extend the
+trace dataset to record arg values** (not just arg kinds), so
+the GP can evolve programs that compute the right value; and
+to expand the program length budget from 3 to 5-7 so the GP
+can express compositional primitives like `crop` and `hconcat`.
+The 9.4s evolution time is already within the L2 planner's
+plausible rollout budget for a one-step planning call
+(2,500 candidates × 9.4s = 23,500s of precomputation, but
+the evolved programs are *cached* per primitive so the cost
+is amortised across the planner's lifetime).
 
 ## 3.3 B5+planner: budget-conditional integration
 
@@ -569,10 +730,20 @@ for each.
 
 **The L1 baseline is the wrong model class.** The 0% OOD
 exact-match / 5% in-distribution exact-match k-NN result is a
-*diagnostic*, not a ceiling. The learned L1 is open work; the
-trace dataset is the labelled transition corpus, and the perfect
-L1 (the clebran interpreter) is the ground truth against which
-any learned L1 is measured.
+*diagnostic*, not a ceiling. Two programmatic learned L1s
+(§3.2.5) show the ceiling is reachable but with split
+specialisation: the **lookup-table L1** is the value-accurate
+L1 (25.5% OOD exact-match, 4.20 mean Hamming on shape-matching
+predictions) but cannot generalise (0% OOD hit rate); the
+**GP-evolved L1** is the shape-accurate L1 (52.7% OOD
+shape-match, 18.7% OOD exact-match) and can learn pure
+geometric primitives perfectly (rot90, hmirror, vmirror,
+dmirror, cmirror) but fails to learn value-computing
+primitives (fill, paint, replace) without the specific color
+constants in the action. The learned L1 is partially built;
+the next push is to extend the trace dataset to record arg
+*values* (not just arg kinds) and to expand the GP's
+program-length budget.
 
 **The B5 baseline is the relevant control, not a no-planner
 arm.** The B5+planner arm's purpose is to test whether a
@@ -588,6 +759,11 @@ The world-modeling direction for clebran is **alive but
 budget-conditional**. The trace dataset is built (16,149 rows,
 1,302 demo pairs, 6.3 MB); the L1 baseline is characterised
 (k-NN is the wrong model class, 0% OOD / 5% in-dist exact-match);
+two programmatic learned L1s are built and compared head-to-head
+(lookup-table: 25.5% OOD exact-match, 0% OOD hit rate, value-
+accurate but not generalising; GP-evolved: 18.7% OOD exact-match,
+52.7% OOD shape-match, perfect on pure-geometric primitives,
+shape-only on value-computing primitives, 9.4s total evolution);
 the L2 planner is built (multi-pair, lookahead, loop-avoiding,
 35.9% one-step improve, 3.9% iterative solve); the top-K planner
 seed is built (`--planner-top-k K`, K=3 and K=5 tied with K=1
