@@ -451,20 +451,96 @@ rather than the top *20* grid→grid Hodel primitives. Fixing
 both — switching to the multi-pair API and expanding the
 candidate set — turned the slight null into parity.
 
-**The next push.** Three follow-ups are the most directly
-productive: (i) the 20-seed 4M-eval B5+planner frontier sweep
-that matches the headline B5 result of paper 1 (the per-seed 1M
-pilot is already at the 10/30 ceiling, so the sweep is a
-*consistency* test, not a magnitude test); (ii) an object-aware
-distance metric that scores primitives on structural match
-rather than cell-wise Hamming, which would raise the planner's
-iterative solve rate; (iii) the learned L1 — a small neural or
-programmatic approximation of the interpreter that, once it
-generalises, replaces the perfect-but-slow interpreter as the
-planner's rollout engine. The clebran rig is the right test
-bed: the perfect L1 is the ground truth, the trace dataset is
-the labelled transition corpus, and the B5+planner arm is the
-L2 integration test.
+**At the headline 4M budget, B5 alone wins by 1.0 solve**
+(5 seeds, 30-task frontier subset): B5 13.4 ± 0.89 vs
+B5+planner 12.4 ± 0.55 (~1.8 SE on the per-seed delta —
+directional but not yet 2 SE-bar significant at 5 seeds).
+The 5 per-seed deltas span -2 to +1, with 4/5 negative. The
+**B5+planner's solved set is a strict subset of B5's**:
+B5+planner has zero unique-to-it tasks, while B5 solves 2
+unique tasks (0b148d64, f25fbde4) that B5+planner never solves
+in any of the 5 seeds. **The planner seed is a *budget-
+conditional intervention* — useful when the GP is starved
+(500K-1M, +0.33 evo, 1 unique task f76d97a5) and slightly
+negative when the GP has enough budget to do the work itself
+(4M, -1.0 solve, -2 unique tasks).** A 20-seed 4M sweep is
+running to tighten the confidence interval; the headline
+pattern (B5 alone wins at 4M) is unlikely to reverse with
+4x more seeds.
+
+**Two programmatic learned L1s** (§3.2.5 of paper 3), built
+and compared head-to-head with the k-NN baseline and identity
+on the same held-out 20%-of-tasks split:
+
+| L1 | exact% | shape% | mean_h* | pred/s | train_s |
+|---|---|---|---|---|---|
+| Identity | 5.38 | 53.54 | 14.63 | 640K | 0.00 |
+| KnnL1 | 0.00 | 7.65 | 20.56 | 106K | 0.04 |
+| **LookupTableL1** | **25.50** | 40.51 | **4.20** | 54K | 0.01 |
+| **GPL1** | 18.70 | **52.69** | 12.11 | 108K | 9.40 |
+
+The four L1s split into three roles: **Identity** is the floor
+(KnnL1 fails it on both axes — wrong model class);
+**LookupTableL1** is the *value-accurate* L1 (best exact-match
+and best Hamming, but 0% OOD hit rate — a true memoriser, not
+a learner); **GPL1** is the *shape-accurate* L1 (best
+shape-match, 108K pred/s, clebran's own GP evolves a small
+program per primitive in 9.4s total). The clebran GP cleanly
+separates the primitives into *learnable* (rot90, hmirror,
+vmirror, dmirror, cmirror — 100% test exact) and *not yet
+learnable* (fill, paint, replace — shape-only, because the
+trace dataset's `arg_kinds` field doesn't store the specific
+color constants). The next push is to extend the trace
+dataset to record arg *values* and expand the GP's
+program-length budget from 3 to 5-7.
+
+**Task-level evidence** for the budget-conditional reading
+(extracted from the b5 / b5+planner logs by
+`scripts/inspect_task_programs.py`):
+
+* `f76d97a5` — B5+planner unique at 500K-1M. The Hodel
+  solution is `replace(I, 5, 4)` (replace centre color
+  with 4) followed by a 4-shape cell-mask. The planner
+  finds the right first statement in a 1-2 prefix;
+  B5+planner's planner-seeded individual gives the GP a
+  head start at starved budgets. At 4M, B5 alone finds
+  similar programs (5-6 statements using mostcolor +
+  switch + replace), and the unique-task advantage
+  disappears.
+* `0b148d64`, `f25fbde4` — B5 alone unique at 4M. Both
+  are 19x21 / 9x9 large-grid tasks that need
+  *compositional* primitives: `0b148d64` needs
+  `subgrid(bordering(ofcolor, ofcolor, palette, last), I)`,
+  `f25fbde4` needs `hconcat + mapply + upscale` (a tile
+  program). The planner's grid→grid candidate set doesn't
+  include these compositions, so the planner seed never
+  has the right structure to bootstrap a solution. **The
+  planner seed *blocks* the rare events B5 would
+  otherwise find** — not by being actively wrong, but by
+  *taking up a slot in the initial population*.
+
+**The next push.** Four follow-ups are the most directly
+productive: (i) the **20-seed 4M-eval B5+planner frontier
+sweep** is currently running in the background (6 of 30
+runs complete at the time of writing, ETA ~06:00) — it
+will turn the directional ~1.8 SE result at 5 seeds into
+a 2+ SE rejection (or fail to, which is also publishable);
+(ii) an object-aware distance metric that scores primitives
+on structural match rather than cell-wise Hamming, which
+would raise the planner's iterative solve rate; (iii)
+**re-arc-generated trace candidates** — re-arc's per-task
+generators would expand the planner's candidate set
+dramatically, addressing the planner-unfriendly tasks
+(`0b148d64`, `f25fbde4`); (iv) the **learned L1** is
+partially built — the GP-evolved L1 learns geometric
+primitives perfectly but is shape-only on
+value-computing primitives. Extending the trace dataset
+to record arg *values* (not just arg kinds) and expanding
+the GP's program-length budget from 3 to 5-7 are the
+natural next push. The clebran rig is the right test
+bed: the perfect L1 is the ground truth, the trace dataset
+is the labelled transition corpus, and the B5+planner arm
+is the L2 integration test.
 
 **ARC-AGI-3 is the natural long-term testbed.** ARC-AGI-3
 (arXiv:2603.24621) lists four required capabilities:
