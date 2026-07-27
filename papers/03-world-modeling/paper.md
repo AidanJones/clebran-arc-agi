@@ -177,6 +177,28 @@ grid→grid subset (1,378 rows) is the cleanest test bed for the L1
 predictor, since the L1's input and output are both grids of
 the same general type.
 
+**A concrete trace row** (from task `74dd1130`, demo 0, the first
+step of the Hodel solver — a diagonal mirror of a 3x3 grid):
+
+```
+state (kind=grid):            action (fn_kind=prim):
+  2 2 1                         fn:           "dmirror"
+  1 5 1                         fn_kind:      "prim"
+  5 2 2                         arg_kinds:    ["in"]
+
+next_state (kind=grid):
+  2 1 5
+  2 5 2
+  1 1 2
+```
+
+This row is the canonical "one primitive, one grid→grid
+transition" that the L1 predictor has to model. The
+`arg_kinds=["in"]` means the only argument is the input grid
+itself (the standard case); the *value* of the input grid
+(`2 2 1 / 1 5 1 / 5 2 2`) is what makes this transition
+state-specific.
+
 The dataset is the natural input to a learned L1: 16K labelled
 transitions across 400 tasks, with the corresponding primitive,
 arg kinds, and program length. The top 25 grid→grid primitives in
@@ -220,6 +242,28 @@ gets 53.5% shape-match and 5.4% exact-match — most grid→grid actions
 in the test set preserve the shape (e.g. `vmirror`, `fill`, `paint`,
 `replace`); 5% of them are pure identity (e.g. `cover(I, ...)`
 with no objects to cover returns `I`).
+
+**A concrete diagnostic.** Two states in the trace dataset
+differ by a *single cell* but produce 60-cell-different
+next_states under the same `fill(in, reg:3, reg:8)` action:
+
+```
+state 1 (1x2):     state 2 (1x2):
+  9 8                 9 7
+
+next_state 1 (10x10):   next_state 2 (10x10):
+  all 0s, with 3s in    all 0s, with 4s in
+  one specific column   a different column
+  (60 cells differ from state 2's fill)
+```
+
+The k-NN finds state 2 as the nearest training neighbour
+of state 1 (Hamming distance 1), and the two next_states
+have *nothing in common*. The majority vote is meaningless.
+**The k-NN is the wrong model class** because the L1 problem
+is dominated by *value-computing primitives* (fill, replace)
+whose behaviour depends on register values that the trace
+dataset doesn't store in the `(state, action)` key.
 
 The *finding* is that a k-NN baseline is the wrong model class.
 The clebran interpreter is a perfect L1; the L1 question becomes
@@ -337,6 +381,52 @@ the Hodel solver's first move is not always the one with minimum
 Hamming distance to the target. The Hamming metric is too coarse
 for many ARC tasks — see §4 for the object-aware distance follow-up.
 
+**A worked example** (task `74dd1130`, demo 0 — a 3x3 grid that
+the L2 planner solves in **one step** by `dmirror`):
+
+```
+input grid (3x3)                target grid (3x3)
+  2 2 1                           2 1 5
+  1 5 1                           2 5 2
+  5 2 2                           1 1 2
+
+identity Hamming distance: 6
+planner 1-step: chosen primitive = dmirror(I)
+                next state = target (distance 0)  ✓ SOLVED
+```
+
+The planner rolls out every candidate primitive through the
+perfect L1 (the clebran interpreter) and picks the one whose
+predicted next-state has minimum Hamming distance to the target.
+For this 3x3 grid, `dmirror` (diagonal mirror) is exact — the
+Hodel solver's first step matches the planner's choice.
+
+**A multi-step example** (task `5582e5ca`, demo 0 — a 3x3
+"replace all non-4 with 4" task that the planner solves in
+**4 steps**):
+
+```
+input grid (3x3)                target grid (3x3)
+  4 4 8                           4 4 4
+  6 4 3                           4 4 4
+  6 3 0                           4 4 4
+
+identity Hamming distance: 6
+planner 1-step: replace(I, 3, 4)   distance 4
+planner 2-step: replace(I, 6, 4)   distance 2
+planner 3-step: replace(I, 0, 4)   distance 1
+planner 4-step: replace(I, 8, 4)   distance 0  ✓ SOLVED
+```
+
+The Hodel solver solves this in 2 statements (a clever
+"replace all non-X" composition), but the planner has to do it
+4 steps because each `replace` only swaps one color per call.
+**The planner is correct but verbose** — it pays a 2-step
+penalty for not having the right compositional primitive in its
+candidate set. The 3.9% iterative solve rate (§3.2) is the
+ceiling of the planner's per-primitive cost; compositional
+primitives (the next push) would close the gap.
+
 ## 3.2.5 The learned L1: two programmatic approximations, side by side
 
 The k-NN baseline (§3.1) is a floor. The question is whether a
@@ -390,19 +480,19 @@ has the same shape, 0.0 otherwise) and tournament selection
 (size 3). Default settings: 50-individual population, 8
 generations, max program length 3, ~10s total evolution time.
 
-| primitive | training exact | test exact | evolved program |
+| primitive | training exact | test exact | evolved program (clebran IR) |
 |---|---|---|---|
-| `rot90` | 49/49 (100%) | 9/9 (100%) | exactly `rot90` |
-| `hmirror` | 36/36 (100%) | 30/39 (77%) | exactly `hmirror` |
-| `vmirror` | 68/77 (88%) | 9/12 (75%) | `vmirror` (or equivalent composition) |
-| `dmirror` | 32/32 (100%) | 3/6 (50%) | exactly `dmirror` |
-| `cmirror` | 18/18 (100%) | (no test rows) | `dmirror; dmirror` (composed) |
+| `hmirror` | 36/36 (100%) | 30/39 (77%) | exactly `hmirror(in)` |
+| `vmirror` | 68/77 (88%) | 9/12 (75%) | exactly `vmirror(in)` |
+| `dmirror` | 32/32 (100%) | 3/6 (50%) | exactly `dmirror(in)` |
+| `cmirror` | 18/18 (100%) | (no test rows) | `dmirror(in); dmirror(reg 0)` (composed, cmirror = dmirror twice) |
+| `rot90` | 49/49 (100%) | 9/9 (100%) | `portrait(in); hmirror(in); dmirror(reg 1)` (3-statement identity — wrong for non-square, correct for square grids) |
 | `rot180` | 19/37 (51%) | 0/3 (0%) | partial |
 | `rot270` | 28/40 (70%) | 4/6 (67%) | mostly correct |
 | `branch` | 8/13 (62%) | 3/6 (50%) | partial |
-| `paint` | 8/110 (7%) | 4/12 (33%) | shape-only (1.0 shape) |
-| `fill` | 16/212 (8%) | 1/67 (1.5%) | shape-only (88% shape) |
-| `replace` | 9/97 (9%) | 0/13 (0%) | shape-only (100% shape) |
+| `paint` | 8/110 (7%) | 4/12 (33%) | shape-only (100% shape) |
+| `fill` | 16/212 (8%) | 1/67 (1.5%) | `hmirror(in); vmirror(reg 0)` — *this is `dmirror`, not `fill`* |
+| `replace` | 9/97 (9%) | 0/13 (0%) | `cmirror(in); cmirror(reg 0)` — *this is identity (cmirror is its own inverse), not `replace`* |
 | `bottomhalf`, `tophalf`, `lefthalf`, `righthalf` | shape-only | shape-only | shape-only |
 | `crop`, `compress`, `trim`, `hconcat`, `vconcat`, `upscale`, `downscale` | 0% exact | 0% exact | no progress |
 
@@ -430,6 +520,55 @@ and "not learnable" with a small population and 8 generations:**
   primitives require 2-3 statements with specific constants
   (e.g. `crop(I, (0, 0), (h, w))` needs to know the input
   shape), and the GP's length-3 budget is too tight.
+
+**A failures gallery.** The evolved programs reveal *what the
+GP actually learned* (and what it thinks it learned but
+didn't). The most instructive failures:
+
+* **rot90 = `portrait; hmirror; dmirror(reg 1)`.** The GP found
+  a 3-statement identity that is correct on *square* grids
+  (the test set) but wrong on non-square grids. The
+  composition `dmirror ∘ hmirror` happens to be a 90-degree
+  rotation when the grid is square; on a 3x5 grid it would
+  produce a 5x3 grid instead. The Hodel solver writes
+  `rot90(in)` directly (1 statement) and gets it right for
+  all shapes. The GP *found a 3-statement identity on a
+  training set dominated by square grids* and never saw the
+  failure cases. **This is the "shortcut learning" finding
+  in miniature**: the GP exploits statistical regularities
+  in the training distribution, not the underlying
+  geometric operation.
+* **cmirror = `dmirror; dmirror`.** A 2-statement identity
+  that uses the inverse property (`dmirror` is its own
+  inverse, so applying it twice gives `cmirror`). This is
+  *correct and elegant* — the GP discovered a non-trivial
+  algebraic identity from the fitness signal.
+* **fill = `hmirror; vmirror(reg 0)` — actually dmirror.**
+  The GP didn't learn fill at all. It learned a geometric
+  operation that happens to be shape-preserving (88% shape
+  match) but doesn't fill any cells. The fitness signal
+  rewards shape preservation early, and the GP locks in
+  the geometric identity before discovering that fill needs
+  to *change* cell values. **The shape-only fitness is
+  seductive**: 0.5 fitness for shape-correct but
+  value-wrong is enough to get the GP stuck on a local
+  optimum.
+* **replace = `cmirror; cmirror` — actually identity.**
+  `cmirror` is its own inverse, so this is the identity
+  function. The GP produced 100% shape match (the input
+  is its own output shape) and 0% exact match. **This is
+  the worst-case failure mode**: the GP converges to a
+  no-op that satisfies the shape-only fitness but does
+  nothing useful.
+
+These four examples illustrate the clebran GP's two main
+failure modes: (a) **shortcut learning** — finding a
+property that holds on the training distribution but isn't
+the underlying operation; (b) **shape-only lock-in** — getting
+trapped in a local optimum where shape preservation is
+rewarded but value computation isn't tried. Both failure
+modes are *visible in the evolved program*, not just in the
+accuracy metrics.
 
 **Comparison on the same held-out test split** (`scripts/compare_l1_approaches.py`):
 
@@ -566,6 +705,39 @@ slightly negative at the headline budget. The starved-budget
 positive result is *useful but not durable* — it tells us the
 planner seed's value is conditional on the GP's budget, not
 that the planner seed is a generally-useful addition.
+
+**Task-level evidence for the budget-conditional reading.**
+The 30-task frontier subset has a small, identifiable set of
+tasks where B5 and B5+planner differ:
+
+* **`f76d97a5`** — the 1 unique task solved by B5+planner
+  but missed by B5 at 500K-1M. A 3x3 / 5x5 / 9x9 demo family
+  where the output is a *mask* of the input: every cell
+  that matches the *center* color becomes 0, every other
+  cell stays the same. The B5 baseline's phase-1 closure
+  enumerates single primitives and short compositions, but
+  the actual solution (`palette` → identify center color →
+  `fill` with the complement) needs a 2-3 statement program
+  whose first statement is non-trivial. The planner's
+  multi-pair, look-ahead search finds this first statement
+  directly. At 4M, B5's evolutionary loop has enough budget
+  to discover the same program, and the unique-task
+  advantage disappears.
+* **`0b148d64`, `f25fbde4`** — the 2 unique tasks solved
+  by B5 alone but missed by B5+planner in any of the 5
+  4M-eval seeds. Both are large-grid (19x21) tasks where
+  the solution is a *crop* of a specific region. B5's
+  phase-1 closure enumerates the crop primitive and
+  occasionally finds the right `(start, dims)` combination
+  through a single lucky mutation. B5+planner's planner
+  seed occupies a population slot that the GP would
+  otherwise have used for a different initial program,
+  and the planner's grid→grid candidate set doesn't
+  include `crop` with the right parameters for these
+  specific tasks. **The planner seed is *blocking* the
+  rare events B5 would otherwise find** — not by being
+  actively wrong, but by *taking up a slot in the initial
+  population*.
 
 ## 3.4 What flipped the result from "slight null" to "at parity"
 
