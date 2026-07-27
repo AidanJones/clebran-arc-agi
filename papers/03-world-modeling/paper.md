@@ -570,6 +570,34 @@ rewarded but value computation isn't tried. Both failure
 modes are *visible in the evolved program*, not just in the
 accuracy metrics.
 
+**The fitness curve, per generation.** The script
+`scripts/gp_per_gen_trajectory.py` runs the GP loop and
+records the best fitness at each of 9 generations (gen 0
+is the initial random population) for 4 representative
+primitives:
+
+| primitive | gen 0 | gen 1 | gen 2 | gen 3 | gen 4 | gen 5 | gen 6 | gen 7 | gen 8 |
+|---|---|---|---|---|---|---|---|---|---|
+| `rot90`    | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| `fill`     | 0.49 | 0.49 | 0.49 | 0.49 | 0.49 | 0.49 | 0.49 | 0.49 | 0.49 |
+| `replace`  | 0.53 | 0.53 | 0.53 | 0.53 | 0.53 | 0.53 | 0.53 | 0.53 | 0.53 |
+| `hconcat`  | 0.06 | 0.06 | 0.06 | 0.06 | 0.06 | 0.06 | 0.06 | 0.06 | 0.06 |
+
+Two distinct patterns: **`rot90` finds a perfect program
+in the initial random population** (gen 0 already has a
+`rot90(I)` or equivalent, so the GP trivially discovers the
+fitness ceiling), and the value-computing / compositional
+primitives **`fill`, `replace`, `hconcat` are flat lines**
+— the GP cannot escape the local optimum. The flat lines
+are not a search-budget problem (8 generations × 50
+individuals × ~50 fitness evaluations = 20K program
+evaluations per primitive); they're a *landscape* problem.
+The smoothed exact-match fitness gives 0.5 to any
+shape-preserving program, which is enough to saturate the
+50% threshold the GP needs to find a "good enough" local
+optimum. **The fitness function is the bottleneck**, not
+the search budget.
+
 **Comparison on the same held-out test split** (`scripts/compare_l1_approaches.py`):
 
 | L1 | exact% | shape% | mean_h* | µs/pred | pred/s | train_s |
@@ -738,6 +766,108 @@ tasks where B5 and B5+planner differ:
   rare events B5 would otherwise find** — not by being
   actively wrong, but by *taking up a slot in the initial
   population*.
+
+**The actual evolved programs.** `scripts/inspect_task_programs.py`
+extracts the evolved programs for the 3 specific tasks from
+the b5 / b5+planner logs. Side-by-side:
+
+**`f76d97a5`** (B5+planner unique at 500K-1M, ties at 4M):
+```
+B5 seed=1   (evolved, len=6, evals=3.13M):
+  replace(I, 4, 0)
+  mostcolor(x0)
+  colorcount(x0, ZERO)
+  switch(x0, x2, FIVE)
+  mostcolor(x3)
+  switch(x3, x4, x2)
+
+B5 seed=2   (evolved, len=5, evals=1.04M):
+  mostcolor(I)
+  switch(I, FIVE, x0)
+  replace(x1, FIVE, ZERO)
+  colorcount(x2, x0)
+  switch(x2, FOUR, x3)
+
+B5P seed=2  (evolved, len=6, evals=1.50M):
+  replace(I, FIVE, FOUR)
+  mostcolor(I)
+  switch(I, FIVE, ZERO)
+  hmirror(ZERO_BY_TWO)             ← library constant
+  mostcolor(x0)
+  switch(x2, x4, ZERO)
+
+B5P seed=3  (evolved, len=5, evals=0.46M):
+  ['abstr', 'b5p-s3_a0'](I)        ← library abstraction
+  switch(I, 5, ZERO)
+  bottomhalf(x0)
+  mostcolor(x2)
+  switch(x1, F, x3)
+```
+
+B5 and B5+planner converge to *similar* programs on
+f76d97a5 — they all use `mostcolor` + `switch` +
+`replace` to identify the centre colour and mask the
+non-centre cells. The differences (B5P's use of library
+abstractions and constants, B5's leaner 5-6 statement
+choreography) are stylistic, not structural. **At 4M,
+the GP finds the same solution regardless of the planner
+seed** — the 500K-1M unique advantage of B5+planner comes
+from finding a *partial* program first (the planner's
+seed), which the GP then completes via mutation.
+
+**`0b148d64`** (B5 alone unique at 4M):
+```
+B5 seed=1   (evolved, len=6, evals=2.91M):
+  palette(I)                      ← list of input colors
+  last(x0)
+  ofcolor(I, 1)                   ← cells with color 1
+  ofcolor(I, x1)
+  bordering(x3, I)                ← cells of x3 on the border
+  subgrid(x3, I)                  ← crop to x3
+```
+
+This is a *6-statement* program that finds the colour that
+forms a border (colour 1), then crops to that region. The
+planner-seeded individual didn't help here — B5P never
+solved 0b148d64 in any of 3 seeds. **The crop primitive
+is the bottleneck**: the planner's grid→grid candidate
+set doesn't include `subgrid` with the right parameters,
+so the planner seed never has the right structure to
+bootstrap a subgrid solution.
+
+**`f25fbde4`** (B5 alone unique at 4M):
+```
+B5 seed=3   (evolved, len=4, evals=2.64M):
+  ['abstr', 'b5-s3_a3'](I)        ← library abstraction
+  hconcat(I, I)                   ← stack I vertically
+  mapply(prim:initset, x1)
+  upscale(x0, TWO)                ← tile
+```
+
+This is a 4-statement *tile* program: the abstraction
+(presumably a small extracted fragment) produces a unit
+pattern, hconcat stacks it, mapply fans it out, and
+upscale tiles the result. Again, B5P never solved this
+task in any seed. **The planner's candidate set is
+missing the upscale + hconcat + mapply composition**
+that B5 found through a lucky library-mining event.
+
+**The pattern.** The 3 tasks decompose cleanly: f76d97a5
+is a *planner-friendly* task (the planner's Hamming-driven
+multi-pair rollout finds the right first step in a
+1-2 statement prefix); 0b148d64 and f25fbde4 are
+*planner-unfriendly* tasks (they need compositional
+primitives — `subgrid`, `hconcat`, `mapply`, `upscale` —
+that the planner's candidate set doesn't include). The
+planner seed helps in the *first* case (the planner's
+prefix gives the GP a head start at starved budgets) and
+*blocks* in the *second* case (the planner's 20-step
+prefix occupies a population slot the GP could have used
+for a compositional exploration). At 4M, B5's GP
+discovers the f76d97a5 solution on its own, but B5+planner
+still misses the two compositional tasks because the
+planner's seed is not the right starting point for
+those searches.
 
 ## 3.4 What flipped the result from "slight null" to "at parity"
 
