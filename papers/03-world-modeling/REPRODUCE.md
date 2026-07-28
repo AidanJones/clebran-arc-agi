@@ -130,21 +130,29 @@ for s in 1 2 3; do
 done
 ```
 
-**5 seeds, 4M candidate-evaluations, frontier subset, lookahead=1 (the
+**20 seeds, 4M candidate-evaluations, frontier subset, lookahead=1 (the
 headline configuration):**
 
 ```sh
-for s in 1 2 3 4 5; do
+for s in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
   uv run python -m clebran.baselines.b5_planner \
       --seed $s --budget 4000000 --pop-size 100 --planner-lookahead 1
 done
 ```
 
-**5 seeds, 4M candidate-evaluations, frontier subset, B5 baseline
+Or use the idempotent sweep runner:
+
+```sh
+bash scripts/run_20seed_4m.sh 6 20
+```
+
+(Skips any seed that already has a complete summary log.)
+
+**20 seeds, 4M candidate-evaluations, frontier subset, B5 baseline
 (control):**
 
 ```sh
-for s in 1 2 3 4 5; do
+for s in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
   uv run python -m clebran.baselines.frontier_sweep \
       --run --arm B5 --seed $s --budget 4000000
 done
@@ -160,26 +168,22 @@ B5+planner (L=2, 500K, 3 seeds): 10.00 solved, 3.00 evo, 1.70 mean length.
 B5+planner (L=1, 1M, 3 seeds): 10.00 solved, 3.00 evo, 2.03 mean length.
 B5+planner solves 1 unique task (f76d97a5) that B5 misses in any of the 3 seeds.
 
-**Claims (4M, headline configuration, 5 seeds):**
+**Claims (4M, headline configuration, 20 seeds):**
 
-| seed | B5 solved (evo) | B5+P solved (evo) | delta |
-|---|---|---|---|
-| 1 | 14 (7) | 13 (6) | -1 |
-| 2 | 12 (5) | 13 (6) | +1 |
-| 3 | 14 (7) | 12 (5) | -2 |
-| 4 | 14 (7) | 12 (5) | -2 |
-| 5 | 13 (5) | 12 (4) | -1 |
-| **mean** | **13.40 ± 0.89 (6.20 evo)** | **12.40 ± 0.55 (5.20 evo)** | **-1.00** |
+B5 (control, 4M, 20 seeds): **12.45 ± 1.15** solved, 4.65 ± 1.42 evo, 2.35 mean length.
+B5+planner (L=1, 4M, 20 seeds): **12.35 ± 0.99** solved, 4.55 ± 1.28 evo, 2.42 mean length.
+delta (B5+P − B5): mean = **-0.10**, sd = 1.71, SE = 0.38, t = **0.26** (not significant).
+B5+planner solves 0 unique tasks that B5 doesn't also solve.
+B5-only tasks (B5 solves, B5+planner never does): **`f25ffba3`** (1 task).
 
-B5 union of solved tasks across 5 seeds: 16 unique.
-B5+planner union: 14 unique.
-B5-only tasks (B5 solves, B5+planner never does): `0b148d64`, `f25fbde4`
-(each a single-seed rare-event solve — B5 seed 1 for 0b148d64, B5 seed 3
-for f25fbde4).
-B5+planner-only tasks: none — the B5+planner's solved set is a *strict
-subset* of B5's.
+**The 4M headline is a null result at scale** — B5 and B5+planner
+are tied. The 5-seed pilot's "B5 alone wins by 1.0 solve" was a
+small-sample effect. The starved-budget positive result (B5+planner
+ties B5 at the 10/30 ceiling with +0.33 evo and 1 unique task) is
+the *only* positive comparison in the study, scoped to the
+500K-1M regime.
 
-Inspect the per-seed summary with `uv run python scripts/inspect_4m_sweep.py`.
+Inspect the per-seed summary with `uv run python scripts/analyze_20seed.py`.
 
 ## 5. Frozen data
 

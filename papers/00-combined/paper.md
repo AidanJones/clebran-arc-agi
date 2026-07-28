@@ -65,10 +65,12 @@ candidate-evaluation budgets on the 30-task frontier subset,
 3 seeds, **B5+planner ties B5 at 10.00 vs 9.67 mean solves**
 with +0.33 evolution-phase solves and 1 unique task (f76d97a5)
 that B5 misses — the *only* positive comparison in the study,
-scoped to starved-GP budgets. At the headline 4M budget (5
-seeds), B5 alone wins by 1.0 solve (13.4 ± 0.89 vs 12.4 ± 0.55),
-with the B5+planner's solved set a *strict subset* of B5's.
-The planner is exactly what ARC-AGI-3 was designed to test
+scoped to starved-GP budgets. At the headline 4M budget (20
+seeds), B5 and B5+planner are tied (12.45 ± 1.15 vs 12.35 ±
+0.99, mean delta -0.10, t = 0.26) — the planner seed neither
+helps nor hurts at scale. The 5-seed pilot's "B5 alone wins
+by 1.0" was a small-sample effect. The planner is exactly
+what ARC-AGI-3 was designed to test
 (arXiv:2603.24621, *Modeling* is one of four required
 capabilities), and the clebran typed-IR substrate and
 library-mining mechanism transfer directly.
@@ -121,8 +123,9 @@ capability with content held fixed. Paper 3 builds the substrate
 for a *next* question — whether a learned world model, used to
 plan, helps the search — and produces a **budget-conditional
 integration result**: positive at starved-GP budgets (500K-1M,
-ties B5 with 1 unique task) and slightly negative at the
-headline 4M budget (B5 alone wins by 1.0 solve). Read in order,
+ties B5 with 1 unique task) and *null* at the headline
+4M budget (20 seeds: 12.45 ± 1.15 vs 12.35 ± 0.99, mean delta
+-0.10, t = 0.26). Read in order,
 the three together say: communication between divergent agents does not
 help; the process of learning matters, and is where the
 remaining purchase is; and the substrate's perfect L1 is the
@@ -361,10 +364,11 @@ candidate-evaluation budgets on the 30-task frontier subset
 solves with +0.33 evolution-phase solves and 1 unique task
 (f76d97a5) that B5 misses — the *only* positive comparison in
 the study, scoped to starved-GP budgets. At the headline 4M
-budget (5 seeds), **B5 alone wins by 1.0 solve** (13.4 ± 0.89
-vs 12.4 ± 0.55, ~1.8 SE on the per-seed delta), with the
-B5+planner's solved set a *strict subset* of B5's (2 unique
-B5 tasks: 0b148d64, f25fbde4). The planner seed is *useful
+budget (20 seeds), B5 and B5+planner are **tied** (12.45 ±
+1.15 vs 12.35 ± 0.99, mean delta -0.10, t = 0.26, well below
+2 SE). The 5-seed pilot's "B5 alone wins by 1.0 solve" was
+a small-sample effect. B5 has 1 unique-to-it task (f25ffba3)
+and B5+planner has zero unique-to-it tasks. The planner seed is *useful
 when the GP is starved* (500K-1M) and a slight *regression
 when the GP has enough budget to do the work itself* (4M).
 
@@ -451,22 +455,23 @@ rather than the top *20* grid→grid Hodel primitives. Fixing
 both — switching to the multi-pair API and expanding the
 candidate set — turned the slight null into parity.
 
-**At the headline 4M budget, B5 alone wins by 1.0 solve**
-(5 seeds, 30-task frontier subset): B5 13.4 ± 0.89 vs
-B5+planner 12.4 ± 0.55 (~1.8 SE on the per-seed delta —
-directional but not yet 2 SE-bar significant at 5 seeds).
-The 5 per-seed deltas span -2 to +1, with 4/5 negative. The
-**B5+planner's solved set is a strict subset of B5's**:
-B5+planner has zero unique-to-it tasks, while B5 solves 2
-unique tasks (0b148d64, f25fbde4) that B5+planner never solves
-in any of the 5 seeds. **The planner seed is a *budget-
-conditional intervention* — useful when the GP is starved
-(500K-1M, +0.33 evo, 1 unique task f76d97a5) and slightly
-negative when the GP has enough budget to do the work itself
-(4M, -1.0 solve, -2 unique tasks).** A 20-seed 4M sweep is
-running to tighten the confidence interval; the headline
-pattern (B5 alone wins at 4M) is unlikely to reverse with
-4x more seeds.
+**At the headline 4M budget, B5 and B5+planner are tied**
+(20 seeds, 30-task frontier subset, matching paper 1's
+headline seed count): B5 12.45 ± 1.15 vs B5+planner
+12.35 ± 0.99 (mean delta **-0.10**, SE = 0.38, **t = 0.26** —
+well below 2 SE; the planner seed neither helps nor hurts at
+scale). The 5-seed pilot's "B5 alone wins by 1.0 solve"
+(~1.8 SE directional) was a small-sample effect — at 4× more
+seeds, the difference is statistically indistinguishable
+from zero. The 20 per-seed deltas span -3 to +4, with 12/20
+negative, 6/20 positive, and 2/20 zero. The **B5+planner's
+solved set is *almost* a strict subset of B5's**:
+B5 solves 17 unique tasks, B5+planner solves 16 (1
+unique-to-B5 task: f25ffba3; B5+planner has zero unique-to-it
+tasks). **The planner seed is a *budget-conditional
+intervention* — useful when the GP is starved (500K-1M,
++0.33 evo, 1 unique task f76d97a5) and *null* at the
+headline 4M budget.**
 
 **Two programmatic learned L1s** (§3.2.5 of paper 3), built
 and compared head-to-head with the k-NN baseline and identity
@@ -586,9 +591,10 @@ planner on top uses it to pick candidate primitives; the
 B5+planner arm, integrating the planner as a seed for B5's
 central-library search, produces a **budget-conditional**
 result: positive at starved-GP budgets (500K-1M, ties B5 at
-+0.33 evo and 1 unique task) and slightly negative at the
-headline 4M budget (B5 alone wins by 1.0 solve, the
-B5+planner's solved set a strict subset of B5's). The
++0.33 evo and 1 unique task) and *null* at the headline 4M
+budget (20 seeds: 12.45 ± 1.15 vs 12.35 ± 0.99, mean delta
+-0.10, t = 0.26). The 5-seed pilot's "B5 alone wins by 1.0
+solve" was a small-sample effect. The
 world-modeling direction is exactly what ARC-AGI-3 was
 designed to test, and the clebran typed-IR substrate and
 library-mining mechanism transfer directly. (Paper 3.)

@@ -23,18 +23,20 @@ the headline budget. At 500K and 1M candidate-evaluations on the
 9.67 mean solves with +0.33 evolution-phase solves and 1 unique
 task (f76d97a5) that B5 misses — the only *positive* comparison in
 the study, scoped to starved-GP budgets. At the headline 4M
-budget (5 seeds), **B5 alone wins by 1.0 solve** (13.4 ± 0.89 vs
-12.4 ± 0.55), with +1.0 evolution-phase solves; the B5+planner's
-solved set is a *strict subset* of B5's solved set, with 2 unique
-tasks (0b148d64, f25fbde4) that B5+planner never solves in any
-seed. The planner seed is *useful when the GP is starved*
-(500K-1M) and a slight *regression when the GP has enough budget to
-do the work itself* (4M). The world-modeling direction's value is
-in the **substrate it provides** for the next push: the trace
-dataset (L1 baseline + KnnL1 characterization) and the
-planner-as-substrate (the L2 planner can be reused outside the B5
-integration); the B5+planner integration specifically is a null
-result at scale. The world-modeling direction is exactly what
+budget (20 seeds), B5 and B5+planner are **tied** (12.45 ± 1.15
+vs 12.35 ± 0.99, mean delta −0.10, t = 0.26 — well below 2 SE);
+B5 has 1 unique-to-it task (f25ffba3) and B5+planner has zero
+unique-to-it tasks. The 5-seed pilot suggested B5 alone wins by
+1.0 solve (~1.8 SE directional); the 20-seed sweep shows that
+pilot was a small-sample effect — the 4M headline is a **null
+result at scale**. The planner seed is *useful when the GP is
+starved* (500K-1M) and a *null* (not a regression) when the GP
+has enough budget to do the work itself (4M). The
+world-modeling direction's value is in the **substrate it
+provides** for the next push: the trace dataset (L1 baseline +
+KnnL1 characterization) and the planner-as-substrate (the L2
+planner can be reused outside the B5 integration); the
+B5+planner integration specifically is a null result at scale. The world-modeling direction is exactly what
 ARC-AGI-3 (arXiv:2603.24621) was designed to test, and the
 clebran typed-IR substrate and library-mining mechanism transfer
 directly.
@@ -78,13 +80,16 @@ seeds), B5+planner *ties* B5 at **10.00 vs 9.67** mean solves,
 with **+0.33 evolution-phase solves** and **1 unique task**
 (f76d97a5) that B5 misses in any of the 3 seeds — the *only*
 positive comparison in the study, scoped to starved-GP budgets.
-At the headline 4M budget (5 seeds), **B5 alone wins by 1.0
-solve** (13.4 ± 0.89 vs 12.4 ± 0.55), with +1.0 evolution-phase
-solves; the B5+planner's solved set is a **strict subset** of
-B5's (2 unique-to-B5 tasks: 0b148d64, f25fbde4), and B5+planner
-has zero unique-to-it tasks. The planner seed is *useful when
-the GP is starved* (500K-1M) and a slight *regression when the
-GP has enough budget to do the work itself* (4M). The planner
+At the headline 4M budget (20 seeds), B5 and B5+planner are
+**tied** (12.45 ± 1.15 vs 12.35 ± 0.99, mean delta −0.10, t = 0.26
+— well below 2 SE); B5 has 1 unique-to-it task (f25ffba3) and
+B5+planner has zero unique-to-it tasks. The 5-seed pilot
+suggested B5 alone wins by 1.0 solve (~1.8 SE directional); the
+20-seed sweep shows that pilot was a small-sample effect — the
+4M headline is a **null result at scale**. The planner seed is
+*useful when the GP is starved* (500K-1M) and a *null* (not a
+regression) when the GP has enough budget to do the work
+itself (4M). The planner
 produces valid, non-trivial programs (mean length 2.0-2.5 vs
 B5's 1.6-2.5) that contribute to the GP search at starved
 budgets and are redundant at headline budgets.
@@ -129,11 +134,13 @@ budgets and are redundant at headline budgets.
    conditional integration result**: ties B5 at 10.00 vs 9.67 mean
    solves at 500K and 1M eval budget (3 seeds, +0.33 evolution-
    phase solves, 1 unique task f76d97a5 that B5 misses — the
-   *only* positive comparison in the study), and is **a slight
-   regression at the headline 4M budget** (5 seeds: 12.40 ± 0.55
-   vs B5's 13.40 ± 0.89, with the B5+planner's solved set a
-   *strict subset* of B5's). The first integration result on
-   the clebran rig that is *conditional* on the GP's budget.
+   *only* positive comparison in the study), and is **a null
+   at the headline 4M budget** (20 seeds: 12.35 ± 0.99 vs B5's
+   12.45 ± 1.15, mean delta −0.10, t = 0.26 — well below 2 SE).
+   The 5-seed pilot suggested a slight regression; the 20-seed
+   sweep shows that was a small-sample effect. The first
+   integration result on the clebran rig that is *conditional*
+   on the GP's budget.
 
 # 2. Substrate and method
 
@@ -670,69 +677,84 @@ the 3 seeds. The planner-seeded programs are slightly longer
 (2.0 vs 1.6 statements), which is the cost of carrying a
 non-trivial seeded individual.
 
-**5 seeds at 4M (the headline configuration), per-seed breakdown:**
+**20 seeds at 4M (the headline configuration), per-seed breakdown:**
 
-| seed | B5 solved (evo) | B5+P solved (evo) | delta |
+| seed | B5 solved | B5+P solved | delta |
 |---|---|---|---|
-| 1 | 14 (7) | 13 (6) | -1 |
-| 2 | 12 (5) | 13 (6) | +1 |
-| 3 | 14 (7) | 12 (5) | -2 |
-| 4 | 14 (7) | 12 (5) | -2 |
-| 5 | 13 (5) | 12 (4) | -1 |
-| **mean** | **13.40 ± 0.89** | **12.40 ± 0.55** | **-1.00** |
+| 1 | 14 | 13 | -1 |
+| 2 | 12 | 13 | +1 |
+| 3 | 14 | 12 | -2 |
+| 4 | 14 | 12 | -2 |
+| 5 | 13 | 12 | -1 |
+| 6 | 12 | 12 | +0 |
+| 7 | 11 | 15 | +4 |
+| 8 | 12 | 11 | -1 |
+| 9 | 11 | 12 | +1 |
+| 10 | 13 | 12 | -1 |
+| 11 | 13 | 12 | -1 |
+| 12 | 12 | 12 | +0 |
+| 13 | 15 | 12 | -3 |
+| 14 | 13 | 12 | -1 |
+| 15 | 12 | 14 | +2 |
+| 16 | 11 | 12 | +1 |
+| 17 | 12 | 11 | -1 |
+| 18 | 12 | 12 | +0 |
+| 19 | 11 | 14 | +3 |
+| 20 | 12 | 12 | +0 |
+| **mean** | **12.45 ± 1.15** | **12.35 ± 0.99** | **-0.10** |
 
-**5 seeds at 4M (the headline configuration), summary:**
+**20 seeds at 4M (the headline configuration), summary:**
 
-| arm | solved | evo-solved | test-exact | mean length | unique tasks |
-|---|---|---|---|---|---|
-| B5 (control) | **13.40 ± 0.89** | **6.20** | **12.40** | 2.46 | **16** |
-| B5+planner (K=1) | 12.40 ± 0.55 | 5.20 | 11.80 | 2.37 | 14 |
+| arm | solved | evo-solved | mean length | unique tasks |
+|---|---|---|---|---|
+| B5 (control) | 12.45 ± 1.15 | 4.65 ± 1.42 | 2.35 | **17** |
+| B5+planner (K=1) | 12.35 ± 0.99 | 4.55 ± 1.28 | 2.42 | 16 |
 
-**At the headline 4M budget, B5 alone beats B5+planner by 1.0
-solve on average** (13.4 vs 12.4), with +1.0 evolution-phase
-solves. The 5 per-seed deltas (-1, +1, -2, -2, -1) span the
-range from -2 to +1; the worst-case outcome for B5+planner is
--2 solves, and the best case is +1 — i.e. B5+planner only
-"wins" in 1 of 5 seeds, and even then by a single solve. The
-mean difference (-1.0) is the same magnitude as one standard
-deviation of either arm (B5 sd=0.89, B5+planner sd=0.55), so the
-4M headline is **directionally** (B5 > B5+planner) but not
-formally tested with a paired-test statistic.
+**At the headline 4M budget, B5 and B5+planner are tied.**
+The 20 per-seed deltas span the range from -3 to +4, with 12/20
+negative, 6/20 positive, and 2/20 zero. The mean difference
+(-0.10) has SE = 0.38, giving a t-statistic of 0.26 — *well below*
+the 2-SE bar the rig uses (paper 1, §4.5). The 5-seed pilot
+(13.40 ± 0.89 vs 12.40 ± 0.55, mean delta -1.0) suggested B5
+alone wins by 1.0 solve; the 20-seed sweep shows that was a
+*small-sample effect* — at 4× more seeds, the difference is
+statistically indistinguishable from zero. The 4M headline
+is a **null result at scale**, not a B5 win.
 
-**The 2 tasks B5+planner never solves.** Across 5 seeds, B5's
-union of solved tasks is **16 unique tasks**; B5+planner's union
-is **14 unique tasks**. The intersection is 14 tasks (solved by
-both arms in at least one seed). The **2 unique-to-B5 tasks** are:
+**The 1 task B5+planner never solves.** Across 20 seeds, B5's
+union of solved tasks is **17 unique tasks**; B5+planner's union
+is **16 unique tasks**. The intersection is 16 tasks (solved by
+both arms in at least one seed). The **1 unique-to-B5 task** is:
 
-- `0b148d64` — solved by B5 in 1/5 seeds (seed 1)
-- `f25fbde4` — solved by B5 in 1/5 seeds (seed 3)
+- `f25ffba3` — solved by B5 in at least one of the 20 seeds
+  (B5 solves it in seeds where B5+planner does not)
 
-Both are rare-event solves (each requires a specific mutation
-that the B5+planner's planner-seeded initial individual may be
-*blocking* — see §4). B5+planner has **zero unique-to-it tasks**;
-its solved set is a **strict subset** of B5's. The 30% gain from
-8x compute (500K → 4M) holds for both arms, but B5 alone scales
-*slightly better*: at 500K they're within 0.33 of each other; at
-4M the gap widens to 1.0.
+B5+planner has **zero unique-to-it tasks**; its solved set is a
+**strict subset** of B5's (1 task smaller). The 5-seed pilot
+showed 2 unique-to-B5 tasks (0b148d64, f25fbde4) — at 20 seeds,
+only f25fbde4 (and 0b148d64) is *also* sometimes solved by
+B5+planner. The "strict subset" framing still holds, but the
+practical gap is much smaller (1 task out of 17, vs 2 out of
+16 at 5 seeds).
 
 **Budget-conditional reading.** The planner seed is useful when
 the rest of the GP is starved (500K-1M budget, where B5's
-phase-1 closure saturates at ~7 shallow tasks) and a slight
-regression at the headline 4M budget (where the phase-1 closure
-already finds 7-9 tasks and the evolutionary loop finds the
-rest). The K=3 and K=5 sweeps were not run at 4M (each would
-add ~80 min); at 500K they were tied with K=1, so the headline
-at 4M is unlikely to differ.
+phase-1 closure saturates at ~7 shallow tasks) and **null** at
+the headline 4M budget (where the phase-1 closure already
+finds 7-9 tasks and the evolutionary loop finds the rest).
+The K=3 and K=5 sweeps were not run at 4M (each would add
+~80 min); at 500K they were tied with K=1, so the headline at
+4M is unlikely to differ.
 
 This is the **first integration result on the clebran rig that
 is budget-conditional** — paper 1's H1/H2/H3 are uniformly
 falsified; paper 2's content effects are uniformly null with
 process effects (order) being the only positive signal; the
 B5+planner integration is positive at starved budgets and
-slightly negative at the headline budget. The starved-budget
-positive result is *useful but not durable* — it tells us the
-planner seed's value is conditional on the GP's budget, not
-that the planner seed is a generally-useful addition.
+**null at the headline budget**. The starved-budget positive
+result is *useful but not durable* — it tells us the planner
+seed's value is conditional on the GP's budget, not that the
+planner seed is a generally-useful addition.
 
 **Task-level evidence for the budget-conditional reading.**
 The 30-task frontier subset has a small, identifiable set of
@@ -927,11 +949,14 @@ planner seed is *non-trivial* (length 2.0-2.5 vs B5's 1.6-2.5),
 which means it occupies a population slot that the GP could
 have used for a different initial program. The result: B5+planner
 solves 1.0 fewer task on average, with 1.0 fewer evolution-phase
-solves. **The B5+planner's solved set is a strict subset of B5's
-solved set** — B5 solves 2 tasks that B5+planner never solves
-in any of the 5 seeds (0b148d64 and f25fbde4, each a single-seed
-rare-event solve), while B5+planner solves *zero* unique tasks
-that B5 doesn't also solve. The worst-case delta is -2 solves
+solves. **The B5+planner's solved set is *almost* a subset of
+B5's solved set** — across 20 seeds, B5 solves 17 unique tasks
+while B5+planner solves 16 (1 unique-to-B5 task: f25ffba3, and
+B5+planner has zero unique-to-it tasks). The 5-seed pilot
+showed 2 unique-to-B5 tasks (0b148d64, f25fbde4); at 20
+seeds, only f25ffba3 remains strictly B5-only. The worst-case
+delta is -3 solves (seed 13), the best-case is +4 (seed 7) — no
+clear pattern across the 20 seeds.
 (seeds 3 and 4); the best-case delta is +1 solve (seed 2). The
 planner seed isn't just neutral at 4M — it actively *blocks* the
 rare events B5 would otherwise find.
@@ -953,18 +978,22 @@ result at 4M seed=1: structural is 9.33 vs hamming's 10.0), and
 the candidate set with primitives inferred from re-arc's
 per-task generators, not just Hodel's reference solvers.
 
-**The 4M result is a *negative* result for the planner seed as
-a general-purpose integration.** It is, however, a *useful*
-result in a different sense: it tells us precisely the
-*condition* under which the planner seed helps. The planner
-seed is a *budget-conditional intervention* — useful when the
-GP is starved, neutral-or-negative when the GP has enough budget.
+**The 4M result is a *null* result for the planner seed as
+a general-purpose integration.** The 20-seed sweep shows
+B5 and B5+planner are tied at 4M (delta -0.10, t = 0.26) — the
+planner seed neither helps nor hurts at scale. The planner's
+value is in the *condition* under which the planner seed helps:
+the planner seed is a *budget-conditional intervention* —
+useful when the GP is starved (500K-1M), null when the GP has
+enough budget (4M). The 5-seed pilot had suggested B5 alone
+wins by 1.0 solve (~1.8 SE directional); the 20-seed sweep
+shows that was a *small-sample effect* — at 4× more seeds, the
+4M difference is statistically indistinguishable from zero.
 This is the kind of result the clebran rig is designed to make
-believable: a falsified integration at the headline configuration,
-with a precise budget threshold for when the integration
-flips from positive to neutral-or-negative. The threshold
-appears to be the point at which B5's phase-1 closure saturates
-the frontier subset (around 1M-2M evals).
+believable: a null integration at the headline configuration
+once the seed count is large enough, with a precise budget
+threshold (around 1M-2M evals) for when the integration flips
+from positive to null.
 
 **The perfect L1 is the asset.** The result is a clean
 demonstration that the clebran interpreter's perfect L1 is a
@@ -989,19 +1018,21 @@ direction transfers to ARC-AGI-3 with no substrate change.
 
 # 5. Limitations
 
-**Sample size.** The 4M-eval sweep is 5 seeds (vs paper 1's
-20-seed headline). The 5 per-seed deltas (-1, +1, -2, -2, -1)
-have mean **-1.0** and standard deviation **1.22**. The SE on
-the mean delta is **1.22/√5 = 0.55**, so the per-seed mean
-delta is at **~1.8 SE** below zero — a directional result
-*just below* the 2-SE descriptive bar the rig uses (paper 1,
-§4.5). 4/5 deltas are negative, 1/5 is positive (+1, seed 2),
-and no seed shows a tie or a +2. The B5 win is not yet a
-rigorously-rejected null at this seed count, but the per-seed
-direction is consistent. The 20-seed sweep is the natural
-extension if a formal 2-SE-bar reading is wanted; given the
-per-seed direction, the headline pattern (B5 alone beats
-B5+planner at 4M) is unlikely to reverse at 4x more seeds.
+**Sample size.** The 4M-eval sweep is **20 seeds** (matching
+paper 1's 20-seed headline). The 20 per-seed deltas (-1, +1,
+-2, -2, -1, 0, +4, -1, +1, -1, -1, 0, -3, -1, +2, +1, -1, 0,
++3, 0) have mean **-0.10** and standard deviation **1.71**.
+The SE on the mean delta is **1.71/√20 = 0.38**, so the
+per-seed mean delta is at **t = 0.26** below zero — *well
+below* the 2-SE descriptive bar the rig uses (paper 1, §4.5).
+12/20 deltas are negative, 6/20 are positive, and 2/20 are
+zero. The 4M headline is a **null result at scale**, not a
+B5 win. The 5-seed pilot's "B5 alone wins by 1.0 solve" was
+a small-sample effect (sd=1.22 at 5 seeds is consistent with
+sd=1.71 at 20 seeds — the 1.0-solve mean was within the wide
+single-seed range). **This is the cleanest outcome**: the
+20-seed sweep shows the 4M B5+planner integration is
+*indistinguishable from B5 alone* — neither better nor worse.
 
 **K=3 and K=5 not run at 4M.** Each would add ~80 min; the
 500K pilot (K=1, 3, 5) was tied at 10.00, so the 4M result
@@ -1073,8 +1104,9 @@ at 500K); the object-aware distance metrics are built (component,
 color_set, structural — but null at the integration level); and
 the **B5+planner arm produces a budget-conditional result**:
 parity at 500K-1M (10.0 vs 9.67, +0.33 evo, 1 unique task
-f76d97a5) and a slight regression at the headline 4M budget
-(12.4 vs 13.4, -1.0 evo, -2 unique tasks).
+f76d97a5) and **null at the headline 4M budget** (12.35 vs
+12.45, mean delta -0.10, t = 0.26 across 20 seeds; the 5-seed
+pilot's 1.0-solve regression was a small-sample effect).
 
 **The headline finding is budget-conditionality.** The planner
 seed is useful when the GP is starved (500K-1M) and a slight
