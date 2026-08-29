@@ -1,0 +1,43 @@
+﻿========================================================================
+ACQUISITION EFFICIENCY AT 4M CANDIDATE-EVALUATIONS (re-score, no new runs)
+========================================================================
+
+Per-arm summary (sorted by evals-per-solve, lower = more efficient):
+arm              n solving unsol      solved/30     evo-solved          evals/solve
+-------------------------------------------------------------------------------------
+B5              20      20     0  12.45 ±  1.15   4.65 ±  1.42         323,848 ± 28,776
+B5+planner      19      19     0  12.32 ±  1.00   4.47 ±  1.26         326,665 ± 24,298
+B0              20      20     0   2.25 ±  1.07   2.25 ±  1.07       2,333,510 ± 1,284,369
+B7              20      19     1   1.90 ±  1.07   1.85 ±  1.04       2,579,205 ± 1,275,957
+B6              20      19     1   1.85 ±  1.09   1.80 ±  1.06       2,631,779 ± 1,241,940
+B9              20      19     1   1.70 ±  0.86   1.65 ±  0.75       2,649,320 ± 1,091,437
+B8              20      19     1   1.65 ±  0.81   1.60 ±  0.75       2,737,451 ± 1,130,719
+B2              20      18     2   1.65 ±  1.14   1.60 ±  0.99       2,748,344 ± 1,194,381
+B1              20      19     1   1.50 ±  0.95   1.45 ±  0.94       3,140,693 ± 1,182,998
+
+B5 and B5+planner have per-solve evals preserved (20 / 19 seeds at 4M).
+
+arm                          n         mean       median          p25          p75          min
+-----------------------------------------------------------------------------------------------
+B5 (all)                   249      494,099      114,601       56,512      287,867          296
+B5 (phase1)                156       75,545       66,924       35,293      114,875          296
+B5 (evolution)              93    1,196,189      720,233      215,582    2,152,812       37,806
+B5+planner (all)            85    1,100,653      573,527      213,808    2,044,126      124,250
+B5+planner (phase1)                                     (no per-solve data)
+B5+planner (evolution)      85    1,100,653      573,527      213,808    2,044,126      124,250
+
+B5 vs B5+planner (headline 4M result, re-scored on cost):
+  evals/solve (n=20/19): B5 323,848  B5+planner 326,665  diff +2,818
+  evo-solved:  B5 4.65    B5+planner 4.47  diff -0.18
+  welch-t p (eps, B5+planner > B5):  0.741
+
+Apples-to-apples (evolution-phase solves only):
+  B5      n= 93  median=   720,233  mean= 1,196,189
+  B5+plan n= 85  median=   573,527  mean= 1,100,653
+  median diff: -146,706  (-20.4%)  mean diff: -95,536
+  permutation p (median, 10k shuffles): 0.717  (not significant)
+
+H2/H3 verdicts re-scored on evals-per-solve (lower = better):
+  H2: B2 > B1 (transfer)               diff=+392,349  p(B2<B1)=0.316
+  H2: B2 > B0 (transfer)               diff=-414,833  p(B2<B0)=0.302
+

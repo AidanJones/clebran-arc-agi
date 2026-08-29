@@ -199,3 +199,57 @@ itself a record of what pure-reward program evolution needs to be reliable.
 - **B5 is not the ceiling either** — it points at centralized library learning
   (DreamCoder/Stitch proper) as the stronger direction for ARC program
   synthesis, with or without the multi-agent framing.
+
+## Cost-axis re-score (roadmap §9a, 2026-08-29)
+
+The headline above is on **solve count** at matched compute. Roadmap §9a
+argues that is the endpoint Chollet says is uninformative — skill can be
+bought with priors or training data, and acquisition cost is what can't.
+Re-scoring the 20-seed 4M-eval sweep on the cost axis (evals-to-solve) is
+analysis, not new compute: the per-solve `evals` field is already in every
+log.
+
+The cost axis **confirms and amplifies** the count ranking.
+
+| arm | solved/30 | evals/solve | × B5 cost |
+|---|---|---|---|
+| **B5** | **12.45 ± 1.15** | **323,848 ± 28,776** | 1.0× |
+| B5+planner | 12.32 ± 1.00 | 326,665 ± 24,298 | 1.01× |
+| B0 | 2.25 ± 1.07 | 2,333,510 ± 1,284,369 | 7.2× |
+| B7 | 1.90 ± 1.07 | 2,579,205 ± 1,275,957 | 8.0× |
+| B6 | 1.85 ± 1.09 | 2,631,779 ± 1,241,940 | 8.1× |
+| B9 | 1.70 ± 0.86 | 2,649,320 ± 1,091,437 | 8.2× |
+| B8 | 1.65 ± 0.81 | 2,737,451 ± 1,130,719 | 8.5× |
+| B2 | 1.65 ± 1.14 | 2,748,344 ± 1,194,381 | 8.5× |
+| B1 | 1.50 ± 0.95 | 3,140,693 ± 1,182,998 | 9.7× |
+
+B5 and B5+planner are 7–10× more cost-efficient than every multi-agent
+arm, on top of solving 6× more tasks. Per-cell productivity is roughly
+40× (6× × 7×). **B1 (isolation) is the most expensive failure mode**
+(3.14M evals/solve — 9.7× B5): the multi-agent tax compounds dramatically
+when none of the agents can solve anything.
+
+**The ordering is robust to the endpoint.** Choosing your endpoint
+defensively and the conclusion holds.
+
+**H2 transfer benefit, on cost:** B2 is ~12% cheaper per solve than B1
+(2.75M vs 3.14M, welch-t p = 0.316) — directional support for H2 on the
+cost axis, not significant. B2 is ~18% more expensive than B0
+(2.75M vs 2.33M, p = 0.302) — concentrating compute in one lineage is
+still the cheapest way to discover things.
+
+**B5 vs B5+planner, on cost:** the headline 4M tie holds on the
+evals/solve metric (323K vs 326K, welch p = 0.741). On the
+*apples-to-apples* comparison (evolution-phase solves only — B5+planner
+has zero phase1 solves, the planner seed bypasses the seeding layer)
+B5+planner's median is **20% lower** (573K vs 720K) and the mean is
+**8% lower** (1.10M vs 1.20M). The 20% median win is **not significant**
+at n=85/93 (permutation p = 0.717, 10k shuffles on the median) — a
+suggestive but underpowered result. A larger sweep would resolve it.
+
+*Artifact:* the 4M cost-axis re-score is frozen at
+[`experiments/2026-08-29_cost_axis/`](experiments/2026-08-29_cost_axis/)
+with [analysis.txt](experiments/2026-08-29_cost_axis/analysis.txt) and
+[cost.json](experiments/2026-08-29_cost_axis/cost.json). The headline
+report (`python -m clebran.metrics.report`) now also reports an
+`evals/solve` column.

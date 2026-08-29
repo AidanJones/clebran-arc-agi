@@ -6,6 +6,7 @@ Reads logs/sweep_results.jsonl (one summary per arm×seed) and prints:
   - reuse rate for channel arms
   - divergence stats for multi-lineage arms
   - the H2/H3 verdicts per the §7 decision rules
+  - cost axis (roadmap §9a): evals-per-solve column
 """
 from __future__ import annotations
 
@@ -46,10 +47,24 @@ def _evo_solved(r: dict) -> float | None:
     return None
 
 
+def _evals_per_solve(r: dict) -> float | None:
+    """Coarse cost axis: total evals / solved count (roadmap §9a).
+
+    Only defined for arms that solved at least one task.
+    """
+    s = _solved(r)
+    if s == 0:
+        return None
+    return r["evals"] / s
+
+
 def report(path=None) -> dict:
     by_arm = load_results(path)
-    print(f"{'arm':4} {'n':>2} {'solved/30':>14} {'evo-solved':>12} "
-          f"{'test-exact':>14} {'evals':>12} {'reuse':>8} {'jaccard':>8}")
+    print(
+        f"{'arm':4} {'n':>2} {'solved/30':>14} {'evo-solved':>12} "
+        f"{'test-exact':>14} {'evals':>12} {'evals/solve':>15} "
+        f"{'reuse':>8} {'jaccard':>8}"
+    )
     stats = {}
     for arm in sorted(by_arm):
         rs = by_arm[arm]
@@ -57,16 +72,25 @@ def report(path=None) -> dict:
         evo = [_evo_solved(r) for r in rs if _evo_solved(r) is not None]
         test = [float(r.get("test_exact", 0)) for r in rs]
         evals = [r["evals"] for r in rs]
+        # Cost axis (roadmap §9a): evals-per-solve, computed only for
+        # seeds that solved at least one task. SD reflects variance
+        # *conditional on* solving, not a mix of 0 and non-zero outcomes.
+        eps = [
+            _evals_per_solve(r) for r in rs if _evals_per_solve(r) is not None
+        ]
+        eps_fmt = (
+            _fmt(eps) if eps else "-"
+        )
         reuse = [r["reuse_rate"] for r in rs if "reuse_rate" in r]
         jac = [r["divergence"]["mean"] for r in rs if "divergence" in r]
         stats[arm] = {
             "n": len(rs), "solved": solved, "mean": st.mean(solved),
-            "evo": evo, "evals": evals,
+            "evo": evo, "evals": evals, "evals_per_solve": eps,
         }
         print(
             f"{arm:4} {len(rs):>2} {_fmt(solved):>14} "
             f"{(_fmt(evo) if evo else '-'):>12} {_fmt(test):>14} "
-            f"{int(st.mean(evals)):>12} "
+            f"{int(st.mean(evals)):>12} {eps_fmt:>15} "
             f"{(_fmt(reuse) if reuse else '-'):>8} "
             f"{(_fmt(jac) if jac else '-'):>8}"
         )
@@ -107,6 +131,19 @@ def report(path=None) -> dict:
         if v:
             print("  ", v)
             verdicts[f"{metric}:B2>B3"] = v
+
+    # Cost axis (roadmap §9a): lower evals/solve = better. H2 transfer
+    # is *cheaper* if B2 < B1; H3 constraint is *cheaper* if B2 < B3.
+    if {"B0", "B1", "B2"} <= set(stats):
+        print(
+            "\n=== cost axis (evals/solve; lower = better) ==="
+        )
+        for a, b, lbl in (("B2", "B1", "H2: B2 < B1 (cheaper)"),
+                          ("B2", "B0", "H2: B2 < B0 (cheaper)"),
+                          ("B2", "B3", "H3: B2 < B3 (cheaper)")):
+            v = cmp(a, b, metric="evals_per_solve")
+            if v:
+                print("  ", lbl, v)
     _recovery_table(by_arm)
     return {"stats": {k: v["mean"] for k, v in stats.items()}, "verdicts": verdicts}
 

@@ -1,0 +1,163 @@
+﻿{
+  "evals_per_solve": [
+    {
+      "arm": "B5",
+      "n_seeds": 20,
+      "n_solving": 20,
+      "n_unsolved": 0,
+      "solved_mean": 12.45,
+      "solved_sd": 1.1459310165698642,
+      "evo_mean": 4.65,
+      "evo_sd": 1.4244112357114616,
+      "evals_per_solve_mean": 323847.69062187814,
+      "evals_per_solve_sd": 28776.98742010973
+    },
+    {
+      "arm": "B5+planner",
+      "n_seeds": 19,
+      "n_solving": 19,
+      "n_unsolved": 0,
+      "solved_mean": 12.31578947368421,
+      "solved_sd": 1.002919714242558,
+      "evo_mean": 4.473684210526316,
+      "evo_sd": 1.2635233389495326,
+      "evals_per_solve_mean": 326665.33107681794,
+      "evals_per_solve_sd": 24298.70198895718
+    },
+    {
+      "arm": "B0",
+      "n_seeds": 20,
+      "n_solving": 20,
+      "n_unsolved": 0,
+      "solved_mean": 2.25,
+      "solved_sd": 1.069923755276638,
+      "evo_mean": 2.25,
+      "evo_sd": 1.069923755276638,
+      "evals_per_solve_mean": 2333510.4916666667,
+      "evals_per_solve_sd": 1284369.0357951454
+    },
+    {
+      "arm": "B7",
+      "n_seeds": 20,
+      "n_solving": 19,
+      "n_unsolved": 1,
+      "solved_mean": 1.9,
+      "solved_sd": 1.0711528467275955,
+      "evo_mean": 1.85,
+      "evo_sd": 1.0399898784932577,
+      "evals_per_solve_mean": 2579205.1228070175,
+      "evals_per_solve_sd": 1275957.852587652
+    },
+    {
+      "arm": "B6",
+      "n_seeds": 20,
+      "n_solving": 19,
+      "n_unsolved": 1,
+      "solved_mean": 1.85,
+      "solved_sd": 1.0894228312566052,
+      "evo_mean": 1.8,
+      "evo_sd": 1.0563093645728086,
+      "evals_per_solve_mean": 2631779.035087719,
+      "evals_per_solve_sd": 1241940.6742987132
+    },
+    {
+      "arm": "B9",
+      "n_seeds": 20,
+      "n_solving": 19,
+      "n_unsolved": 1,
+      "solved_mean": 1.7,
+      "solved_sd": 0.8645047258706176,
+      "evo_mean": 1.65,
+      "evo_sd": 0.7451598203705946,
+      "evals_per_solve_mean": 2649320.4078947366,
+      "evals_per_solve_sd": 1091437.507623309
+    },
+    {
+      "arm": "B8",
+      "n_seeds": 20,
+      "n_solving": 19,
+      "n_unsolved": 1,
+      "solved_mean": 1.65,
+      "solved_sd": 0.812727700887249,
+      "evo_mean": 1.6,
+      "evo_sd": 0.7539370349250519,
+      "evals_per_solve_mean": 2737451.043859649,
+      "evals_per_solve_sd": 1130719.1965862538
+    },
+    {
+      "arm": "B2",
+      "n_seeds": 20,
+      "n_solving": 18,
+      "n_unsolved": 2,
+      "solved_mean": 1.65,
+      "solved_sd": 1.1367080817685316,
+      "evo_mean": 1.6,
+      "evo_sd": 0.99472291830968,
+      "evals_per_solve_mean": 2748343.8685185183,
+      "evals_per_solve_sd": 1194381.5429315944
+    },
+    {
+      "arm": "B1",
+      "n_seeds": 20,
+      "n_solving": 19,
+      "n_unsolved": 1,
+      "solved_mean": 1.5,
+      "solved_sd": 0.9459053029269173,
+      "evo_mean": 1.45,
+      "evo_sd": 0.9445132413883327,
+      "evals_per_solve_mean": 3140692.5833333335,
+      "evals_per_solve_sd": 1182998.2222222101
+    }
+  ],
+  "per_solve_detail": {
+    "B5 (all)": {
+      "n": 249,
+      "mean": 494098.9718875502,
+      "median": 114601,
+      "p25": 56512,
+      "p75": 287867,
+      "min": 296
+    },
+    "B5 (phase1)": {
+      "n": 156,
+      "mean": 75545.26282051283,
+      "median": 66924,
+      "p25": 35293,
+      "p75": 114875,
+      "min": 296
+    },
+    "B5 (evolution)": {
+      "n": 93,
+      "mean": 1196189.064516129,
+      "median": 720233,
+      "p25": 215582,
+      "p75": 2152812,
+      "min": 37806
+    },
+    "B5+planner (all)": {
+      "n": 85,
+      "mean": 1100652.6941176471,
+      "median": 573527,
+      "p25": 213808,
+      "p75": 2044126,
+      "min": 124250
+    },
+    "B5+planner (phase1)": {
+      "n": 0,
+      "mean": NaN,
+      "median": NaN,
+      "p25": NaN,
+      "p75": NaN,
+      "min": NaN
+    },
+    "B5+planner (evolution)": {
+      "n": 85,
+      "mean": 1100652.6941176471,
+      "median": 573527,
+      "p25": 213808,
+      "p75": 2044126,
+      "min": 124250
+    }
+  }
+}
+
