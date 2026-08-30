@@ -179,6 +179,35 @@ single named call), but the effect is small and underpowered: doubling seeds
 (8 → 20) shrank rather than confirmed B6 − B2 (+0.50 → +0.20), so it is
 real-but-small, not a near-miss on significance.
 
+**Cost-axis re-score (roadmap §9a).** Re-scoring the same 20-seed 4M
+sweep on **acquisition efficiency** (evals-to-solve) confirms and
+amplifies the count ranking — solve count is the endpoint Chollet
+argues is uninformative ([*On the Measure of Intelligence*](https://arxiv.org/abs/1911.01547));
+cost is what can't be bought with priors.
+
+| arm | solved/30 | evals/solve | × B5 cost |
+|---|---|---|---|
+| **B5** | 12.45 ± 1.15 | **323,848 ± 28,776** | 1.0× |
+| B5+planner (paper 3) | 12.32 ± 1.00 | 326,665 ± 24,298 | 1.01× |
+| B0 | 2.25 ± 1.07 | 2,333,510 ± 1,284,369 | 7.2× |
+| B7 | 1.90 ± 1.07 | 2,579,205 ± 1,275,957 | 8.0× |
+| B6 | 1.85 ± 1.09 | 2,631,779 ± 1,241,940 | 8.1× |
+| B9 | 1.70 ± 0.86 | 2,649,320 ± 1,091,437 | 8.2× |
+| B8 | 1.65 ± 0.81 | 2,737,451 ± 1,130,719 | 8.5× |
+| B2 | 1.65 ± 1.14 | 2,748,344 ± 1,194,381 | 8.5× |
+| B1 | 1.50 ± 0.95 | **3,140,693 ± 1,182,998** | 9.7× |
+
+B5 and B5+planner are **7–10× more cost-efficient** than every
+multi-agent arm, on top of solving 6× more tasks. Per-cell productivity
+is roughly 40× (6× × 7×). **B1 (isolation) is the most expensive
+failure mode** (3.14M evals/solve — 9.7× B5): the multi-agent tax
+compounds dramatically when none of the agents can solve anything.
+**The ordering is robust to the endpoint.** Switching the metric from
+count to cost preserves the ranking and widens the gap. The only
+directionally supportive H2 reading on the cost axis is B2 < B1 by
+~12% (welch p=0.316); B2 > B0 stays null, with B2 18% *more*
+expensive than B0 on cost.
+
 **The project's central hypothesis — that divergent lineages sharing over a
 constrained channel beat the alternatives at matched compute — is not supported;
 the strongest control wins.**

@@ -721,6 +721,21 @@ alone wins by 1.0 solve; the 20-seed sweep shows that was a
 statistically indistinguishable from zero. The 4M headline
 is a **null result at scale**, not a B5 win.
 
+**Cost-axis re-score (roadmap §9a).** On acquisition efficiency
+(evals-to-solve), the headline tie holds: B5 323,848 ± 28,776 vs
+B5+planner 326,665 ± 24,298 (welch p = 0.555). On the
+*apples-to-apples* comparison (evolution-phase solves only —
+B5+planner has zero phase1 solves, the planner seed bypasses the
+seeding layer), B5+planner's median is **20% lower** (573K vs
+720K cumulative evals at solve, n=85/93) and the mean is **8% lower**
+(1.10M vs 1.20M). The 20% median win is **not significant** at n=85/93
+(permutation p = 0.717, 10k shuffles on the median) — a
+suggestive but underpowered directional effect. The 1M pilot's
+evolution-only 20% win and the 4M headline count tie together
+suggest the planner's value is in the *cumulative search* rather
+than in *what becomes reachable*: it speeds up the discoveries
+that the GP would make anyway, without expanding the frontier.
+
 **The 1 task B5+planner never solves.** Across 20 seeds, B5's
 union of solved tasks is **17 unique tasks**; B5+planner's union
 is **16 unique tasks**. The intersection is 16 tasks (solved by
