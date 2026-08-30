@@ -26,7 +26,8 @@ candidate-evaluations (matched compute vs B5).
 | metric (1M, 5 seeds) | B5 | B5D | diff |
 |---|---|---|---|
 | frontier solves /30 | 10.40 ± 1.14 | 10.40 ± 0.55 | +0.00 |
-| evals/solve (frontier) | 97,077 | 96,457 | -620 (-0.6%) |
+| evals/solve (per-seed ratio) | 97,077 | 96,457 | -620 (-0.6%) |
+| **welch-t p (per-seed evals/solve)** | — | — | **0.905** (tied) |
 | frontier variance | 1.14 | 0.55 | **B5D has half the variance** |
 | dreams added | — | 287.2 / seed | — |
 | dreams solved | — | 278.8 / seed | — |
@@ -36,7 +37,8 @@ The dreaming loop is **engaged and effective at the dreaming tasks**
 (97% of generated dream tasks are solved — the lineage can finish them
 almost every time). But it does *not* transfer to more or cheaper
 frontier solves: B5D solves 10.40 frontier tasks, exactly the same as
-B5, at the same cost. The headline is a **null on the count metric**.
+B5, at the same per-seed cost (welch-t p=0.905 on per-seed evals/solve).
+The headline is a **null on the count and cost axes**.
 
 **The variance reduction is real and worth noting**: B5's per-seed
 frontier count has SD=1.14 (range 9-12), B5D's has SD=0.55 (range

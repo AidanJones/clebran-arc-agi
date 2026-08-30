@@ -551,6 +551,12 @@ def main(argv: list[str] | None = None) -> dict:
                 f"B5D {st.mean(b5d_eps):,.0f}  "
                 f"diff {st.mean(b5d_eps) - st.mean(b5_eps):+,.0f}"
             )
+            # Per-seed welch-t on evals/solve (same unit on both sides).
+            p = _welch_p(b5_eps, b5d_eps)
+            if p is not None:
+                print(
+                    f"  welch-t p (per-seed evals/solve, B5 vs B5D): {p:.3f}"
+                )
         # Dream utilization: how many of the dream tasks get solved?
         dream_added = [s.n_dream_added for s in b5d_seeds]
         dream_solved = [s.n_dream_solved for s in b5d_seeds]
@@ -575,20 +581,35 @@ def main(argv: list[str] | None = None) -> dict:
                         else:
                             frontier_eps.append(e)
             if frontier_eps and dream_eps:
+                # Per-seed mean of cumulative evals-at-frontier-solve.
+                # This is a different unit than the per-seed evals/solve
+                # ratio above (it tells you *when* a frontier solve
+                # happened, not the per-task cost) — useful for seeing
+                # whether the dreaming pushes frontier solves earlier or
+                # later in the run.
+                per_seed_frontier = []
+                for s in b5d_seeds:
+                    if s.per_solve_evals and s.per_solve_task:
+                        fe = [
+                            e for e, t in zip(
+                                s.per_solve_evals, s.per_solve_task
+                            ) if not t.startswith("gen_")
+                        ]
+                        if fe:
+                            per_seed_frontier.append(st.mean(fe))
+                if per_seed_frontier:
+                    print(
+                        f"  frontier solve-time: B5D cumulative-evals-at-solve "
+                        f"(per-seed mean) = {st.mean(per_seed_frontier):,.0f}  "
+                        f"vs B5 evals/solve ratio {st.mean(b5_eps):,.0f}  "
+                        f"(different units; frontier solves happen mid-run, ratio is total/avg)"
+                    )
                 print(
                     f"  per-solve split:   frontier n={len(frontier_eps)} "
                     f"median={st.median(frontier_eps):,.0f}  "
                     f"dream n={len(dream_eps)} "
                     f"median={st.median(dream_eps):,.0f}"
                 )
-                # Welch p on the per-solve evals (frontier)
-                if len(frontier_eps) > 1 and len(b5_eps) > 1:
-                    # We compare the B5D frontier evals vs B5 frontier evals
-                    p = _welch_p(frontier_eps, b5_eps)
-                    if p is not None:
-                        print(
-                            f"  welch-t p (B5D frontier evals < B5 evals): {p:.3f}"
-                        )
 
     # H2 / H3 cost-axis re-ranking
     if {"B0", "B1", "B2"} <= set(by_arm):

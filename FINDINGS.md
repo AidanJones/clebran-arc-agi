@@ -253,3 +253,113 @@ with [analysis.txt](experiments/2026-08-29_cost_axis/analysis.txt) and
 [cost.json](experiments/2026-08-29_cost_axis/cost.json). The headline
 report (`python -m clebran.metrics.report`) now also reports an
 `evals/solve` column.
+
+## Dreaming (B5D) — roadmap §9b, 1M pilot (2026-08-29)
+
+Roadmap §9b: the missing "self-directed practice" capability — a learner
+that generates its own practice from what it has seen (DreamCoder
+wake/sleep "fantasies"). The forward generator
+(`clebran.curriculum.generate_task`) was already in the codebase; the
+gap was the loop.
+
+**Arm:** **B5D = B5 + dreaming.** After every B5 solve, the lineage calls
+`generate_task(sol.prog, rng, abstractions=lin.abstractions)` to
+synthesise a variant task and adds it to its task pool (`auxiliary=False`,
+so it joins the real task pool, no prerequisite gating). The synthetic
+task costs real candidate-evaluations when the lineage works on it —
+matched compute vs B5. The dream generation itself is "free" (it calls
+`run_safe` directly, not through the Evaluator).
+
+**Pilot (1M, 5 seeds):**
+
+| metric | B5 | B5D | diff / p |
+|---|---|---|---|
+| frontier solves /30 | 10.40 ± 1.14 | 10.40 ± 0.55 | +0.00 |
+| evals/solve (per-seed ratio) | 97,077 | 96,457 | welch-t p = **0.905** (tied) |
+| frontier variance (SD) | 1.14 | **0.55** | B5D has **half** the variance |
+| dreams added / seed | — | 287.2 | — |
+| dreams solved / seed | — | 278.8 | — |
+| **dream utilization** | — | **97.0%** | — |
+| library size (n abstractions) | 5.4 | **9.2** | +70% |
+| **library used rate** | **3.3%** | **70.2%** | +21× |
+| **library cross-task reuse** | **0.0** | **5.0** | — |
+| library mean body size | 2.34 | 2.26 | — |
+| **library topographic similarity** | **0.264** | **0.047** | -5× |
+
+*Sources:* [cost.txt](experiments/2026-08-29_dreaming_pilot/cost.txt),
+[library.txt](experiments/2026-08-29_dreaming_pilot/library.txt).
+
+**Three findings in one:**
+
+1. **The dreaming loop is engaged (97% utilization).** 278/287 dream
+   tasks per seed are solved. The forward generator + lineage work as
+   designed.
+
+2. **The dreaming does *not* transfer to the frontier.** B5D solves
+   exactly the same number of frontier tasks as B5 (10.40 vs 10.40)
+   at the same cost (97K vs 96K evals/solve, p = 0.905). The headline
+   is a **null on count and cost** — the first acquisition-efficiency
+   null in the project where the loop is *demonstrably working*.
+
+3. **The library is the substantive positive result.** B5D's central
+   library is **1.7× larger, 21× more used, and produces real
+   cross-task reuse (5 abstractions used in ≥2 tasks vs B5's 0)**.
+   **B5D at 1M beats B5 at 4M** (4× the compute) on every library
+   metric except topsim: B5@4M has n=6.6, used=9.4%, reuse=0.1,
+   topsim=0.330. But B5D's **topsim is 5× lower** (0.047 vs 0.264 at
+   1M; 0.330 for B5@4M). The library captures *converged practice*
+   patterns, not *novel compositions*.
+
+**The variance reduction is real.** B5's per-seed frontier count
+ranges 9–12 (SD=1.14); B5D's is 10–11 (SD=0.55). Dreaming smooths
+the per-seed variation — the lineage has more practice opportunities
+and converges more reliably. A small but consistent effect.
+
+**The reading.** Clebran is good at **moving** competence, not at
+**creating** it (Paper 1 / §8). The dreaming follows the pattern:
+the loop is alive, the library is rich, the practice transfers to
+*more active use of existing primitives* but not to *novel
+compositions* on the frontier. The dreams give the lineage
+*practice* on what it already knows, not *discovery* of what it
+doesn't. This is consistent with the broader project finding: a
+system that must *discover* should look like B5 (concentrated
+compute, no practice flooding); teaching/dreaming is what you bolt
+on afterwards to make existing competence cheaper to acquire
+(roadmap §8d's "compression-and-transport layer").
+
+*Artifact:* the 1M pilot is frozen at
+[`experiments/2026-08-29_dreaming_pilot/`](experiments/2026-08-29_dreaming_pilot/)
+with [cost.txt](experiments/2026-08-29_dreaming_pilot/cost.txt),
+[cost.json](experiments/2026-08-29_dreaming_pilot/cost.json),
+[library.txt](experiments/2026-08-29_dreaming_pilot/library.txt), and
+[dream_split.txt](experiments/2026-08-29_dreaming_pilot/dream_split.txt).
+The arm is at `clebran.baselines.b0:run_b5_dream` (CLI: `--arm B5D`).
+
+## Open leads the 9a + 9b results sharpen
+
+- **9b-1. 4M B5D pilot.** Does the library benefit compound at the
+  headline budget, or does it plateau? The 1M result is consistent
+  with the dreaming being pure practice, but the 4M pilot is what
+  would tell us if dreaming starts to expand the frontier. ~10 hours
+  total (5 seeds × 2 hours/seed). The natural next escalation.
+- **9b-2. B5D as a teacher.** Dreaming builds a richer library —
+  the *export* of that library to a fresh B5 lineage is the
+  natural follow-up. The dreaming arm at 1M produces a library
+  that B5@4M doesn't reach; a B5+fresh-from-B5D-library arm
+  would test whether the dreaming's value is *transportable*.
+- **9a-1. Cost axis in every paper.** The headline report now has
+  an `evals/solve` column; Paper 1's "B5 vs B6" and Paper 3's "B5
+  vs B5+planner" tables should be re-run with this column for
+  consistency. (9a already does this for the 4M sweep.)
+- **8b. Negative transfer.** The amortization experiment's
+  "irrelevant teaching is *slower* than not teaching" is a hint
+  that the dreaming's library effect could be **harmful** on
+  tasks requiring disjoint vocabulary. Cheap follow-up: extract
+  B5D's library, teach it to a fresh B5, test on tasks that
+  don't use any mined abstraction. The harm case is the most
+  informative outcome.
+- **9f.4. L3 evoker.** A learned world model + dreaming is the
+  natural capstone of the world-modeling direction: the lineage
+  imagines possible dream tasks, refines the world model on
+  failed predictions, re-rolls. The trace dataset and L2
+  planner are in place; this is the next open build-order item.

@@ -42,9 +42,10 @@ Apples-to-apples (evolution-phase solves only):
 === B5-1M vs B5D (roadmap §9b: dreaming) ===
   frontier solves:   B5-1M 10.40 ± 1.14  B5D 10.40 ± 0.55  diff +0.00
   evals/solve:       B5-1M 97,077  B5D 96,457  diff -620
+  welch-t p (per-seed evals/solve, B5 vs B5D): 0.905
   dream utilization: B5D added=287.2 solved=278.8 rate=97.0%
+  frontier solve-time: B5D cumulative-evals-at-solve (per-seed mean) = 153,159  vs B5 evals/solve ratio 97,077  (different units; frontier solves happen mid-run, ratio is total/avg)
   per-solve split:   frontier n=52 median=88,268  dream n=1394 median=590,526
-  welch-t p (B5D frontier evals < B5 evals): 0.033
 
 H2/H3 verdicts re-scored on evals-per-solve (lower = better):
   H2: B2 > B1 (transfer)               diff=+392,349  p(B2<B1)=0.316
