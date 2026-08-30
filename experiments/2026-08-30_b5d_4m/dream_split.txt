@@ -1,0 +1,15 @@
+﻿=== B5D 4M (9 seeds) ===
+Total solves: 111 frontier + 12083 dream
+
+Frontier solves (n=111):
+  mean=536,635  median=124,938
+  by phase: phase1 n=81 evolution n=30
+
+Dream solves (n=12083):
+  mean=2,078,116  median=2,077,453
+  min=83,327  max=4,000,226
+
+Per-seed mean frontier evals-to-solve (n_seeds=9):
+  mean=528,340  median=569,494
+  values: [575557, 947124, 569494, 342082, 394547, 405197, 637398, 578734, 304925]
+

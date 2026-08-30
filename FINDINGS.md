@@ -335,31 +335,69 @@ with [cost.txt](experiments/2026-08-29_dreaming_pilot/cost.txt),
 [dream_split.txt](experiments/2026-08-29_dreaming_pilot/dream_split.txt).
 The arm is at `clebran.baselines.b0:run_b5_dream` (CLI: `--arm B5D`).
 
+### Dreaming 4M escalation (2026-08-30)
+
+The 4M test of the dreaming loop, against the 15-seed B5-4M baseline
+(renamed to `b5_4m_seed*.jsonl` to prevent overwrites). 9 B5D-4M seeds
+(spanning 6, 8-15; seed 7 was lost to a bash 30-min timeout, see the
+README in `experiments/2026-08-30_b5d_4m/`).
+
+| metric (4M) | B5 (15 seeds) | B5D (9 seeds) | ratio |
+|---|---|---|---|
+| frontier solves /30 | 12.13 ± 1.06 | 12.33 ± 1.12 | 1.02× |
+| evolution-phase solves | 4.13 ± 1.13 | 4.44 ± 1.33 | 1.08× |
+| evals/solve (per-seed ratio) | 331,910 | 326,667 | 0.98× (B5D marginally cheaper) |
+| library size | **8.5** | **17.0** | **2.0×** |
+| **library used rate** | **6.6%** | **85.7%** | **13×** |
+| **library cross-task reuse** | **0.1** | **12.4** | **124×** |
+| library topsim | 0.338 | 0.221 | 0.65× |
+| dream utilization | — | 99.0% | — |
+| dreams added per seed | — | 1,343 | — |
+
+**Frontier: tied.** B5D 12.33 vs B5 12.13, well within B5's SD=1.06.
+The dreaming loop does not expand the frontier at 4M either.
+
+**Library: dramatic.** B5D's library at 4M is **2× larger, 13× more
+used, 124× more cross-task-reused** than B5's. B5's library is mostly
+dormant (6.6% used, 0.1 cross-task reuse); B5D's is the workhorse
+(85.7% used, 12.4 reused). Topsim is still lower (0.22 vs 0.34) but
+the gap is narrower at 4M than at 1M (0.05 vs 0.26).
+
+**The library effect compounds** with budget (B5 5.4 → 8.5, B5D
+9.2 → 17.0), but it does *not* translate to more frontier solves.
+The dreaming builds a transportable library (the headline result) but
+the transport doesn't expand the frontier — consistent with the
+broader clebran finding (Paper 1, §8) that the system is good at
+*transporting* competence, not at *creating* it.
+
+*Artifact:* the 4M pilot is frozen at
+[`experiments/2026-08-30_b5d_4m/`](experiments/2026-08-30_b5d_4m/)
+with [cost.txt](experiments/2026-08-30_b5d_4m/cost.txt),
+[cost.json](experiments/2026-08-30_b5d_4m/cost.json),
+[library.txt](experiments/2026-08-30_b5d_4m/library.txt), and
+[dream_split.txt](experiments/2026-08-30_b5d_4m/dream_split.txt).
+
 ## Open leads the 9a + 9b results sharpen
 
-- **9b-1. 4M B5D pilot.** Does the library benefit compound at the
-  headline budget, or does it plateau? The 1M result is consistent
-  with the dreaming being pure practice, but the 4M pilot is what
-  would tell us if dreaming starts to expand the frontier. ~10 hours
-  total (5 seeds × 2 hours/seed). The natural next escalation.
-- **9b-2. B5D as a teacher.** Dreaming builds a richer library —
-  the *export* of that library to a fresh B5 lineage is the
-  natural follow-up. The dreaming arm at 1M produces a library
-  that B5@4M doesn't reach; a B5+fresh-from-B5D-library arm
-  would test whether the dreaming's value is *transportable*.
-- **9a-1. Cost axis in every paper.** The headline report now has
-  an `evals/solve` column; Paper 1's "B5 vs B6" and Paper 3's "B5
-  vs B5+planner" tables should be re-run with this column for
-  consistency. (9a already does this for the 4M sweep.)
-- **8b. Negative transfer.** The amortization experiment's
-  "irrelevant teaching is *slower* than not teaching" is a hint
-  that the dreaming's library effect could be **harmful** on
-  tasks requiring disjoint vocabulary. Cheap follow-up: extract
-  B5D's library, teach it to a fresh B5, test on tasks that
-  don't use any mined abstraction. The harm case is the most
-  informative outcome.
+- **9b-3. 8b negative-transfer test.** The 4M B5D library (17
+  abstractions, 12.4 cross-task reuse, topsim 0.22) is the
+  natural test bed for the negative-transfer experiment. Three
+  arms: cold B5 / B5 + B5D-library / B5 + B5-library. If
+  B5+B5D-library < cold on tasks needing disjoint vocabulary,
+  the dreaming is *harmful* — the most informative outcome.
+  Design in `experiments/2026-08-30_8b_design/`. ~3 hours at 4M
+  × 5 seeds.
+- **9b-4. B5D as a teacher.** Dreaming builds a richer library
+  (17 abstractions / 12.4 cross-task reuse) than B5 ever
+  reaches; the *export* of that library to a fresh B5 is the
+  natural follow-up. Tests whether the dreaming's value is
+  *transportable* across lineages.
+- **9a-1. Cost axis in every paper.** Already done for Paper 1
+  and Paper 3 (committed as `faa5a92`). The headline report
+  also has an `evals/solve` column.
 - **9f.4. L3 evoker.** A learned world model + dreaming is the
-  natural capstone of the world-modeling direction: the lineage
-  imagines possible dream tasks, refines the world model on
-  failed predictions, re-rolls. The trace dataset and L2
-  planner are in place; this is the next open build-order item.
+  natural capstone of the world-modeling direction: the
+  lineage imagines possible dream tasks, refines the world
+  model on failed predictions, re-rolls. The trace dataset
+  and L2 planner are in place; this is the next open
+  build-order item.
