@@ -53,9 +53,16 @@ class ArmSeed:
     evals: int
     solved: int
     solved_evolution: int
-    # Per-solve evals (only available for B5 / B5+planner).
+    # Per-solve evals (only available for B5 / B5+planner / B5D).
     per_solve_evals: list[int] | None = None
     per_solve_phase: list[str] | None = None
+    # Dream metrics (B5D only).
+    n_dream_added: int = 0
+    n_dream_solved: int = 0
+    # Per-solve evals split by source task (frontier vs dream). For B5D
+    # we can also distinguish dream-task solves, which count as practice
+    # but are not "real" frontier solves.
+    per_solve_task: list[str] | None = None
 
 
 def _load_jsonl(path: Path) -> list[dict]:
@@ -97,23 +104,27 @@ def _load_arm_seeds_from_summaries(
 
 
 def _load_per_solve_from_log(path: Path, arm: str, budget: int = 4_000_000) -> ArmSeed | None:
-    """Pull per-solve evals (and phase) from a B5/B5+planner run log.
+    """Pull per-solve evals (and phase) from a B5/B5+planner/B5D run log.
 
     Filters out non-matching budgets (e.g. leftover 100K pilot logs).
-    Handles two summary schemas:
+    Handles several summary schemas:
       * B5-style:  solved: int, solved_tasks: list, solved_evolution: list
       * B5+planner:  n_solved: int, n_evo_solved: int, solved: list
-    In both cases we return the integer count and the per-solve event list.
+      * B5D-style:  solved: int (frontier only), n_dream_added, n_dream_solved
+    In all cases we return the integer count and the per-solve event list.
     """
     if not path.exists():
         return None
     per_solve: list[int] = []
     per_phase: list[str] = []
+    per_task: list[str] = []
     solved_total = 0
     evals_total = 0
     solved_evo = 0
     seed = None
     matched_budget = False
+    n_dream_added = 0
+    n_dream_solved = 0
     for line in path.read_text().splitlines():
         r = json.loads(line)
         if r.get("event") == "start":
@@ -123,6 +134,7 @@ def _load_per_solve_from_log(path: Path, arm: str, budget: int = 4_000_000) -> A
         elif r.get("event") == "solve":
             per_solve.append(int(r["evals"]))
             per_phase.append(r.get("phase", "?"))
+            per_task.append(r.get("task", "?"))
         elif r.get("event") == "summary":
             evals_total = int(r.get("evals", 0))
             # Schema dispatch: prefer n_solved if present, else solved
@@ -130,10 +142,12 @@ def _load_per_solve_from_log(path: Path, arm: str, budget: int = 4_000_000) -> A
                 solved_total = int(r["n_solved"])
                 solved_evo = int(r.get("n_evo_solved", 0))
             else:
-                # B5-style: solved is an int; solved_evolution is a list
+                # B5 / B5D-style: solved is an int; solved_evolution is a list
                 s = r.get("solved", 0)
                 solved_total = int(s) if isinstance(s, (int, float)) else len(s)
                 solved_evo = len(r.get("solved_evolution") or [])
+            n_dream_added = int(r.get("n_dream_added", 0))
+            n_dream_solved = int(r.get("n_dream_solved", 0))
     if not matched_budget or seed is None:
         return None  # wrong-budget or empty log
     return ArmSeed(
@@ -144,6 +158,9 @@ def _load_per_solve_from_log(path: Path, arm: str, budget: int = 4_000_000) -> A
         solved_evolution=solved_evo,
         per_solve_evals=per_solve,
         per_solve_phase=per_phase,
+        per_solve_task=per_task,
+        n_dream_added=n_dream_added,
+        n_dream_solved=n_dream_solved,
     )
 
 
@@ -162,16 +179,17 @@ def load_all_4m_seeds() -> dict[str, list[ArmSeed]]:
         out[s.arm].append(s)
 
     # Per-solve level: B5 and B5+planner
-    # Only files of the form b5_seed<int>.jsonl / b5p_seed<int>.jsonl
+    # Only files of the form b5_seed<int>.jsonl / b5p_seed<int>.jsonl /
+    # b5d_seed<int>.jsonl / b5_1m_seed<int>.jsonl
     # (skip .incomplete.*, *_k1_4M_run1, etc).
     import re
-    seed_pat = re.compile(r"^(b5p?)_seed(\d+)$")
+    seed_pat = re.compile(r"^b5(?:p|d|_1m)?_seed(\d+)$")
 
     b5p_files = [f for f in LOG_DIR.glob("b5p_seed*.jsonl")
                  if seed_pat.match(f.stem)]
     for f in sorted(b5p_files):
         m = seed_pat.match(f.stem)
-        seed = int(m.group(2))
+        seed = int(m.group(1))
         a = _load_per_solve_from_log(f, "B5+planner")
         if a:
             a.seed = seed
@@ -181,11 +199,35 @@ def load_all_4m_seeds() -> dict[str, list[ArmSeed]]:
                 if seed_pat.match(f.stem)]
     for f in sorted(b5_files):
         m = seed_pat.match(f.stem)
-        seed = int(m.group(2))
+        seed = int(m.group(1))
         a = _load_per_solve_from_log(f, "B5")
         if a:
             a.seed = seed
             out["B5"].append(a)
+
+    # 1M B5 pilot (B5 baseline at 1M, run separately for the 9b comparison).
+    # Uses a different naming convention (b5_1m_seed*.jsonl) to avoid
+    # overwriting the 4M b5_seed*.jsonl files.
+    b5_1m_files = [f for f in LOG_DIR.glob("b5_1m_seed*.jsonl")
+                   if seed_pat.match(f.stem)]
+    for f in sorted(b5_1m_files):
+        m = seed_pat.match(f.stem)
+        seed = int(m.group(1))
+        a = _load_per_solve_from_log(f, "B5-1M", budget=1_000_000)
+        if a:
+            a.seed = seed
+            out["B5-1M"].append(a)
+
+    # Per-solve level: B5D (B5 + dreaming, roadmap §9b)
+    b5d_files = [f for f in LOG_DIR.glob("b5d_seed*.jsonl")
+                 if seed_pat.match(f.stem)]
+    for f in sorted(b5d_files):
+        m = seed_pat.match(f.stem)
+        seed = int(m.group(1))
+        a = _load_per_solve_from_log(f, "B5D", budget=1_000_000)
+        if a:
+            a.seed = seed
+            out["B5D"].append(a)
 
     # Dedup per arm by seed (keep last; multiple b5 seed-1 files exist from retries)
     for arm in list(out):
@@ -484,6 +526,69 @@ def main(argv: list[str] | None = None) -> dict:
                 print(
                     f"  permutation p (median, 10k shuffles): {p_perm:.3f}  ({verdict})"
                 )
+
+    # B5 vs B5D (roadmap §9b: dreaming). Use the 1M B5 baseline (B5-1M)
+    # if available, since we ran both arms at 1M.
+    b5_for_dream = by_arm.get("B5-1M") or by_arm.get("B5")
+    if b5_for_dream and "B5D" in by_arm:
+        b5_seeds = b5_for_dream
+        b5d_seeds = by_arm["B5D"]
+        b5_label = "B5-1M" if "B5-1M" in by_arm else "B5"
+        print(f"\n=== {b5_label} vs B5D (roadmap §9b: dreaming) ===")
+        # Headline: solved (frontier) and evals/solve
+        b5_solved = [float(s.solved) for s in b5_seeds]
+        b5d_solved = [float(s.solved) for s in b5d_seeds]
+        b5_eps = [float(s.evals) / s.solved for s in b5_seeds if s.solved > 0]
+        b5d_eps = [float(s.evals) / s.solved for s in b5d_seeds if s.solved > 0]
+        print(
+            f"  frontier solves:   {b5_label} {st.mean(b5_solved):.2f} ± {st.stdev(b5_solved) if len(b5_solved) > 1 else 0:.2f}  "
+            f"B5D {st.mean(b5d_solved):.2f} ± {st.stdev(b5d_solved) if len(b5d_solved) > 1 else 0:.2f}  "
+            f"diff {st.mean(b5d_solved) - st.mean(b5_solved):+.2f}"
+        )
+        if b5_eps and b5d_eps:
+            print(
+                f"  evals/solve:       {b5_label} {st.mean(b5_eps):,.0f}  "
+                f"B5D {st.mean(b5d_eps):,.0f}  "
+                f"diff {st.mean(b5d_eps) - st.mean(b5_eps):+,.0f}"
+            )
+        # Dream utilization: how many of the dream tasks get solved?
+        dream_added = [s.n_dream_added for s in b5d_seeds]
+        dream_solved = [s.n_dream_solved for s in b5d_seeds]
+        if any(dream_added):
+            util = [
+                s / a if a else 0.0
+                for s, a in zip(dream_solved, dream_added)
+            ]
+            print(
+                f"  dream utilization: B5D added={st.mean(dream_added):.1f} "
+                f"solved={st.mean(dream_solved):.1f} "
+                f"rate={st.mean(util):.1%}"
+            )
+            # Cost split: per-solve evals for frontier vs dream solves
+            frontier_eps = []
+            dream_eps = []
+            for s in b5d_seeds:
+                if s.per_solve_evals and s.per_solve_task:
+                    for e, t in zip(s.per_solve_evals, s.per_solve_task):
+                        if t.startswith("gen_"):
+                            dream_eps.append(e)
+                        else:
+                            frontier_eps.append(e)
+            if frontier_eps and dream_eps:
+                print(
+                    f"  per-solve split:   frontier n={len(frontier_eps)} "
+                    f"median={st.median(frontier_eps):,.0f}  "
+                    f"dream n={len(dream_eps)} "
+                    f"median={st.median(dream_eps):,.0f}"
+                )
+                # Welch p on the per-solve evals (frontier)
+                if len(frontier_eps) > 1 and len(b5_eps) > 1:
+                    # We compare the B5D frontier evals vs B5 frontier evals
+                    p = _welch_p(frontier_eps, b5_eps)
+                    if p is not None:
+                        print(
+                            f"  welch-t p (B5D frontier evals < B5 evals): {p:.3f}"
+                        )
 
     # H2 / H3 cost-axis re-ranking
     if {"B0", "B1", "B2"} <= set(by_arm):

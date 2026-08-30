@@ -1,0 +1,15 @@
+﻿=== B5D 1M pilot, 4 seeds ===
+Total solves: 52 frontier + 1394 dream
+
+Frontier solves (n=52):
+  mean=154,808  median=88,268  p25=36,156  p75=186,207
+  min=296  max=809,395
+  by phase: phase1 n=36 median=57,188; evolution n=16 median=290,641
+
+Dream solves (n=1394):
+  mean=584,532  median=590,526  p25=384,565  p75=802,037
+  min=76,877  max=999,377
+
+Dream solves < 50K evals (trivial?): 0 / 1394 = 0.0%
+Dream solves < 100K evals: 10 / 1394 = 0.7%
+

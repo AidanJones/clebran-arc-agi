@@ -13,7 +13,7 @@ import json
 
 from ..channel import make_channel
 from ..orchestrator import run_multi
-from .b0 import run_b0, run_b5
+from .b0 import run_b0, run_b5, run_b5_dream
 from .b5_planner import run_single as run_b5_planner
 from .common import LOG_DIR, run_prefix
 
@@ -48,6 +48,8 @@ def run_arm(
         return run_b0(seed=seed, budget=budget, pop_size=pop_size)
     if arm == "B5":
         return run_b5(seed=seed, budget=budget, pop_size=pop_size)
+    if arm == "B5D":
+        return run_b5_dream(seed=seed, budget=budget, pop_size=pop_size)
     if arm == "B5P":
         return run_b5_planner(seed=seed, budget=budget, pop_size=pop_size)
     spec = dict(ARM_CHANNEL[arm])
