@@ -179,11 +179,13 @@ def load_all_4m_seeds() -> dict[str, list[ArmSeed]]:
         out[s.arm].append(s)
 
     # Per-solve level: B5 and B5+planner
-    # Only files of the form b5_seed<int>.jsonl / b5p_seed<int>.jsonl /
-    # b5d_seed<int>.jsonl / b5_1m_seed<int>.jsonl
-    # (skip .incomplete.*, *_k1_4M_run1, etc).
+    # Files of the form b5_<budget>_seed<int>.jsonl, e.g.
+    #   b5_1m_seed*.jsonl — 1M pilot
+    #   b5_4m_seed*.jsonl — 4M headline sweep
+    # Plus b5p_seed* (B5+planner) and b5d_seed* (B5+planner dreaming).
+    # Skips .incomplete.*, *_k1_4M_run1, etc.
     import re
-    seed_pat = re.compile(r"^b5(?:p|d|_1m)?_seed(\d+)$")
+    seed_pat = re.compile(r"^b5(?:p|d)?(?:_\d+m)?_seed(\d+)$")
 
     b5p_files = [f for f in LOG_DIR.glob("b5p_seed*.jsonl")
                  if seed_pat.match(f.stem)]
@@ -206,8 +208,6 @@ def load_all_4m_seeds() -> dict[str, list[ArmSeed]]:
             out["B5"].append(a)
 
     # 1M B5 pilot (B5 baseline at 1M, run separately for the 9b comparison).
-    # Uses a different naming convention (b5_1m_seed*.jsonl) to avoid
-    # overwriting the 4M b5_seed*.jsonl files.
     b5_1m_files = [f for f in LOG_DIR.glob("b5_1m_seed*.jsonl")
                    if seed_pat.match(f.stem)]
     for f in sorted(b5_1m_files):
@@ -218,8 +218,20 @@ def load_all_4m_seeds() -> dict[str, list[ArmSeed]]:
             a.seed = seed
             out["B5-1M"].append(a)
 
+    # 4M B5 baseline (the headline 4M run with the new naming convention
+    # b5_4m_seed*.jsonl to prevent overwrites from 1M pilots).
+    b5_4m_files = [f for f in LOG_DIR.glob("b5_4m_seed*.jsonl")
+                   if seed_pat.match(f.stem)]
+    for f in sorted(b5_4m_files):
+        m = seed_pat.match(f.stem)
+        seed = int(m.group(1))
+        a = _load_per_solve_from_log(f, "B5-4M", budget=4_000_000)
+        if a:
+            a.seed = seed
+            out["B5-4M"].append(a)
+
     # Per-solve level: B5D (B5 + dreaming, roadmap §9b)
-    b5d_files = [f for f in LOG_DIR.glob("b5d_seed*.jsonl")
+    b5d_files = [f for f in LOG_DIR.glob("b5d*.jsonl")
                  if seed_pat.match(f.stem)]
     for f in sorted(b5d_files):
         m = seed_pat.match(f.stem)
@@ -228,6 +240,17 @@ def load_all_4m_seeds() -> dict[str, list[ArmSeed]]:
         if a:
             a.seed = seed
             out["B5D"].append(a)
+
+    # 4M B5D (the dreaming pilot at 4M, the next escalation).
+    b5d_4m_files = [f for f in LOG_DIR.glob("b5d_4m_seed*.jsonl")
+                    if seed_pat.match(f.stem)]
+    for f in sorted(b5d_4m_files):
+        m = seed_pat.match(f.stem)
+        seed = int(m.group(1))
+        a = _load_per_solve_from_log(f, "B5D-4M", budget=4_000_000)
+        if a:
+            a.seed = seed
+            out["B5D-4M"].append(a)
 
     # Dedup per arm by seed (keep last; multiple b5 seed-1 files exist from retries)
     for arm in list(out):

@@ -29,6 +29,17 @@ from ..metrics.recovery import abstraction_stats
 from .common import RunLog, run_prefix, subset_pool, subset_tasks
 
 
+def _budget_suffix(budget: int) -> str:
+    """Return a budget-suffixed log-name tag so runs at different budgets
+    don't overwrite each other. e.g. 4_000_000 -> '4m', 1_000_000 -> '1m',
+    500_000 -> '500k', anything else -> str(budget)."""
+    if budget % 1_000_000 == 0:
+        return f"{budget // 1_000_000}m"
+    if budget % 1_000 == 0:
+        return f"{budget // 1_000}k"
+    return str(budget)
+
+
 def run_single(
     seed: int,
     budget: int = 500_000,
@@ -52,7 +63,10 @@ def run_single(
         evaluator=ev,
         p_fragment=p_fragment,
     )
-    log = RunLog(run_name or f"{run_prefix()}{arm.lower()}_seed{seed}")
+    log = RunLog(
+        run_name
+        or f"{run_prefix()}{arm.lower()}_{_budget_suffix(budget)}_seed{seed}"
+    )
     log.write({"event": "start", "arm": arm, "seed": seed, "budget": budget,
                "pool_size": len(pool), "pop_size": pop_size,
                "self_mine": self_mine, "dream": dream})
