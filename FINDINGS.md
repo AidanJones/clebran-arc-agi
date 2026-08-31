@@ -18,6 +18,49 @@ a vocabulary the system discovered itself — beats sharing raw code.
 The design's whole point (spec §1) is baselines strong enough that **a null is
 trustworthy**. It delivered a null — and, in the end, a significant negative.
 
+## The discovery bottleneck — *the* open problem
+
+The clebran system is a three-stage pipeline:
+
+> **discover → share → learn.**
+
+The work in this repo has shown, at matched compute:
+
+- **Share works in principle.** The channel carries messages; the received-
+  abstraction payload (B6/B7) is genuinely *used* by receivers.
+- **Learn works centrally.** A single learner with a self-mined library (B5)
+  outperforms every multi-agent sharing variant on the cost axis (7–10× more
+  cost-efficient, 6× more tasks solved).
+- **The 9b dreaming arm (B5D) takes transport further** — a library 2× larger,
+  13× more used, 124× more cross-task-reused than B5's at the same compute.
+  But it does not expand the frontier (B5D 12.33 vs B5 12.13 at 4M, tied).
+  The dreaming produces a working library of *what was already known*; it
+  does not invent *new things*.
+
+**The bottleneck is *discovery*, not transport.** Every arm in the rig —
+B0, B1, B2, B3, B4, B5, B5+planner, B5D, B6, B7, B8, B9 — runs the same DSL,
+the same interpreter, the same pure-outcome fitness, on the same 30 frontier
+tasks, with the same primitive pool (Hodel's 160). The mechanisms we have
+vary *initial conditions* (random seed, library of self-mined abstractions,
+planner-seeded program, dream-task pool) but none of them invent new
+primitives, change the fitness function, or explore structurally new regions
+of the search space. They all *improve search*; none of them *expand reach*.
+
+**The guiding idea for what comes next.** A multi-agent system *is* good for
+sharing knowledge — that's the clebran premise, and it is right. But the
+*value* of the multi-agent system is bounded by what each individual agent
+can discover. To make the system as a whole *learn new things*, we need
+individual agents to actually discover new things first. **The transport
+is solved; the discovery is open.**
+
+A concrete menu of candidate discovery mechanisms (in increasing order of
+cost) is in the README at [`README.md` §"The discovery bottleneck"](README.md#the-discovery-bottleneck--the-open-problem):
+failure-mode dreaming, heterogeneous fitness, task-subset specialization,
+novelty search, learned L1 as proposer, operator self-modification, and the
+L3 evoker (9f.4). **Any mechanism that expands what a single lineage can
+discover is worth more, on this rig, than any mechanism that improves how
+discoveries are shared.** We have the second; we need the first.
+
 ## Headline
 
 **At matched compute on ARC program synthesis, a single population that mines

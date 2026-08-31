@@ -33,6 +33,116 @@ self-directed practice ("dreaming"), active choice of what to practise,
 retention without rigidity, and reflection on *how* something was learned — that
 a learner needs before "how you learned it" can be studied properly.
 
+## The discovery bottleneck — *the* open problem
+
+The clebran system is a three-stage pipeline:
+
+> **discover → share → learn.**
+
+What we have shown on this rig, at matched compute:
+
+- **Share works in principle.** The channel carries messages; the received-
+  abstraction payload (B6/B7) is genuinely *used* by receivers (`received_used ≈ 1.1–1.4`).
+- **Learn works centrally.** A single learner that mines its own solutions
+  into a growing library (B5) outperforms every multi-agent sharing variant
+  on the cost axis (7–10× more cost-efficient than B0–B9) while solving 6× more
+  tasks. The library is the *transport* layer, and it works.
+- **The 9b dreaming arm (B5D) takes the next step on transport**: it produces
+  a library 2× larger, 13× more used, and 124× more cross-task-reused than B5's
+  at the same compute — at 4M evals, 17.0 abstractions, 85.7% used, 12.4
+  cross-task-reuse. The library is *real and reusable*. But it still does
+  not expand the frontier (B5D 12.33 vs B5 12.13, tied). The dreaming
+  produces a working library of *what was already known*; it does not invent
+  *new things*.
+
+**The bottleneck is *discovery*, not transport.** No mechanism in the
+rig actually expands what an individual lineage can solve. Every arm —
+B0, B1, B2, B3, B4, B5, B5+planner, B5D, B6, B7, B8, B9 — runs the same
+DSL, the same interpreter, the same pure-outcome fitness, on the same
+30 frontier tasks, with the same primitive pool (Hodel's 160). The
+mechanisms we have vary *initial conditions* (random seed, library of
+self-mined abstractions, planner-seeded program, dream-task pool) but
+none of them invent new primitives, change the fitness function, or
+explore structurally new regions of the search space. They all *improve
+search*; none of them *expand reach*.
+
+This is consistent with the broader clebran finding (Paper 1, §8,
+[`FINDINGS.md`](FINDINGS.md)): **the system is good at *transporting*
+competence, not at *creating* it.** The central library is the
+compression-and-transport layer for what an agent has already learned.
+The channel is a second transport layer. Neither is the discovery
+mechanism we need.
+
+**The guiding idea for what comes next.** A multi-agent system *is*
+good for sharing knowledge — that's the clebran premise, and it is
+right. But the *value* of the multi-agent system is bounded by what
+each individual agent can discover. To make the system as a whole
+*learn new things*, we need individual agents to actually discover
+new things first. The transport is solved; the discovery is open.
+
+### Concrete discovery mechanisms (in increasing order of cost)
+
+Each is a mechanism for an *individual* lineage to find something
+genuinely new, distinct from its prior. After discovery, the existing
+transport machinery can carry it.
+
+1. **Failure-mode dreaming** (cheap, ~1 day). B5D currently dreams
+   from *solved* programs (variants of what's known). Extend to also
+   dream from *near-miss* programs — high-fitness but not-fully-
+   correct individuals, the loci of *why* a lineage fails on a task.
+   Variants of the near-miss force the lineage to bridge the gap;
+   bridging is where new primitives are discovered. Reuses the
+   existing B5D arm — just change the dream-source population.
+
+2. **Heterogeneous fitness** (medium, ~2 days). Run multiple B5
+   lineages with different fitness functions: pure accuracy, length-
+   only, primitive-diversity-only, novelty-of-program-behavior-only.
+   Each lineage discovers different programs because it *values*
+   different things. The existing channel carries the heterogeneous
+   abstractions; the union is broader than any individual library.
+
+3. **Task-subset specialization** (medium, ~2 days). Run B5 lineages
+   on *disjoint* task subsets chosen to be complementary (e.g. one
+   lineage on object-centric tasks, another on color-flip tasks,
+   another on geometry). The shared channel carries the per-subset
+   libraries; the question is whether the union reaches more tasks
+   than any single lineage could. This is the proper test of the
+   clebran multi-agent *premise*: division of labor creates
+   diversity, transport unifies it.
+
+4. **Novelty search arm** (medium, ~3 days). Add a B5+novelty arm
+   that optimizes for behavioral diversity of the program (e.g.
+   novel output grids), not for task accuracy. Novelty search
+   explores the *space of programs* rather than the frontier of
+   *solved tasks*. Its discoveries are different by construction.
+
+5. **Learned L1 as proposer** (large, ~1 week). Train a small
+   programmatic L1 on the trace dataset
+   ([`data/traces.jsonl`](data/traces.jsonl), 16,149 rows from
+   Hodel's 400 solvers). Use the L1 to *propose* candidate
+   programs for unsolved frontier tasks. The L1's generalization
+   is what it has learned across all 400 reference solvers —
+   a different *kind* of discovery from the lineage's own search.
+
+6. **Operator self-modification** (large, ~2 weeks). The lineage
+   modifies its own mutation/crossover operators based on what
+   works. Modifications are shareable across lineages. Closer to
+   "learning to learn", and a real direction in the world-modeling
+   direction's spirit.
+
+7. **L3 evoker (9f.4)** (large, ~2 weeks). The world model that
+   improves on failed predictions. The trace dataset and L2
+   planner are in place; this is the next open build-order item
+   in the world-modeling direction (Paper 3). The L3 evoker
+   refines its world model when reality contradicts it, then
+   re-rolls — the natural capstone of the world-modeling
+   direction.
+
+**The principle.** Any mechanism that expands what a *single*
+lineage can discover is worth more, on this rig, than any
+mechanism that improves how discoveries are shared. We have the
+second; we need the first.
+
 ## Hypotheses → baselines
 
 | | Arm | Purpose |
