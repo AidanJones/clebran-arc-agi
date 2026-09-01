@@ -16,6 +16,14 @@ synthesises a variant task from its own solution (DreamCoder wake/sleep
 candidate-evaluations when the lineage works on it (matched compute), so
 this measures whether *self-directed practice* buys more than practising
 on the original frontier — the "how you learned it" capability gap.
+
+B5D-NM — B5D + *failure-mode dreaming* (roadmap §9b extension, the
+discovery-bottleneck principle #1): the lineage additionally dreams from
+*near-miss* programs — high-fitness but not-fully-correct individuals
+representing the loci of *why* the lineage fails on a task. Variants of
+the near-miss force the lineage to bridge the gap; bridging is where new
+primitives are discovered. This is a primitive version of the L3 evoker
+(9f.4): a lineage that practises on its own failures, not its successes.
 """
 from __future__ import annotations
 
@@ -50,6 +58,8 @@ def run_single(
     self_mine: bool = False,
     mine_every: int = 5,
     dream: bool = False,
+    dream_source: str = "solved",
+    dream_near_miss_min: float = 0.4,
 ) -> dict:
     tasks = subset_tasks()
     pool = subset_pool()
@@ -69,13 +79,20 @@ def run_single(
     )
     log.write({"event": "start", "arm": arm, "seed": seed, "budget": budget,
                "pool_size": len(pool), "pop_size": pop_size,
-               "self_mine": self_mine, "dream": dream})
+               "self_mine": self_mine, "dream": dream,
+               "dream_source": dream_source,
+               "dream_near_miss_min": dream_near_miss_min})
 
     sched_rng = random.Random(seed + 777)
     # Independent RNG for dream-task generation (deterministic, isolated
     # from the scheduling RNG so dream count and identity are reproducible
     # given the seed).
     dream_rng = random.Random(seed + 31337) if dream else None
+    # Failure-mode dreaming: track per-task last-dreamed-from program hash
+    # so we don't re-dream from the same near-miss every epoch. Dream only
+    # fires when the best near-miss for a task has *changed* (got better).
+    near_miss_last_hash: dict[str, str] = {}
+    near_miss_synthesised = 0
     n_dream_added = 0
     n_dream_solved = 0
 
@@ -116,7 +133,7 @@ def run_single(
                 # when the lineage works on it (matched compute vs B5).
                 # The dream-task *generation* itself is "free" — it calls
                 # `run_safe` directly, not through the Evaluator.
-                if dream_rng is not None:
+                if dream_rng is not None and dream_source in ("solved", "both"):
                     synth = generate_task(
                         sol.prog, dream_rng,
                         abstractions=lin.abstractions,
@@ -124,10 +141,11 @@ def run_single(
                     )
                     if synth is not None:
                         # auxiliary=False so the task joins the real task
-                        # pool (no prerequisite gating). source="dream"
-                        # so we can analyse it separately.
+                        # pool (no prerequisite gating). source="dream_solved"
+                        # so we can analyse solved-source vs near-miss-source
+                        # dreams separately.
                         added = lin.add_task(
-                            synth, auxiliary=False, source="dream",
+                            synth, auxiliary=False, source="dream_solved",
                             score=float(sol.fit.length),
                         )
                         if added:
@@ -140,8 +158,59 @@ def run_single(
                                 "epoch": epoch,
                                 "evals": ev.evaluations,
                                 "n_pairs": len(synth.train) + len(synth.test),
+                                "source": "dream_solved",
                             })
         epoch += 1
+        # ----- failure-mode dreaming hook (roadmap §9b #1) -----
+        # At the end of each epoch, for each unsolved task, find the best
+        # near-miss (solved_frac >= dream_near_miss_min but not solved_all).
+        # If it's a *new* near-miss (program hash differs from last epoch's),
+        # dream from it. This forces the lineage to practise on its own
+        # failures: variants of the near-miss are easy-to-evaluate tasks
+        # the lineage already has a partial answer for. Bridging the gap
+        # is where new primitives are discovered (the discovery-bottleneck
+        # principle, README §"The discovery bottleneck").
+        if dream_rng is not None and dream_source in ("near_miss", "both"):
+            for tid in list(tasks):
+                if lin.pops[tid].solved:
+                    continue
+                pop = lin.pops[tid]
+                if not pop.individuals:
+                    continue
+                # Pick the best individual by fitness key.
+                best = max(pop.individuals, key=lambda ind: ind.fit.key)
+                if best.fit.solved_frac < dream_near_miss_min:
+                    continue
+                if best.fit.solved_all:
+                    continue  # already a solver; would be picked up by the solved-source path
+                prog_hash = best.prog.to_json()  # JSON is stable, used as hash
+                if near_miss_last_hash.get(tid) == prog_hash:
+                    continue  # same near-miss as last epoch; skip
+                near_miss_last_hash[tid] = prog_hash
+                synth = generate_task(
+                    best.prog, dream_rng,
+                    abstractions=lin.abstractions,
+                    n_pairs=4,
+                )
+                if synth is not None:
+                    added = lin.add_task(
+                        synth, auxiliary=False, source="dream_near_miss",
+                        score=float(best.fit.solved_frac),
+                    )
+                    if added:
+                        tasks[synth.task_id] = synth
+                        n_dream_added += 1
+                        near_miss_synthesised += 1
+                        log.write({
+                            "event": "dream_add",
+                            "task": synth.task_id,
+                            "from_solve": tid,
+                            "epoch": epoch,
+                            "evals": ev.evaluations,
+                            "n_pairs": len(synth.train) + len(synth.test),
+                            "source": "dream_near_miss",
+                            "source_solved_frac": round(best.fit.solved_frac, 3),
+                        })
         # wake-sleep: grow the central library from solutions so far
         if self_mine and epoch % mine_every == 0:
             lin.mine_own_abstractions()
@@ -149,6 +218,7 @@ def run_single(
             "event": "epoch", "epoch": epoch, "evals": ev.evaluations,
             "solved": len(lin.solved_tasks()),
             "n_dream_added": n_dream_added,
+            "n_dream_near_miss": near_miss_synthesised,
         })
 
     solved = lin.solved_tasks()
@@ -179,6 +249,7 @@ def run_single(
         "solved_dream": sorted(solved_dream),
         "n_dream_added": n_dream_added,
         "n_dream_solved": len(solved_dream),
+        "n_dream_near_miss_synthesised": near_miss_synthesised,
         "test_exact": test_exact, "mean_solution_len": round(mean_len, 2),
         "primitive_usage": lin.primitive_usage(),
     }
@@ -211,7 +282,28 @@ def run_b5_dream(seed: int, budget: int = 500_000, pop_size: int = 100,
     compute vs B5).
     """
     return run_single(seed, budget, pop_size, run_name, arm="B5D",
-                      self_mine=True, dream=True)
+                      self_mine=True, dream=True, dream_source="solved")
+
+
+def run_b5_dream_near_miss(seed: int, budget: int = 500_000, pop_size: int = 100,
+                            run_name: str | None = None,
+                            near_miss_min: float = 0.4) -> dict:
+    """B5D-NM: B5 + failure-mode dreaming (roadmap §9b #1).
+
+    Like B5D, but the lineage dreams from *near-miss* programs (high
+    fitness but not fully correct) instead of from solved programs.
+    Variants of the near-miss force the lineage to practise on its own
+    failures; bridging the gap is where new primitives are discovered
+    (the discovery-bottleneck principle, README §"The discovery bottleneck").
+
+    A primitive version of the L3 evoker (9f.4): a lineage that
+    practises on its own failures, not its successes.
+    """
+    return run_single(
+        seed, budget, pop_size, run_name,
+        arm="B5D-NM", self_mine=True, dream=True,
+        dream_source="near_miss", dream_near_miss_min=near_miss_min,
+    )
 
 
 if __name__ == "__main__":
@@ -219,20 +311,24 @@ if __name__ == "__main__":
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--budget", type=int, default=500_000)
     ap.add_argument("--pop", type=int, default=100)
-    ap.add_argument("--arm", choices=["B0", "B5", "B5D"], default="B0")
+    ap.add_argument("--arm", choices=["B0", "B5", "B5D", "B5D-NM"], default="B0")
     args = ap.parse_args()
     if args.arm == "B5":
         runner = run_b5
     elif args.arm == "B5D":
         runner = run_b5_dream
+    elif args.arm == "B5D-NM":
+        runner = run_b5_dream_near_miss
     else:
         runner = run_b0
     s = runner(seed=args.seed, budget=args.budget, pop_size=args.pop)
-    extra = (
-        f" dream_added={s.get('n_dream_added', 0)} "
-        f"dream_solved={s.get('n_dream_solved', 0)}"
-        if args.arm == "B5D" else ""
-    )
+    extra = ""
+    if args.arm in ("B5D", "B5D-NM"):
+        extra = (
+            f" dream_added={s.get('n_dream_added', 0)} "
+            f"dream_solved={s.get('n_dream_solved', 0)}"
+            f" dream_near_miss={s.get('n_dream_near_miss_synthesised', 0)}"
+        )
     print(f"{args.arm} seed={s['seed']}: solved {s['solved']}/30 "
           f"(test-exact {s['test_exact']}) in {s['evals']} evals; "
           f"mean len {s['mean_solution_len']}{extra}")

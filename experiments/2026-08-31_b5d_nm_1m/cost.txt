@@ -1,0 +1,38 @@
+﻿========================================================================
+ACQUISITION EFFICIENCY AT 4M CANDIDATE-EVALUATIONS (re-score, no new runs)
+========================================================================
+
+Per-arm summary (sorted by evals-per-solve, lower = more efficient):
+arm              n solving unsol      solved/30     evo-solved          evals/solve
+-------------------------------------------------------------------------------------
+B5D-NM           5       5     0  10.40 ±  0.55   3.20 ±  0.84          96,380 ± 4,963
+B5D              5       5     0  10.40 ±  0.55   3.20 ±  0.84          96,457 ± 5,060
+B5-1M            5       5     0  10.40 ±  1.14   3.20 ±  0.84          97,077 ± 10,497
+B5+planner      19      19     0  12.32 ±  1.00   4.47 ±  1.26         326,665 ± 24,298
+B5D-4M           9       9     0  12.33 ±  1.12   4.44 ±  1.33         326,667 ± 28,782
+B5-4M           15      15     0  12.13 ±  1.06   4.13 ±  1.13         331,910 ± 26,799
+B0              20      20     0   2.25 ±  1.07   2.25 ±  1.07       2,333,510 ± 1,284,369
+B7              20      19     1   1.90 ±  1.07   1.85 ±  1.04       2,579,205 ± 1,275,957
+B6              20      19     1   1.85 ±  1.09   1.80 ±  1.06       2,631,779 ± 1,241,940
+B9              20      19     1   1.70 ±  0.86   1.65 ±  0.75       2,649,320 ± 1,091,437
+B8              20      19     1   1.65 ±  0.81   1.60 ±  0.75       2,737,451 ± 1,130,719
+B2              20      18     2   1.65 ±  1.14   1.60 ±  0.99       2,748,344 ± 1,194,381
+B1              20      19     1   1.50 ±  0.95   1.45 ±  0.94       3,140,693 ± 1,182,998
+
+=== B5-1M vs B5D (roadmap §9b: dreaming) ===
+  frontier solves:   B5-1M 10.40 ± 1.14  B5D 10.40 ± 0.55  diff +0.00
+  evals/solve:       B5-1M 97,077  B5D 96,457  diff -620
+  welch-t p (per-seed evals/solve, B5 vs B5D): 0.905
+  dream utilization: B5D added=287.2 solved=278.8 rate=97.0%
+  frontier solve-time: B5D cumulative-evals-at-solve (per-seed mean) = 153,159  vs B5 evals/solve ratio 97,077  (different units; frontier solves happen mid-run, ratio is total/avg)
+  per-solve split:   frontier n=52 median=88,268  dream n=1394 median=590,526
+
+=== Failure-mode dreaming (roadmap §9b #1, discovery-bottleneck) ===
+  frontier solves:   B5 10.40 ± 1.14  B5D 10.40 ± 0.55  B5D-NM 10.40 ± 0.55
+  welch-t p (B5D-NM vs B5, evals/solve): 0.893
+  welch-t p (B5D-NM vs B5D, evals/solve): 0.981
+
+H2/H3 verdicts re-scored on evals-per-solve (lower = better):
+  H2: B2 > B1 (transfer)               diff=+392,349  p(B2<B1)=0.316
+  H2: B2 > B0 (transfer)               diff=-414,833  p(B2<B0)=0.302
+

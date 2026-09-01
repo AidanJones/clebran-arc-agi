@@ -182,10 +182,11 @@ def load_all_4m_seeds() -> dict[str, list[ArmSeed]]:
     # Files of the form b5_<budget>_seed<int>.jsonl, e.g.
     #   b5_1m_seed*.jsonl — 1M pilot
     #   b5_4m_seed*.jsonl — 4M headline sweep
-    # Plus b5p_seed* (B5+planner) and b5d_seed* (B5+planner dreaming).
+    # Plus b5p_seed* (B5+planner) and b5d_seed* (B5+planner dreaming),
+    # and b5d-nm_seed* (B5 + failure-mode dreaming).
     # Skips .incomplete.*, *_k1_4M_run1, etc.
     import re
-    seed_pat = re.compile(r"^b5(?:p|d)?(?:_\d+m)?_seed(\d+)$")
+    seed_pat = re.compile(r"^b5(?:p|d(?:-nm)?)?(?:_\d+m)?_seed(\d+)$")
 
     b5p_files = [f for f in LOG_DIR.glob("b5p_seed*.jsonl")
                  if seed_pat.match(f.stem)]
@@ -232,7 +233,7 @@ def load_all_4m_seeds() -> dict[str, list[ArmSeed]]:
 
     # Per-solve level: B5D (B5 + dreaming, roadmap §9b)
     b5d_files = [f for f in LOG_DIR.glob("b5d*.jsonl")
-                 if seed_pat.match(f.stem)]
+                 if seed_pat.match(f.stem) and "nm" not in f.stem.lower()]
     for f in sorted(b5d_files):
         m = seed_pat.match(f.stem)
         seed = int(m.group(1))
@@ -240,6 +241,26 @@ def load_all_4m_seeds() -> dict[str, list[ArmSeed]]:
         if a:
             a.seed = seed
             out["B5D"].append(a)
+
+    # B5D-NM (B5D + failure-mode dreaming, discovery-bottleneck #1)
+    b5d_nm_files = [f for f in LOG_DIR.glob("b5d-nm*.jsonl")
+                    if seed_pat.match(f.stem)]
+    for f in sorted(b5d_nm_files):
+        m = seed_pat.match(f.stem)
+        seed = int(m.group(1))
+        # Extract budget from filename prefix
+        m_budget = re.search(r"b5d-nm_(\d+[mk])_", f.stem)
+        budget = 1_000_000  # default
+        if m_budget:
+            tag = m_budget.group(1)
+            if tag.endswith("m"):
+                budget = int(tag[:-1]) * 1_000_000
+            elif tag.endswith("k"):
+                budget = int(tag[:-1]) * 1_000
+        a = _load_per_solve_from_log(f, "B5D-NM", budget=budget)
+        if a:
+            a.seed = seed
+            out["B5D-NM"].append(a)
 
     # 4M B5D (the dreaming pilot at 4M, the next escalation).
     b5d_4m_files = [f for f in LOG_DIR.glob("b5d_4m_seed*.jsonl")
@@ -558,6 +579,7 @@ def main(argv: list[str] | None = None) -> dict:
         b5d_seeds = by_arm["B5D"]
         b5_label = "B5-1M" if "B5-1M" in by_arm else "B5"
         print(f"\n=== {b5_label} vs B5D (roadmap §9b: dreaming) ===")
+        # ... existing B5D block ...
         # Headline: solved (frontier) and evals/solve
         b5_solved = [float(s.solved) for s in b5_seeds]
         b5d_solved = [float(s.solved) for s in b5d_seeds]
@@ -633,6 +655,37 @@ def main(argv: list[str] | None = None) -> dict:
                     f"dream n={len(dream_eps)} "
                     f"median={st.median(dream_eps):,.0f}"
                 )
+
+    # B5 vs B5D-NM (roadmap §9b #1: failure-mode dreaming).
+    # Compare B5-1M and B5D-1M to B5D-NM at the same budget.
+    if "B5-1M" in by_arm and "B5D-NM" in by_arm:
+        b5_seeds = by_arm["B5-1M"]
+        b5d_nm_seeds = by_arm["B5D-NM"]
+        b5d_seeds = by_arm.get("B5D", [])
+        print(f"\n=== Failure-mode dreaming (roadmap §9b #1, discovery-bottleneck) ===")
+        b5_solved = [float(s.solved) for s in b5_seeds]
+        b5d_nm_solved = [float(s.solved) for s in b5d_nm_seeds]
+        b5d_solved = [float(s.solved) for s in b5d_seeds] if b5d_seeds else []
+        b5_eps = [float(s.evals) / s.solved for s in b5_seeds if s.solved > 0]
+        b5d_nm_eps = [float(s.evals) / s.solved for s in b5d_nm_seeds if s.solved > 0]
+        b5d_eps = [float(s.evals) / s.solved for s in b5d_seeds if s.solved > 0] if b5d_seeds else []
+        print(
+            f"  frontier solves:   B5 {st.mean(b5_solved):.2f} ± {st.stdev(b5_solved) if len(b5_solved) > 1 else 0:.2f}  "
+            f"B5D {st.mean(b5d_solved):.2f} ± {st.stdev(b5d_solved) if b5d_solved and len(b5d_solved) > 1 else 0:.2f}  "
+            f"B5D-NM {st.mean(b5d_nm_solved):.2f} ± {st.stdev(b5d_nm_solved) if len(b5d_nm_solved) > 1 else 0:.2f}"
+        )
+        # Welch p: B5D-NM vs B5
+        p_nm_vs_b5 = _welch_p(b5_eps, b5d_nm_eps)
+        if p_nm_vs_b5 is not None and b5_eps and b5d_nm_eps:
+            print(f"  welch-t p (B5D-NM vs B5, evals/solve): {p_nm_vs_b5:.3f}")
+        # Welch p: B5D-NM vs B5D
+        if b5d_eps and b5d_nm_eps:
+            p_nm_vs_d = _welch_p(b5d_eps, b5d_nm_eps)
+            if p_nm_vs_d is not None:
+                print(f"  welch-t p (B5D-NM vs B5D, evals/solve): {p_nm_vs_d:.3f}")
+        # Library stats: we'd need to load abstraction_stats too. For now
+        # leave the comparison at the count + cost level; the user can
+        # cross-reference experiments/2026-08-31_b5d_nm/library.txt.
 
     # H2 / H3 cost-axis re-ranking
     if {"B0", "B1", "B2"} <= set(by_arm):

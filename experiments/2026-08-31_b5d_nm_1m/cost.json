@@ -1,0 +1,161 @@
+﻿{
+  "evals_per_solve": [
+    {
+      "arm": "B5D-NM",
+      "n_seeds": 5,
+      "n_solving": 5,
+      "n_unsolved": 0,
+      "solved_mean": 10.4,
+      "solved_sd": 0.5477225575051661,
+      "evo_mean": 3.2,
+      "evo_sd": 0.8366600265340756,
+      "evals_per_solve_mean": 96380.13454545455,
+      "evals_per_solve_sd": 4963.323663357842
+    },
+    {
+      "arm": "B5D",
+      "n_seeds": 5,
+      "n_solving": 5,
+      "n_unsolved": 0,
+      "solved_mean": 10.4,
+      "solved_sd": 0.5477225575051661,
+      "evo_mean": 3.2,
+      "evo_sd": 0.8366600265340756,
+      "evals_per_solve_mean": 96456.87636363636,
+      "evals_per_solve_sd": 5060.350906288697
+    },
+    {
+      "arm": "B5-1M",
+      "n_seeds": 5,
+      "n_solving": 5,
+      "n_unsolved": 0,
+      "solved_mean": 10.4,
+      "solved_sd": 1.140175425099138,
+      "evo_mean": 3.2,
+      "evo_sd": 0.8366600265340756,
+      "evals_per_solve_mean": 97076.5798989899,
+      "evals_per_solve_sd": 10497.577691869446
+    },
+    {
+      "arm": "B5+planner",
+      "n_seeds": 19,
+      "n_solving": 19,
+      "n_unsolved": 0,
+      "solved_mean": 12.31578947368421,
+      "solved_sd": 1.002919714242558,
+      "evo_mean": 4.473684210526316,
+      "evo_sd": 1.2635233389495326,
+      "evals_per_solve_mean": 326665.33107681794,
+      "evals_per_solve_sd": 24298.70198895718
+    },
+    {
+      "arm": "B5D-4M",
+      "n_seeds": 9,
+      "n_solving": 9,
+      "n_unsolved": 0,
+      "solved_mean": 12.333333333333334,
+      "solved_sd": 1.118033988749895,
+      "evo_mean": 4.444444444444445,
+      "evo_sd": 1.3333333333333333,
+      "evals_per_solve_mean": 326666.5477022977,
+      "evals_per_solve_sd": 28782.21338502718
+    },
+    {
+      "arm": "B5-4M",
+      "n_seeds": 15,
+      "n_solving": 15,
+      "n_unsolved": 0,
+      "solved_mean": 12.133333333333333,
+      "solved_sd": 1.0600988273786194,
+      "evo_mean": 4.133333333333334,
+      "evo_sd": 1.1254628677422756,
+      "evals_per_solve_mean": 331910.11087801086,
+      "evals_per_solve_sd": 26799.33989126065
+    },
+    {
+      "arm": "B0",
+      "n_seeds": 20,
+      "n_solving": 20,
+      "n_unsolved": 0,
+      "solved_mean": 2.25,
+      "solved_sd": 1.069923755276638,
+      "evo_mean": 2.25,
+      "evo_sd": 1.069923755276638,
+      "evals_per_solve_mean": 2333510.4916666667,
+      "evals_per_solve_sd": 1284369.0357951454
+    },
+    {
+      "arm": "B7",
+      "n_seeds": 20,
+      "n_solving": 19,
+      "n_unsolved": 1,
+      "solved_mean": 1.9,
+      "solved_sd": 1.0711528467275955,
+      "evo_mean": 1.85,
+      "evo_sd": 1.0399898784932577,
+      "evals_per_solve_mean": 2579205.1228070175,
+      "evals_per_solve_sd": 1275957.852587652
+    },
+    {
+      "arm": "B6",
+      "n_seeds": 20,
+      "n_solving": 19,
+      "n_unsolved": 1,
+      "solved_mean": 1.85,
+      "solved_sd": 1.0894228312566052,
+      "evo_mean": 1.8,
+      "evo_sd": 1.0563093645728086,
+      "evals_per_solve_mean": 2631779.035087719,
+      "evals_per_solve_sd": 1241940.6742987132
+    },
+    {
+      "arm": "B9",
+      "n_seeds": 20,
+      "n_solving": 19,
+      "n_unsolved": 1,
+      "solved_mean": 1.7,
+      "solved_sd": 0.8645047258706176,
+      "evo_mean": 1.65,
+      "evo_sd": 0.7451598203705946,
+      "evals_per_solve_mean": 2649320.4078947366,
+      "evals_per_solve_sd": 1091437.507623309
+    },
+    {
+      "arm": "B8",
+      "n_seeds": 20,
+      "n_solving": 19,
+      "n_unsolved": 1,
+      "solved_mean": 1.65,
+      "solved_sd": 0.812727700887249,
+      "evo_mean": 1.6,
+      "evo_sd": 0.7539370349250519,
+      "evals_per_solve_mean": 2737451.043859649,
+      "evals_per_solve_sd": 1130719.1965862538
+    },
+    {
+      "arm": "B2",
+      "n_seeds": 20,
+      "n_solving": 18,
+      "n_unsolved": 2,
+      "solved_mean": 1.65,
+      "solved_sd": 1.1367080817685316,
+      "evo_mean": 1.6,
+      "evo_sd": 0.99472291830968,
+      "evals_per_solve_mean": 2748343.8685185183,
+      "evals_per_solve_sd": 1194381.5429315944
+    },
+    {
+      "arm": "B1",
+      "n_seeds": 20,
+      "n_solving": 19,
+      "n_unsolved": 1,
+      "solved_mean": 1.5,
+      "solved_sd": 0.9459053029269173,
+      "evo_mean": 1.45,
+      "evo_sd": 0.9445132413883327,
+      "evals_per_solve_mean": 3140692.5833333335,
+      "evals_per_solve_sd": 1182998.2222222101
+    }
+  ]
+}
+
