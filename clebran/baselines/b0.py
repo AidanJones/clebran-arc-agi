@@ -61,10 +61,11 @@ def run_single(
     dream_source: str = "solved",
     dream_near_miss_min: float = 0.4,
     dream_near_miss_aggressive: bool = False,
+    lam_mdl: float = 1.05,
 ) -> dict:
     tasks = subset_tasks()
     pool = subset_pool()
-    ev = Evaluator()
+    ev = Evaluator(lam_mdl=lam_mdl)
     lin = Lineage(
         lineage_id=f"{arm.lower()}-s{seed}",
         pool=pool,
@@ -271,14 +272,21 @@ def run_b0(seed: int, budget: int = 500_000, pop_size: int = 100,
 
 
 def run_b5(seed: int, budget: int = 500_000, pop_size: int = 100,
-           run_name: str | None = None) -> dict:
-    """B5: single population + self-mined growing abstraction library."""
+           run_name: str | None = None,
+           lam_mdl: float = 1.05) -> dict:
+    """B5: single population + self-mined growing abstraction library.
+
+    `lam_mdl` is the NEO-style adaptive-length factor: tiebreak is
+    `cell_acc * lam_mdl^(-len)`. Default 1.05. Larger values push
+    harder for shorter programs (more compositional search).
+    """
     return run_single(seed, budget, pop_size, run_name, arm="B5",
-                      self_mine=True)
+                      self_mine=True, lam_mdl=lam_mdl)
 
 
 def run_b5_dream(seed: int, budget: int = 500_000, pop_size: int = 100,
-                 run_name: str | None = None) -> dict:
+                 run_name: str | None = None,
+                 lam_mdl: float = 1.05) -> dict:
     """B5D: B5 + dreaming (roadmap §9b).
 
     After every solve, the lineage synthesises a variant task from its
@@ -287,13 +295,15 @@ def run_b5_dream(seed: int, budget: int = 500_000, pop_size: int = 100,
     compute vs B5).
     """
     return run_single(seed, budget, pop_size, run_name, arm="B5D",
-                      self_mine=True, dream=True, dream_source="solved")
+                      self_mine=True, dream=True, dream_source="solved",
+                      lam_mdl=lam_mdl)
 
 
 def run_b5_dream_near_miss(seed: int, budget: int = 500_000, pop_size: int = 100,
                             run_name: str | None = None,
                             near_miss_min: float = 0.4,
-                            aggressive: bool = False) -> dict:
+                            aggressive: bool = False,
+                            lam_mdl: float = 1.05) -> dict:
     """B5D-NM: B5 + failure-mode dreaming (roadmap §9b #1).
 
     Like B5D, but the lineage dreams from *near-miss* programs (high
@@ -314,7 +324,7 @@ def run_b5_dream_near_miss(seed: int, budget: int = 500_000, pop_size: int = 100
         seed, budget, pop_size, run_name,
         arm="B5D-NM", self_mine=True, dream=True,
         dream_source="near_miss", dream_near_miss_min=near_miss_min,
-        dream_near_miss_aggressive=aggressive,
+        dream_near_miss_aggressive=aggressive, lam_mdl=lam_mdl,
     )
 
 
@@ -334,14 +344,22 @@ if __name__ == "__main__":
         "--aggressive", action="store_true",
         help="Drop the 'hash differs' check: dream from each task's best near-miss every epoch.",
     )
+    ap.add_argument(
+        "--lam-mdl", type=float, default=None,
+        help="Override the NEO adaptive-length factor (default 1.05 for B5; "
+             "higher values push harder for shorter programs).",
+    )
     args = ap.parse_args()
     if args.arm == "B5":
-        runner = run_b5
+        runner = (lambda **kw: run_b5(lam_mdl=args.lam_mdl or 1.05, **kw))
     elif args.arm == "B5D":
-        runner = run_b5_dream
+        runner = lambda **kw: run_b5_dream(
+            lam_mdl=args.lam_mdl or 1.05, **kw
+        )
     elif args.arm == "B5D-NM":
         runner = lambda **kw: run_b5_dream_near_miss(
-            near_miss_min=args.near_miss_min, aggressive=args.aggressive, **kw
+            near_miss_min=args.near_miss_min, aggressive=args.aggressive,
+            lam_mdl=args.lam_mdl or 1.05, **kw
         )
     else:
         runner = run_b0

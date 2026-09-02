@@ -185,10 +185,12 @@ def load_all_4m_seeds() -> dict[str, list[ArmSeed]]:
     # Plus b5p_seed* (B5+planner) and b5d_seed* (B5+planner dreaming),
     # and b5d-nm* (B5 + failure-mode dreaming) with optional
     # -cons / -aggr suffix.
+    # Plus b5-<variant>_<budget>_seed* for heterogeneous-fitness variants
+    # (e.g. b5-strongmdl_1m_seed*.jsonl).
     # Skips .incomplete.*, *_k1_4M_run1, etc.
     import re
     seed_pat = re.compile(
-        r"^b5(?:p|d(?:-nm(?:-(?:cons|aggr))?)?)?(?:_\d+m)?_seed(\d+)$"
+        r"^b5(?:p|d(?:-nm(?:-(?:cons|aggr))?)?|-[a-z]+)?(?:_\d+m)?_seed(\d+)$"
     )
 
     b5p_files = [f for f in LOG_DIR.glob("b5p_seed*.jsonl")
@@ -210,6 +212,31 @@ def load_all_4m_seeds() -> dict[str, list[ArmSeed]]:
         if a:
             a.seed = seed
             out["B5"].append(a)
+
+    # B5 heterogeneous-fitness variants (e.g. b5-strongmdl_1m_seed*.jsonl).
+    # These are B5 with different secondary-tiebreak settings; they share
+    # the per-solve schema with B5 but are reported as their own arm so
+    # we can compare them to the default.
+    b5_variant_files = [f for f in LOG_DIR.glob("b5-*.jsonl")
+                        if seed_pat.match(f.stem)]
+    for f in sorted(b5_variant_files):
+        m = seed_pat.match(f.stem)
+        # Extract variant from filename like b5-strongmdl_1m_seed1
+        m_variant = re.match(r"^b5-([a-z]+)_(\d+[mk])_", f.stem)
+        if not m_variant:
+            continue
+        variant = m_variant.group(1)
+        budget_tag = m_variant.group(2)
+        if budget_tag.endswith("m"):
+            budget = int(budget_tag[:-1]) * 1_000_000
+        else:
+            budget = int(budget_tag[:-1]) * 1_000
+        arm = f"B5-{variant}"
+        seed = int(m.group(1))
+        a = _load_per_solve_from_log(f, arm, budget=budget)
+        if a:
+            a.seed = seed
+            out[arm].append(a)
 
     # 1M B5 pilot (B5 baseline at 1M, run separately for the 9b comparison).
     b5_1m_files = [f for f in LOG_DIR.glob("b5_1m_seed*.jsonl")
