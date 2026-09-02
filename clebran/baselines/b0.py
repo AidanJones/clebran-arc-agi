@@ -60,6 +60,7 @@ def run_single(
     dream: bool = False,
     dream_source: str = "solved",
     dream_near_miss_min: float = 0.4,
+    dream_near_miss_aggressive: bool = False,
 ) -> dict:
     tasks = subset_tasks()
     pool = subset_pool()
@@ -183,10 +184,14 @@ def run_single(
                     continue
                 if best.fit.solved_all:
                     continue  # already a solver; would be picked up by the solved-source path
-                prog_hash = best.prog.to_json()  # JSON is stable, used as hash
-                if near_miss_last_hash.get(tid) == prog_hash:
-                    continue  # same near-miss as last epoch; skip
-                near_miss_last_hash[tid] = prog_hash
+                # Drop the "hash differs" check if aggressive=True: dream from
+                # each task's best near-miss every epoch (more dreams, more
+                # material for discovery).
+                if not dream_near_miss_aggressive:
+                    prog_hash = best.prog.to_json()  # JSON is stable, used as hash
+                    if near_miss_last_hash.get(tid) == prog_hash:
+                        continue  # same near-miss as last epoch; skip
+                    near_miss_last_hash[tid] = prog_hash
                 synth = generate_task(
                     best.prog, dream_rng,
                     abstractions=lin.abstractions,
@@ -287,7 +292,8 @@ def run_b5_dream(seed: int, budget: int = 500_000, pop_size: int = 100,
 
 def run_b5_dream_near_miss(seed: int, budget: int = 500_000, pop_size: int = 100,
                             run_name: str | None = None,
-                            near_miss_min: float = 0.4) -> dict:
+                            near_miss_min: float = 0.4,
+                            aggressive: bool = False) -> dict:
     """B5D-NM: B5 + failure-mode dreaming (roadmap §9b #1).
 
     Like B5D, but the lineage dreams from *near-miss* programs (high
@@ -298,11 +304,17 @@ def run_b5_dream_near_miss(seed: int, budget: int = 500_000, pop_size: int = 100
 
     A primitive version of the L3 evoker (9f.4): a lineage that
     practises on its own failures, not its successes.
+
+    If `aggressive=True`, drops the "hash differs" check: dreams from
+    each task's best near-miss every epoch (more dreams, more material
+    for discovery). The default (aggressive=False) only dreams when
+    the near-miss has *improved* since last epoch.
     """
     return run_single(
         seed, budget, pop_size, run_name,
         arm="B5D-NM", self_mine=True, dream=True,
         dream_source="near_miss", dream_near_miss_min=near_miss_min,
+        dream_near_miss_aggressive=aggressive,
     )
 
 
@@ -311,14 +323,26 @@ if __name__ == "__main__":
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--budget", type=int, default=500_000)
     ap.add_argument("--pop", type=int, default=100)
-    ap.add_argument("--arm", choices=["B0", "B5", "B5D", "B5D-NM"], default="B0")
+    ap.add_argument(
+        "--arm", choices=["B0", "B5", "B5D", "B5D-NM"], default="B0",
+    )
+    ap.add_argument(
+        "--near-miss-min", type=float, default=0.4,
+        help="Minimum solved_frac for a near-miss to qualify (default 0.4).",
+    )
+    ap.add_argument(
+        "--aggressive", action="store_true",
+        help="Drop the 'hash differs' check: dream from each task's best near-miss every epoch.",
+    )
     args = ap.parse_args()
     if args.arm == "B5":
         runner = run_b5
     elif args.arm == "B5D":
         runner = run_b5_dream
     elif args.arm == "B5D-NM":
-        runner = run_b5_dream_near_miss
+        runner = lambda **kw: run_b5_dream_near_miss(
+            near_miss_min=args.near_miss_min, aggressive=args.aggressive, **kw
+        )
     else:
         runner = run_b0
     s = runner(seed=args.seed, budget=args.budget, pop_size=args.pop)
