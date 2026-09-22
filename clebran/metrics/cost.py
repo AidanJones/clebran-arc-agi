@@ -343,6 +343,34 @@ def load_all_4m_seeds() -> dict[str, list[ArmSeed]]:
             a.seed = seed
             out["B5D-4M"].append(a)
 
+    # #3 task-subset specialization (roadmap §"The discovery bottleneck"):
+    # B5-1M on a 15-task *hard* subset (unsolved at B5-4M) and on a
+    # 15-task *random* subset. Logs are prefixed with the subset name
+    # via the run_prefix machinery (CLEBRAN_SUBSET=hard15_subset etc.),
+    # giving hard15_b5_1m_seed* and random15_b5_1m_seed*.
+    import re as _re_subset
+    subset_seed_pat = _re_subset.compile(
+        r"^(hard15|random15)_b5_(\d+[mk])_seed(\d+)$"
+    )
+    for f in sorted(LOG_DIR.glob("*_b5_*.jsonl")):
+        if "dropped" in f.stem or "incomplete" in f.stem:
+            continue
+        m = subset_seed_pat.match(f.stem)
+        if not m:
+            continue
+        prefix, budget_tag, seed_str = m.group(1), m.group(2), m.group(3)
+        if budget_tag.endswith("m"):
+            budget = int(budget_tag[:-1]) * 1_000_000
+        elif budget_tag.endswith("k"):
+            budget = int(budget_tag[:-1]) * 1_000
+        else:
+            continue
+        arm = f"B5-{prefix}"  # "B5-hard15" or "B5-random15"
+        a = _load_per_solve_from_log(f, arm, budget=budget)
+        if a:
+            a.seed = int(seed_str)
+            out[arm].append(a)
+
     # Dedup per arm by seed (keep last; multiple b5 seed-1 files exist from retries)
     for arm in list(out):
         dedup: dict[int, ArmSeed] = {}

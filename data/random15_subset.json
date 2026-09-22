@@ -1,0 +1,132 @@
+{
+  "seed": 20260831,
+  "recipe": "subset-spec #3: 15 stage1 tasks, deterministic random sample",
+  "composition": {
+    "random15": 15
+  },
+  "tasks": [
+    {
+      "task_id": "007bbfb7",
+      "depth": 7,
+      "bucket": "D3",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "0b148d64",
+      "depth": 3,
+      "bucket": "D2",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "0d3d703e",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "object-count",
+        "symmetry-repair"
+      ]
+    },
+    {
+      "task_id": "2dc579da",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "32597951",
+      "depth": 3,
+      "bucket": "D2",
+      "tags": [
+        "other"
+      ]
+    },
+    {
+      "task_id": "46f33fce",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "5bd6f4ac",
+      "depth": 2,
+      "bucket": "D1",
+      "tags": [
+        "object-count",
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "6f8cd79b",
+      "depth": 5,
+      "bucket": "D2",
+      "tags": [
+        "symmetry-repair"
+      ]
+    },
+    {
+      "task_id": "a416b8f3",
+      "depth": 1,
+      "bucket": "D1",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "a79310a0",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "other"
+      ]
+    },
+    {
+      "task_id": "b1948b0a",
+      "depth": 1,
+      "bucket": "D1",
+      "tags": [
+        "other"
+      ]
+    },
+    {
+      "task_id": "ce22a75a",
+      "depth": 4,
+      "bucket": "D2",
+      "tags": [
+        "symmetry-repair"
+      ]
+    },
+    {
+      "task_id": "dc0a314f",
+      "depth": 10,
+      "bucket": "D3",
+      "tags": [
+        "size-change"
+      ]
+    },
+    {
+      "task_id": "ed36ccf7",
+      "depth": 1,
+      "bucket": "D1",
+      "tags": [
+        "geometry",
+        "object-count"
+      ]
+    },
+    {
+      "task_id": "f25ffba3",
+      "depth": 3,
+      "bucket": "D2",
+      "tags": [
+        "symmetry-repair"
+      ]
+    }
+  ]
+}
