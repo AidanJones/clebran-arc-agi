@@ -18,9 +18,24 @@ hypothesis is falsified by its own strongest control. Lineages *do* diverge
 vocabulary quality: the single agent's mined library is more compositional
 (topographic similarity 0.33 vs 0.14) and more cross-task reused. The constraint
 regime is null across all four payloads, because an adaptive learner
-self-regulates a failing channel regardless of bandwidth. We argue the asset of
-the work is the matched-compute measurement rig, and that the useful component
-of the design is the library mechanism, not the multi-agent framing.
+self-regulates a failing channel regardless of bandwidth.
+
+We then test whether any **mechanism operating inside** the central learner
+itself — failure-mode dreaming, heterogeneous fitness, task-subset
+specialization — can expand the central library's frontier on the same
+30-task subset at matched compute. Three concrete 1M pilots return null
+(§3.6): the strongest failure-mode-dreaming variant regresses (−1.6,
+p = 0.007), the heterogeneous-fitness variant regresses (−0.80), and
+the task-subset-specialization arms get 0 test-exact discoveries on the
+hard subset (which B5-4M, at 2× per-task compute, also fails to crack).
+The cheapest reading is that **no mechanism operating inside the current
+DSL/interpreter/fitness on this frontier will expand B5's reach at 1M**;
+the remaining bets — novelty search, learned L1 as proposer, operator
+self-modification, the L3 evoker — all attack the problem by adding a
+*new dimension* the lineage can search, rather than redistributing budget
+across the same DSL. We argue the asset of the work is the
+matched-compute measurement rig, and that the useful component of the
+design is the library mechanism, not the multi-agent framing.
 
 # 1. Introduction
 
@@ -230,6 +245,120 @@ H3 fails not only for fragments (the dose-response) but for recovered primitives
 self-regulation explains all three: unconstrained sharing cannot crowd out
 productive mutation because the learner down-weights a failing channel. In this
 substrate the constraint neither helps nor hurts.
+
+## 3.6 The discovery bottleneck — three concrete nulls at 1M
+
+The transport side of clebran is solved: B5 sits at the top of the frontier
+ranking (§3.3), is 7–10× more cost-efficient than every multi-agent arm, and
+the dreaming arm B5D (§3.6.1) builds a library 2× larger, 13× more used, and
+124× more cross-task-reused than B5 at 4M, while the frontier remains tied.
+The discovery side is the open problem: every arm in the rig runs the same
+DSL, the same interpreter, the same pure-outcome fitness, on the same 30
+frontier tasks.
+
+We attacked the discovery bottleneck three times, each through a different
+*kind* of mechanism — the practice pool, the fitness signal, and the task
+pool — at 1M evals × 5 seeds each. All three returned null.
+
+### 3.6.1 #1 Failure-mode dreaming — null at 1M
+
+The dreaming arm B5D produces dreams that exercise the *failure modes* the
+lineage is currently failing on. Hypothesis: practice on the failure-mode
+frontier should expand the lineage's reach. Two 1M pilots (5 seeds):
+
+| metric (1M, 5 seeds) | B5-1M | B5D-NM-cons | B5D-NM-aggr |
+|---|---|---|---|
+| frontier solves /30 | 10.40 ± 1.14 | 9.80 ± 0.45 | **8.80 ± 0.84** |
+| evo-solved /30 | 3.20 ± 0.84 | 2.60 ± 0.55 | 1.60 ± 0.55 |
+| evals/solve | 97,077 | 102,230 | 115,183 |
+| welch-t p (vs B5, evals/solve) | — | 0.321 | **0.007** |
+
+The dreaming *is* the same loop as B5D (97% utilization, library 1.7× larger,
+21× more used, 5 cross-task reuse events vs B5's 0) but the front-line dream
+content does not transfer to the frontier: the conservative failure-mode
+variant regresses to 9.80 vs B5's 10.40 (−0.6, ns), and the aggressive variant
+regresses to 8.80 vs B5's 10.40 (−1.6, **p = 0.007**). The more aggressively
+the dreaming is steered at failure modes, the more it costs.
+
+### 3.6.2 #2 Heterogeneous fitness (B5-strongmdl) — null at 1M
+
+A B5 variant with a stronger MDL pressure (λ = 1.5 vs B5's 1.05), on the
+hypothesis that parsimony pressure should favor more *compositional*
+abstractions.
+
+| metric (1M, 5 seeds) | B5-1M | B5-strongmdl |
+|---|---|---|
+| frontier solves /30 | 10.40 ± 1.14 | **9.60 ± 1.14** |
+| evo-solved /30 | 3.20 ± 0.84 | **2.40 ± 1.14** |
+| evals/solve | 97,077 | 105,468 |
+
+B5-strongmdl *regresses* (−0.80 frontier, −0.80 evo, both ~1 SE), is
+*more* expensive (105K vs 97K evals/solve), and the *fewer* evo-phase
+solves means the MDL pressure pushed the lineage to shorter
+*phase-1-seeded* programs, not new compositions. The default B5 is
+well-tuned; stronger MDL on the same primitives doesn't open new regions
+of program space.
+
+### 3.6.3 #3 Task-subset specialization — null at 1M
+
+Two arms × 5 seeds × 1M each. The *hard* arm runs B5 on the 15 stage1 tasks
+B5-4M (15 seeds) never solved. The *random* arm runs B5 on 15 random
+stage1 tasks. Per-task compute: 1M/15 = **67k/task** in both arms, twice the
+B5-1M full-stage1 baseline's 33k/task.
+
+| metric (1M, 5 seeds) | hard15 arm | random15 arm | B5-1M full stage1 | B5-4M full stage1 |
+|---|---|---|---|---|
+| **test-exact / 15-task subset** | **0.00 ± 0.00** | **5.60 ± 0.55** | 0.00 / 4.60 | 0.00 / 3.53 |
+| frontier / 15-task subset | 0.20 ± 0.45 | 5.80 ± 0.84 | 0.20 / 4.60 | 0.20 / 5.27 |
+| train-only overfits | 1 (1f85a75f) | 1 (0b148d64) | 1 (1f85a75f) | 3 (1f85a75f ×3) |
+| welch-t p (vs B5-1M on subset) | 1.000 | **0.007** | — | — |
+
+Two findings in one:
+
+- *Specialization on hard tasks fails.* hard15 gets 0 test-exact discoveries;
+  B5-4M (15 seeds, 133k/task) gets 0 test-exact on the same subset. The
+  hard15 set is *genuinely beyond B5's reach at these budgets* — the only
+  frontier "solves" are train-only overfits on `1f85a75f`, which the test
+  pairs catch. No specialization trick can rescue a search that's out of
+  room.
+- *Specialization on random tasks = per-task compute.* random15 gets 5.6
+  test-exact vs B5-1M's 4.6 on the same subset (p = 0.007). But the
+  specialized arm has 2× per-task compute (67k vs 33k); a 2×
+  compute-on-easy-tasks increase is the natural explanation for ~1 more
+  solve on a frontier of easy D1 tasks. No signal for "specialization helps
+  on a complementary subset" beyond the compute redistribution.
+
+### 3.6.4 Reading the three together
+
+None of the three mechanisms expanded B5's frontier at 1M:
+
+| # | mechanism | kind of attack | result | what we learned |
+|---|---|---|---|---|
+| 1 | failure-mode dreaming | change the *practice pool* (targeted) | null | more aggressive targeting → significant regression (p=0.007) |
+| 2 | heterogeneous fitness | change the *fitness signal* (parsimony pressure) | null | stronger MDL → mild regression; produces *shorter*, not *more compositional*, programs |
+| 3 | task-subset specialization | change *what the lineage searches on* (subset) | null | hard set out of reach; random subset gain = compute |
+
+The three attack the same search space from three different angles:
+practice pool, fitness signal, task pool. All three return null at 1M.
+The cheapest reading is that **no mechanism operating *inside* the
+current DSL/interpreter/fitness on the current 30-task frontier will
+expand B5's reach at 1M.** The remaining bets — novelty search (#4,
+behavioral diversity), learned L1 as proposer (#5, programmatic L1),
+operator self-modification (#6, learning to learn), L3 evoker (#7, 9f.4
+world-modeling capstone) — all attack the problem by adding a *new
+dimension* the lineage can search (a new objective, a new primitive
+distribution, a new operator pool, a new world model), rather than
+redistributing budget across the same DSL. **The structural-change bet
+is now the dominant remaining strategy on this rig.**
+
+*Artifacts:* the three pilots are frozen at
+[`experiments/2026-08-31_b5d_nm_1m/`](../../experiments/2026-08-31_b5d_nm_1m/),
+[`experiments/2026-08-31_b5d_nm_aggressive_1m/`](../../experiments/2026-08-31_b5d_nm_aggressive_1m/) (#1),
+[`experiments/2026-08-31_b5_heterogeneous_1m/`](../../experiments/2026-08-31_b5_heterogeneous_1m/) (#2),
+and
+[`experiments/2026-09-22_task_subset_specialization/`](../../experiments/2026-09-22_task_subset_specialization/) (#3).
+The cost-axis loader (`clebran/metrics/cost.py`) now picks up the #3
+arms so the menu pilots roll into the cost-axis ranking.
 
 # 4. Discussion
 

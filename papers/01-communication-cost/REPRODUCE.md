@@ -93,8 +93,51 @@ The exact runs behind the paper are archived (not regenerated) under:
 - `experiments/2026-07-22_frontier_recovered_scaled/` — the 20-seed sweep.
 - `experiments/2026-07-20_b3_dose_response/` — the dose-response.
 - `experiments/2026-07-20_stage4_b0-b4_matched_compute/` — the Stage-1 test.
+- `experiments/2026-08-31_b5d_nm_1m/`,
+  `experiments/2026-08-31_b5d_nm_aggressive_1m/` — discovery-bottleneck #1 (failure-mode dreaming).
+- `experiments/2026-08-31_b5_heterogeneous_1m/` — discovery-bottleneck #2 (heterogeneous fitness / B5-strongmdl).
+- `experiments/2026-09-22_task_subset_specialization/` — discovery-bottleneck #3 (task-subset specialization, hard15 vs random15 at 1M).
 
 Each contains `summaries.jsonl` (one row per arm×seed) and an `analysis.txt`.
+
+### 5.1 Discovery-bottleneck menu — reproduction commands
+
+The three discovery-bottleneck pilots (§3.6 of the paper) run via
+`scripts/run_b5_subset_1m.ps1` (PowerShell) on the two precomputed subsets
+in `data/`:
+
+```sh
+# Generate the two subset JSONs (once)
+uv run python build_subsets.py
+# → data/hard15_subset.json, data/random15_subset.json
+
+# Run all 10 seeds (2 arms × 5 seeds) at 1M evals each
+pwsh scripts/run_b5_subset_1m.ps1
+
+# #1 failure-mode dreaming (1M × 5 seeds, conservative + aggressive)
+# Handled via clebran.baselines.b0:run_b5_dream with the failure-mode-dream
+# flag set. The 1M pilot ran in
+# experiments/2026-08-31_b5d_nm_1m/ and
+# experiments/2026-08-31_b5d_nm_aggressive_1m/.
+
+# #2 B5-strongmdl (λ = 1.5, 1M × 5 seeds)
+# Re-run via the Evaluator's `lam_mdl` knob in
+# experiments/2026-08-31_b5_heterogeneous_1m/.
+
+# Analyse all #3 arms (test-exact vs train-only distinction)
+uv run python analyze_subset.py
+```
+
+Claims: at 1M evals × 5 seeds, the discovery-bottleneck menu returns three
+concrete nulls:
+
+- **#1** B5D-NM-aggressive regresses (8.80 vs B5's 10.40, **p = 0.007**); the
+  conservative variant regresses mildly (9.80, ns).
+- **#2** B5-strongmdl regresses (−0.80 frontier, −0.80 evo, both ~1 SE).
+- **#3** hard15 arm gets 0 test-exact discoveries (B5-4M, at 2× per-task
+  compute, also fails to crack the subset); random15 arm's apparent gain
+  (+1.0 test-exact vs B5-1M on the same subset, p = 0.007) is fully
+  consistent with the 2× per-task compute redistribution (67k vs 33k/task).
 
 ## Build the PDF
 
