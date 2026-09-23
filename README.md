@@ -2,7 +2,7 @@
 
 *clebran* (Welsh: to chatter, to gossip) — gossip protocols for divergent program evolution. Multiple populations of DSL programs evolve under pure reward on ARC-AGI-1 tasks, diverge into different solution strategies, and pass fragments of "what works" to each other through a deliberately narrow communication channel. The experiment tests whether that constrained gossip preserves better abstractions than isolation, ensembling, or unconstrained sharing — at matched compute, with baselines strong enough that a null result is trustworthy.
 
-The full design is in [emergent-dsl-arc-spec.md](emergent-dsl-arc-spec.md). **What the experiment found: [FINDINGS.md](FINDINGS.md).** Current status and next steps: [roadmap.md](roadmap.md). **The papers: [papers/](papers/README.md)** — one focused paper per set of experiments (paper 1: communication cost; paper 2: how you learned it; paper 3: world modeling) plus a combined summary at `papers/00-combined/`.
+The full design is in [emergent-dsl-arc-spec.md](emergent-dsl-arc-spec.md). **What the experiment found: [FINDINGS.md](FINDINGS.md).** What has been done, structured by topic: [STATUS.md](STATUS.md). Open work with hypothesis / expected payoff: [roadmap.md](roadmap.md). **The papers: [papers/](papers/README.md)** — one focused paper per set of experiments (paper 1: communication cost; paper 2: how you learned it; paper 3: world modeling) plus a combined summary at `papers/00-combined/`.
 
 > **Headline result.** At matched compute on ARC, a single population that mines its own solutions into a growing abstraction library (a DreamCoder/Stitch-style central learner, arm **B5**) *significantly* outperforms divergent lineages communicating over a constrained channel (B6): `B5 2.65 > B0 2.25 > B7≈B6 1.8 > B2 1.6 > B1 1.45` evolution-phase solves; B6−B5 = −0.85 (~2.2 se, the only significant comparison). The central hypothesis is not supported — the strongest control wins. A trustworthy negative result, which is exactly what the baselines were built to make believable.
 
@@ -86,35 +86,42 @@ Each is a mechanism for an *individual* lineage to find something
 genuinely new, distinct from its prior. After discovery, the existing
 transport machinery can carry it.
 
-1. **Failure-mode dreaming** (cheap, ~1 day). B5D currently dreams
-   from *solved* programs (variants of what's known). Extend to also
-   dream from *near-miss* programs — high-fitness but not-fully-
-   correct individuals, the loci of *why* a lineage fails on a task.
-   Variants of the near-miss force the lineage to bridge the gap;
-   bridging is where new primitives are discovered. Reuses the
-   existing B5D arm — just change the dream-source population.
+**Menu status (2026-09-23):** #1, #2, #3 have been run at 1M × 5
+seeds and all returned **null**. See [STATUS.md §F](STATUS.md) for the
+three pilots' results, the discovery-bottleneck pattern, and frozen
+data pointers. **#4 onward are un-started.** The discovery-bottleneck
+menu is now the structural-change bet — each remaining item tests
+whether adding a *new dimension* (a new objective, a new primitive
+distribution, a new operator pool, a new world model) can expand
+B5's reach.
 
-2. **Heterogeneous fitness** (medium, ~2 days). Run multiple B5
-   lineages with different fitness functions: pure accuracy, length-
-   only, primitive-diversity-only, novelty-of-program-behavior-only.
-   Each lineage discovers different programs because it *values*
-   different things. The existing channel carries the heterogeneous
-   abstractions; the union is broader than any individual library.
+1. ~~**Failure-mode dreaming**~~ — **DONE 2026-09, NULL.** B5D-NM-aggr
+   regresses (8.80 vs B5 10.40, **p = 0.007**); B5D-NM-cons 9.80 (ns).
+   See [`experiments/2026-08-31_b5d_nm_1m/`](experiments/2026-08-31_b5d_nm_1m/),
+   [`experiments/2026-08-31_b5d_nm_aggressive_1m/`](experiments/2026-08-31_b5d_nm_aggressive_1m/).
+   Aggressive failure-mode targeting is harmful; the conservative
+   variant regresses mildly. ([STATUS §F #1](STATUS.md).)
 
-3. **Task-subset specialization** (medium, ~2 days). Run B5 lineages
-   on *disjoint* task subsets chosen to be complementary (e.g. one
-   lineage on object-centric tasks, another on color-flip tasks,
-   another on geometry). The shared channel carries the per-subset
-   libraries; the question is whether the union reaches more tasks
-   than any single lineage could. This is the proper test of the
-   clebran multi-agent *premise*: division of labor creates
-   diversity, transport unifies it.
+2. ~~**Heterogeneous fitness**~~ — **DONE 2026-09, NULL.** B5-strongmdl
+   (λ = 1.5) regresses (−0.80 frontier, −0.80 evo, both ~1 SE); is more
+   expensive (105K vs 97K evals/solve). Stronger MDL pressure produces
+   *shorter*, not *more compositional*, programs.
+   [`experiments/2026-08-31_b5_heterogeneous_1m/`](experiments/2026-08-31_b5_heterogeneous_1m/). ([STATUS §F #2](STATUS.md).)
 
-4. **Novelty search arm** (medium, ~3 days). Add a B5+novelty arm
-   that optimizes for behavioral diversity of the program (e.g.
-   novel output grids), not for task accuracy. Novelty search
-   explores the *space of programs* rather than the frontier of
-   *solved tasks*. Its discoveries are different by construction.
+3. ~~**Task-subset specialization**~~ — **DONE 2026-09, NULL.** hard15
+   arm: 0 test-exact (B5-4M, 2× per-task compute, also 0); random15 arm:
+   +1.0 test-exact vs B5-1M on the same subset (p = 0.007), fully
+   consistent with the 2× per-task compute redistribution (67k vs
+   33k/task). No signal beyond compute.
+   [`experiments/2026-09-22_task_subset_specialization/`](experiments/2026-09-22_task_subset_specialization/). ([STATUS §F #3](STATUS.md).)
+
+4. **Novelty search arm** (medium, ~3 days) — **next discovery-bottleneck
+   bet, on the [roadmap](roadmap.md) as item 1.** Add a B5+novelty arm
+   that scores on behavioral diversity of the program (novel output
+   grids) rather than task accuracy. Different *objective* in the same
+   DSL. If null at 1M, the menu is 0-for-4 — strong evidence that no
+   mechanism *inside* the current DSL can expand B5's frontier,
+   regardless of objective.
 
 5. **Learned L1 as proposer** (large, ~1 week). Train a small
    programmatic L1 on the trace dataset
@@ -123,12 +130,13 @@ transport machinery can carry it.
    programs for unsolved frontier tasks. The L1's generalization
    is what it has learned across all 400 reference solvers —
    a different *kind* of discovery from the lineage's own search.
+   ([roadmap](roadmap.md) item 2.)
 
 6. **Operator self-modification** (large, ~2 weeks). The lineage
    modifies its own mutation/crossover operators based on what
    works. Modifications are shareable across lineages. Closer to
    "learning to learn", and a real direction in the world-modeling
-   direction's spirit.
+   direction's spirit. ([roadmap](roadmap.md) item 3.)
 
 7. **L3 evoker (9f.4)** (large, ~2 weeks). The world model that
    improves on failed predictions. The trace dataset and L2
@@ -136,7 +144,7 @@ transport machinery can carry it.
    in the world-modeling direction (Paper 3). The L3 evoker
    refines its world model when reality contradicts it, then
    re-rolls — the natural capstone of the world-modeling
-   direction.
+   direction. ([roadmap](roadmap.md) item 4.)
 
 **The principle.** Any mechanism that expands what a *single*
 lineage can discover is worth more, on this rig, than any
@@ -145,24 +153,62 @@ second; we need the first.
 
 ## Hypotheses → baselines
 
-| | Arm | Purpose |
+The arm table covers the original H1/H2/H3 framing (B0–B4) and the
+extension arms (B5–B9) that close the central-library control.
+
+| arm | description | role |
 |---|---|---|
 | B0 | single population, all compute | reference line; H2 needs B2 > B0 |
-| B1 | N isolated lineages (CH-NONE), union | H1 divergence measured here; ensembling control (H2 needs B2 > B1) |
-| B2 | N lineages + CH-CONSTRAINED, fragment payload | main treatment (H2, H3) |
-| B3 | N lineages + CH-UNCONSTRAINED | H3 control (constraint vs mere sharing) |
-| B4 | N lineages + CH-CONSTRAINED, signal payload | abstract-communication variant |
+| B1 | N isolated lineages (CH-NONE), union | H1 divergence measured here; ensembling control |
+| B2 / B3 | N lineages + CH-CONSTRAINED / UNCONSTRAINED, **fragment** payload | main treatment (H2, H3) |
+| B4 | N lineages + CH-CONSTRAINED, **signal** payload | abstract-communication variant |
+| **B5** | **single population + central abstraction library** | the central-library control; the strongest "abstraction reuse without divergence" baseline (Paper 1) |
+| B6 / B7 | N lineages + CH-CONSTRAINED / UNCONSTRAINED, **recovered-primitive** payload | H3 on a *discovered* vocabulary |
+| B8 / B9 | N lineages + CH-CONSTRAINED / UNCONSTRAINED, **curriculum** payload | teaching-as-communication (Paper 2) |
+| **B5+planner** | **B5 + planner-seeded individual (paper 3)** | world-model integration; budget-conditional result |
+| B5D | B5 + dreaming (paper 3) | self-directed practice; transport-side enrichment |
 
-All arms run at matched candidate-evaluation budgets (audited to ±1%), ≥5 seeds.
+All arms run at matched candidate-evaluation budgets (audited to ≤ 0.27%
+spread across multi-arm runs, 0.10% for the headline 20-seed frontier
+sweep). The compute unit is candidate-evaluations; wall-clock never
+enters a comparison.
 
-**Results so far** (Stages 0–4 complete, 2026-07-20; full artifacts in
-[experiments/2026-07-20_stage4_b0-b4_matched_compute](experiments/2026-07-20_stage4_b0-b4_matched_compute/README.md)):
-**H1 supported** — isolated lineages diverge (pairwise Jaccard 0.57 ± 0.10 on primitive
-usage, tasks solved by exactly one lineage in 4/5 seeds). **H2 null** at the Stage-1
-subset and 1M-eval budget — the channel is active but the solvable frontier is shallow
-enough that communication has nothing to add. **H3 directionally supported** —
-unconstrained library-dumping was the *worst* arm (9.80/30 vs 10.40) despite the
-highest reuse (17%): bandwidth-unlimited gossip measurably hurts.
+**Headline result on the frontier** (20 seeds × 4M evals; full data in
+[`experiments/2026-07-22_frontier_recovered_scaled`](experiments/2026-07-22_frontier_recovered_scaled/),
+[`experiments/2026-07-22_b5_central_library`](experiments/2026-07-22_b5_central_library/),
+and Paper 1 §3.3):
+
+| arm | evolution-phase solves /30 |
+|---|---|
+| **B5** | **2.65 ± 1.31** |
+| B0 | 2.25 ± 1.07 |
+| B7 | 1.85 ± 1.04 |
+| B6 | 1.80 ± 1.06 |
+| B9 | 1.65 ± 0.75 |
+| B2 | 1.60 ± 0.99 |
+| B8 | 1.60 ± 0.75 |
+| B1 | 1.45 ± 0.94 |
+
+**H1 supported** — isolated lineages diverge (pairwise Jaccard 0.57 ± 0.10
+on primitive usage, tasks solved by exactly one lineage in 4/5 seeds).
+**H2 null** — at the Stage-1 subset and 1M-eval budget, communication
+has nothing to add; at the 20-seed 4M frontier sweep, the central-library
+control (B5) *significantly* beats every multi-agent arm, with the only
+significant comparison being **B5 − B6 = +0.85 (~2.2 SE)**. **H3 null**
+across all four payload types — adaptive operator selection self-regulates
+a failing channel regardless of bandwidth. On the cost axis
+([`experiments/2026-08-29_cost_axis/`](experiments/2026-08-29_cost_axis/)),
+B5 and B5+planner are 7–10× more cost-efficient than every multi-agent
+arm, on top of solving 6× more tasks.
+
+**Discovery side** (the open problem; STATUS §F and FINDINGS §Discovery-
+bottleneck menu): three concrete attacks on the discovery-bottleneck
+menu (failure-mode dreaming, heterogeneous fitness, task-subset
+specialization) return null at 1M × 5 seeds. No mechanism operating
+*inside* the current DSL/interpreter/fitness has expanded B5's reach.
+The remaining bets (novelty search, learned L1 as proposer, operator
+self-modification, L3 evoker) all attack the problem by adding a *new
+dimension* the lineage can search — the **structural-change bet**.
 
 ## External repositories and references
 
@@ -298,23 +344,31 @@ to every arm, so none of them bias the H2/H3 comparison:
   targets, plain per-cell accuracy let `canvas(ZERO, 3x3)` — a blank grid — outrank
   every content-bearing program.
 
-## World modeling direction — built (the first positive integration result)
+## World modeling direction — built (budget-conditional integration result)
 
-The falsification (H1 supported, H2/H3 null, central library wins) closed the
-original clebran question. The "how you learned it" reorientation (§9 in the
-roadmap) opened a new one. The next concrete capability on the list was a
-**learned world model** — an internal simulator the agent uses to *imagine*
-the result of an action before it commits to it. **The first three layers
-of this direction are now built** (roadmap §9f build order, items 1–3
-complete), and the integration result is **positive** — the first
-positive result on the clebran rig.
+The falsification (Paper 1: H1 supported, H2/H3 null, central library wins)
+closed the original clebran question. The "how you learned it"
+reorientation (Paper 2) opened a new one. The next concrete capability on
+the list was a **learned world model** — an internal simulator the agent
+uses to *imagine* the result of an action before it commits to it. **The
+first three layers of this direction are now built** (roadmap §9f build
+order, items 1–3 complete), and the integration result is
+**budget-conditional** — *positive at starved-GP budgets, null at the
+headline 4M budget*. Read it as the rig's first *partial-positive* result:
+the substrate is in place and a small-budget win is real, but the 4M
+sweep is a clean null.
 
 > **Headline (paper 3).** A B5+planner arm — B5 (central library) augmented
 > with a planner-seeded individual in the initial population of every task —
 > ties B5 at the 10/30 frontier-subset ceiling (3 seeds, 500K and 1M
 > candidate-evaluations, matched compute). 10.00 vs 9.67 mean solves, +0.33
 > evolution-phase solves, 1 unique task (f76d97a5) that B5 misses in any of
-> the 3 seeds. Full paper: [`papers/03-world-modeling/`](papers/03-world-modeling/).
+> the 3 seeds. **At the headline 4M budget (20 seeds), B5 and B5+planner are
+> tied** (12.45 ± 1.15 vs 12.35 ± 0.99, mean delta −0.10, t = 0.26, well
+> below 2 SE); B5 has 1 unique-to-it task (f25ffba3), B5+planner has zero
+> unique-to-it. The 5-seed pilot's "B5 alone wins by 1.0" was a small-
+> sample effect. Full paper:
+> [`papers/03-world-modeling/`](papers/03-world-modeling/).
 
 ### What was built (and what was *not* brought in from elsewhere)
 

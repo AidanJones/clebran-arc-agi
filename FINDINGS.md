@@ -2,7 +2,8 @@
 
 *A consolidated, honest summary of what the experiment found. Per-experiment
 detail lives in [`experiments/`](experiments/); the design is in
-[`emergent-dsl-arc-spec.md`](emergent-dsl-arc-spec.md); open questions in
+[`emergent-dsl-arc-spec.md`](emergent-dsl-arc-spec.md); what has been done,
+structured by topic, in [`STATUS.md`](STATUS.md); open questions in
 [`roadmap.md`](roadmap.md).*
 
 ## The question
@@ -235,7 +236,7 @@ itself a record of what pure-reward program evolution needs to be reliable.
 - Compositionality metrics on a hand-designed DSL are weaker evidence of
   "emergent language" than a from-scratch signalling game (spec §11 caveat).
 
-## Where a positive result might still live (see roadmap)
+## Where a positive result might still live (see [roadmap](roadmap.md))
 
 - **Deeper tasks / a regime where single-population search genuinely stalls** —
   the divergence tax only becomes worth paying when one agent *can't* do the job
