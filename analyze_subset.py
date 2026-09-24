@@ -81,10 +81,12 @@ print()
 hard15_te, hard15_to, hard15_summaries = load_summary_solves("hard15_b5_1m_seed*.jsonl")
 random15_te, random15_to, random15_summaries = load_summary_solves("random15_b5_1m_seed*.jsonl")
 stage1_1m_te, stage1_1m_to, stage1_1m_summaries = load_summary_solves("b5_1m_seed*.jsonl")
+stage1_2m_te, stage1_2m_to, stage1_2m_summaries = load_summary_solves("b5_2m_seed*.jsonl")
 stage1_4m_te, stage1_4m_to, stage1_4m_summaries = load_summary_solves("b5_4m_seed*.jsonl")
 
 print(f"hard15: {len(hard15_summaries)} seeds, random15: {len(random15_summaries)} seeds, "
-      f"stage1-1M: {len(stage1_1m_summaries)} seeds, stage1-4M: {len(stage1_4m_summaries)} seeds")
+      f"stage1-1M: {len(stage1_1m_summaries)} seeds, stage1-2M: {len(stage1_2m_summaries)} seeds, "
+      f"stage1-4M: {len(stage1_4m_summaries)} seeds")
 print()
 
 
@@ -112,6 +114,7 @@ print(f"                                hard15     random15   full(30)")
 print(f"  hard15  arm  (specialized):  {cond_summary_solve_rate(hard15_summaries, hard15):.2f}     n/a         n/a")
 print(f"  random15 arm  (control):     {cond_summary_solve_rate(random15_summaries, hard15):.2f}     {cond_summary_solve_rate(random15_summaries, random15):.2f}     n/a")
 print(f"  B5-1M on stage1 (baseline):  {cond_summary_solve_rate(stage1_1m_summaries, hard15):.2f}     {cond_summary_solve_rate(stage1_1m_summaries, random15):.2f}     {cond_summary_solve_rate(stage1_1m_summaries, set(stage1_tasks)):.2f}")
+print(f"  B5-2M on stage1 (matched):  {cond_summary_solve_rate(stage1_2m_summaries, hard15):.2f}     {cond_summary_solve_rate(stage1_2m_summaries, random15):.2f}     {cond_summary_solve_rate(stage1_2m_summaries, set(stage1_tasks)):.2f}")
 print(f"  B5-4M on stage1 (ref):       {cond_summary_solve_rate(stage1_4m_summaries, hard15):.2f}     {cond_summary_solve_rate(stage1_4m_summaries, random15):.2f}     {cond_summary_solve_rate(stage1_4m_summaries, set(stage1_tasks)):.2f}")
 print()
 
@@ -121,6 +124,7 @@ print(f"                                hard15     random15   full(30)")
 print(f"  hard15  arm  (specialized):  {cond_test_exact_solve_rate(hard15_te, hard15, len(hard15_summaries)):.2f}     n/a         n/a")
 print(f"  random15 arm  (control):     {cond_test_exact_solve_rate(random15_te, hard15, len(random15_summaries)):.2f}     {cond_test_exact_solve_rate(random15_te, random15, len(random15_summaries)):.2f}     n/a")
 print(f"  B5-1M on stage1 (baseline):  {cond_test_exact_solve_rate(stage1_1m_te, hard15, len(stage1_1m_summaries)):.2f}     {cond_test_exact_solve_rate(stage1_1m_te, random15, len(stage1_1m_summaries)):.2f}     {cond_test_exact_solve_rate(stage1_1m_te, set(stage1_tasks), len(stage1_1m_summaries)):.2f}")
+print(f"  B5-2M on stage1 (matched):  {cond_test_exact_solve_rate(stage1_2m_te, hard15, len(stage1_2m_summaries)):.2f}     {cond_test_exact_solve_rate(stage1_2m_te, random15, len(stage1_2m_summaries)):.2f}     {cond_test_exact_solve_rate(stage1_2m_te, set(stage1_tasks), len(stage1_2m_summaries)):.2f}")
 print(f"  B5-4M on stage1 (ref):       {cond_test_exact_solve_rate(stage1_4m_te, hard15, len(stage1_4m_summaries)):.2f}     {cond_test_exact_solve_rate(stage1_4m_te, random15, len(stage1_4m_summaries)):.2f}     {cond_test_exact_solve_rate(stage1_4m_te, set(stage1_tasks), len(stage1_4m_summaries)):.2f}")
 print()
 
@@ -129,6 +133,7 @@ print("=== Per-seed frontier (lineage's final state) ===")
 print(f"  hard15 arm (specialized):  {per_seed_summary_solves(hard15_summaries)}")
 print(f"  random15 arm (control):    {per_seed_summary_solves(random15_summaries)}")
 print(f"  B5-1M on full stage1:      {per_seed_summary_solves(stage1_1m_summaries)}")
+print(f"  B5-2M on full stage1:      {per_seed_summary_solves(stage1_2m_summaries)}")
 print(f"  B5-4M on full stage1:      {per_seed_summary_solves(stage1_4m_summaries)}")
 print()
 
@@ -158,6 +163,8 @@ hard_hard = per_seed_in_subset(hard15_summaries, hard15)
 random_hard = per_seed_in_subset(random15_summaries, hard15)
 stage1_1m_hard = per_seed_in_subset(stage1_1m_summaries, hard15)
 stage1_1m_random = per_seed_in_subset(stage1_1m_summaries, random15)
+stage1_2m_hard = per_seed_in_subset(stage1_2m_summaries, hard15)
+stage1_2m_random = per_seed_in_subset(stage1_2m_summaries, random15)
 random_random = per_seed_in_subset(random15_summaries, random15)
 
 print("=== Per-seed within task set (lineage's final state) ===")
@@ -166,6 +173,8 @@ print(f"  random15 arm on hard15 sub:  {random_hard}")
 print(f"  random15 arm on random15 sub:{random_random}")
 print(f"  B5-1M on hard15 sub:         {stage1_1m_hard}")
 print(f"  B5-1M on random15 sub:       {stage1_1m_random}")
+print(f"  B5-2M on hard15 sub:         {stage1_2m_hard}    (matched-compute baseline: 67k/task)")
+print(f"  B5-2M on random15 sub:       {stage1_2m_random}    (matched-compute baseline: 67k/task)")
 print()
 
 print("=== Hypothesis tests (Welch, normal approximation) ===")
@@ -177,14 +186,23 @@ p_random_specialized = welch_p(
     sum(random_random) / len(random_random), variance([float(x) for x in random_random]), len(random_random),
     sum(stage1_1m_random) / len(stage1_1m_random), variance([float(x) for x in stage1_1m_random]), len(stage1_1m_random),
 )
+# Matched-compute test: does B5-2M-on-random15 (67k/task) match the
+# random15-arm-on-random15 (67k/task)? If yes, the random15 arm's gain
+# is fully explained by 2x per-task compute.
+p_matched_random = welch_p(
+    sum(random_random) / len(random_random), variance([float(x) for x in random_random]), len(random_random),
+    sum(stage1_2m_random) / len(stage1_2m_random), variance([float(x) for x in stage1_2m_random]), len(stage1_2m_random),
+)
 print(f"  hard15-specialized vs B5-1M-on-hard15:    p = {p_hard_specialized:.3f}  (H: specialized helps)")
 print(f"  random15-specialized vs B5-1M-on-rand:    p = {p_random_specialized:.3f}  (H: specialization on any subset helps)")
+print(f"  random15-arm vs B5-2M-on-rand (matched):  p = {p_matched_random:.3f}  (H: specialization on top of 2x compute)")
 print()
 
 # Train-only (overfit) analysis
 print("=== Lure tasks (solved train-only, rejected by test pairs) ===")
 for label, d in [("hard15", hard15_to), ("random15", random15_to),
-                 ("b5_1m", stage1_1m_to), ("b5_4m", stage1_4m_to)]:
+                 ("b5_1m", stage1_1m_to), ("b5_2m", stage1_2m_to),
+                 ("b5_4m", stage1_4m_to)]:
     items = sorted(d.items(), key=lambda kv: -len(kv[1]))
     n_unique = len(items)
     n_events = sum(len(v) for v in d.values())

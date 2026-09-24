@@ -249,6 +249,21 @@ def load_all_4m_seeds() -> dict[str, list[ArmSeed]]:
             a.seed = seed
             out["B5-1M"].append(a)
 
+    # 2M B5 baseline (matched-compute baseline for #3 task-subset
+    # specialization: 2M / 30 = 67k/task, matching the hard15 / random15
+    # specialized arms' 1M / 15 = 67k/task). Tests whether the random15
+    # arm's +1.0 solve gain over B5-1M on the same subset (p = 0.007) is
+    # fully explained by the 2x per-task compute doubling.
+    b5_2m_files = [f for f in LOG_DIR.glob("b5_2m_seed*.jsonl")
+                   if seed_pat.match(f.stem)]
+    for f in sorted(b5_2m_files):
+        m = seed_pat.match(f.stem)
+        seed = int(m.group(1))
+        a = _load_per_solve_from_log(f, "B5-2M", budget=2_000_000)
+        if a:
+            a.seed = seed
+            out["B5-2M"].append(a)
+
     # 4M B5 baseline (the headline 4M run with the new naming convention
     # b5_4m_seed*.jsonl to prevent overwrites from 1M pilots).
     b5_4m_files = [f for f in LOG_DIR.glob("b5_4m_seed*.jsonl")

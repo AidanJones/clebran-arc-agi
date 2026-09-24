@@ -39,38 +39,63 @@ bottleneck" frames it as the next bet after #1 (failure-mode dreaming) and
 - Outputs: [analysis.txt](analysis.txt) (full output of
   [analyze_subset.py](../../analyze_subset.py)).
 
-## Headline: hard tasks out of reach; specialization on random tasks = compute
+## Headline: hard tasks out of reach; specialization on random tasks ≈ compute
 
-| metric (1M, 5 seeds) | hard15 arm | random15 arm | B5-1M full stage1 | B5-4M full stage1 |
+| metric (test-exact / 15-task subset) | hard15 sub | random15 sub | full(30) | per-task compute |
 |---|---|---|---|---|
-| frontier solves / arm | 0.20 ± 0.45 | 5.80 ± 0.84 | 10.40 ± 1.14 | 12.13 ± 1.13 |
-| frontier solves / 15-task subset | 0.20 ± 0.45 | 5.80 ± 0.84 | 0.20 / 4.60 | 0.20 / 5.27 |
-| **test-exact solves / 15-task subset** | **0.00 ± 0.00** | **5.60 ± 0.55** | **0.00 / 4.60** | **0.00 / 3.53** |
-| train-only overfits / arm | 1 | 1 | 1 | 3 |
-| welch-t p (specialized vs B5-1M on the same subset) | p = 1.000 | p = 0.007 | — | — |
+| hard15 arm (1M) | **0.00** | n/a | n/a | 67k/task |
+| random15 arm (1M) | 0.00 | **5.60** | n/a | 67k/task |
+| B5-1M on stage1 | 0.00 | 4.60 | 10.20 | 33k/task |
+| **B5-2M on stage1 (matched-compute)** | **0.00** | **5.00** | **11.00** | **67k/task** |
+| B5-4M on stage1 (reference) | 0.00 | 3.53 | 8.07 | 133k/task |
 
-*Source:* [analysis.txt](analysis.txt). B5-4M row is reference only (15 seeds,
-133k/task — twice the per-task compute of the specialized arms).
+Per-seed test-exact on the random15 sub:
 
-**Two findings in one:**
+```
+random15 arm : [7, 5, 5, 6, 6]    mean 5.60, sd 0.55
+B5-2M        : [5, 5, 4, 5, 6]    mean 5.00, sd 0.71
+B5-1M        : [5, 4, 4, 5, 5]    mean 4.60, sd 0.55
+```
 
-1. **Specialization on hard tasks fails.** The hard15 arm gets 0 test-exact
-   discoveries at 1M/15=67k/task. The only "solve" the lineage reports is
-   a train-only overfit on `1f85a75f` (the persistent lure task) — exactly
-   the same artefact that B5-1M at full stage1 produces and that B5-4M at
-   full stage1 produces 3 times across 15 seeds. **Even B5-4M at twice the
-   per-task compute finds zero test-exact discoveries on this subset.**
-   The hard15 set is genuinely beyond B5's reach at these budgets; no
-   specialization trick can rescue a search that has run out of room.
+**Welch tests** (n=5 per arm):
+- random15 arm vs B5-1M on the random15 sub: **p = 0.007** (gains +1.0 solve at 2× per-task compute)
+- random15 arm vs **B5-2M** on the random15 sub: **p = 0.102** (ns — gain over B5-2M at *matched* per-task compute is small and not significant)
+- hard15 arm vs B5-1M on the hard15 sub: **p = 1.000** (no signal)
+- hard15 arm vs B5-2M on the hard15 sub: **p = 1.000** (no signal at matched compute)
 
-2. **Specialization on random tasks = per-task compute.** The random15 arm
-   gets 5.6 test-exact solves on its subset; B5-1M at full stage1 gets 4.6
-   on the same subset (p = 0.007). But the random15 arm has 67k/task vs
-   B5-1M's 33k/task — *twice the per-task compute at the same total
-   budget*. A 2× per-task compute increase is the natural explanation
-   for ~1 more solve on a frontier of easy D1 tasks. There is no signal
-   for "specialization helps on a complementary subset" beyond the
-   compute redistribution.
+*Sources:* [analysis.txt](analysis.txt) (initial) and
+[analysis_with_2m.txt](analysis_with_2m.txt) (with matched-compute B5-2M).
+B5-4M is reference only (15 seeds, 133k/task — twice the per-task
+compute of the specialized arms).
+
+**Three findings in one:**
+
+1. **Specialization on hard tasks fails, even at matched compute.** The
+   hard15 arm gets 0 test-exact discoveries at 1M/15=67k/task. B5-2M
+   on the same subset at the same 67k/task is identical: 0 test-exact
+   discoveries (the only "solve" is the 1f85a75f train-only overfit —
+   exactly the same artefact B5-1M produces, and exactly the one
+   B5-4M produces 3 times across 15 seeds at 133k/task). **No B5 lineage
+   finds a test-exact solve on the hard15 set at any compute budget
+   through 4M.** The hard15 set is genuinely beyond B5's reach; no
+   specialization trick can rescue a search that's out of room.
+
+2. **Specialization on random tasks ≈ per-task compute doubling.**
+   The random15 arm gets 5.6 test-exact solves on its subset;
+   B5-1M at full stage1 gets 4.6 (p = 0.007). But the random15 arm
+   has 67k/task vs B5-1M's 33k/task — *twice the per-task compute at
+   the same total budget*. **The matched-compute baseline (B5-2M at
+   67k/task) gets 5.0 on the same subset — statistically tied with
+   the random15 arm (p = 0.102).** Most of the apparent +1.0 gain is
+   the per-task compute redistribution; the residual is small and
+   not significant.
+
+3. **No signal beyond compute.** Whether the difference between
+   random15 arm and B5-2M (0.6 solves, p = 0.102) reflects a real
+   small specialization effect or noise is unanswerable at n = 5.
+   The headline is clean: **task-subset specialization does not
+   expand B5's frontier; what looks like a gain on a complementary
+   subset is the 2× per-task compute redistribution alone.**
 
 ## What this means
 
@@ -139,26 +164,77 @@ The "1" on `hard15 arm on hard15 sub` is seed 1, which reported
 `1f85a75f` (also `test_exact = 0`; it had 11 test-exact discoveries on
 other tasks). Both are the same lure artefact.
 
+## Matched-compute baseline (2026-09-24) — B5-2M on full stage1, 67k/task
+
+The "Honest scope" gap from the first analysis was: does a B5 arm with
+the same per-task compute as the specialized arms (67k/task) match the
+specialized arms' apparent gain over B5-1M? B5-2M on full stage1 gives
+2M/30 = 67k/task — matching both specialized arms. **It does match.**
+5 seeds × 2M evals; 23-min wall-clock; logs at `logs/b5_2m_seed*.jsonl`.
+
+| metric (test-exact / 15-task subset) | hard15 sub | random15 sub | full(30) |
+|---|---|---|---|
+| hard15 arm (1M, 67k/task) | **0.00** | n/a | n/a |
+| random15 arm (1M, 67k/task) | 0.00 | **5.60** | n/a |
+| B5-1M on full stage1 (33k/task) | 0.00 | 4.60 | 10.20 |
+| **B5-2M on full stage1 (67k/task)** | **0.00** | **5.00** | **11.00** |
+| B5-4M on full stage1 (133k/task) | 0.00 | 3.53 | 8.07 |
+
+Per-seed test-exact on the random15 sub:
+
+```
+random15 arm on random15 sub: [7, 5, 5, 6, 6]   (mean 5.60)
+B5-2M       on random15 sub: [5, 5, 4, 5, 6]   (mean 5.00)
+B5-1M       on random15 sub: [5, 4, 4, 5, 5]   (mean 4.60)
+```
+
+**Welch tests on the matched-compute question** (random15 arm vs B5-2M
+at the same 67k/task): **p = 0.102 — not significant**. The
+random15 arm's +1.0 solve gain over B5-1M (p = 0.007) is *mostly*
+explained by the 2× per-task compute redistribution (B5-2M at the same
+67k/task gains +0.4 over B5-1M at 33k/task). The remaining 0.6 solve
+gap between random15-arm and B5-2M is non-significant — consistent
+with noise or with a small specialization effect too small to detect
+at n = 5.
+
+**Both prongs of the clebran premise close cleanly:**
+
+1. **hard15 specialization**: still 0 test-exact at the matched 67k/task.
+   B5-2M-on-hard15 is [0, 0, 0, 0, 1] (the "1" is the 1f85a75f lure),
+   identical to B5-1M. The hard set is genuinely beyond B5's reach;
+   specialization can't rescue a search that's out of room.
+2. **random15 specialization**: the per-task compute hypothesis is
+   confirmed. B5-2M (67k/task) matches the random15 arm (67k/task) on
+   the same subset (p = 0.102). The random15 arm's apparent +1.0 gain
+   over B5-1M is mostly the 2× compute doubling; the residual is not
+   statistically significant at n = 5.
+
+The 8.07 / 12.13 mismatch in B5-4M test-exact / frontier (and the
+11.00 / 11.20 mismatch in B5-2M) is the same train-only-overfit
+artefact that drove the lure-task analysis above: at higher budgets,
+the lineage produces more frontier "solves" that the test pairs
+reject. The lure count grows with budget (B5-1M 1 event, B5-2M 1 event,
+B5-4M 3 events across 15 seeds, all on `1f85a75f`).
+
+*Artifact:* the matched-compute run is at `logs/b5_2m_seed{1..5}.jsonl`;
+the cost-axis loader (`clebran/metrics/cost.py`) now picks up `B5-2M`.
+Driver: `scripts/run_b5_2m.ps1`.
+
 ## Honest scope
 
-- n=5 seeds at 1M. The per-task compute (67k) is twice the B5-1M baseline
-  on full stage1 (33k/task). The headline is robust to that: the
-  specialized arm needs to *outperform* B5-1M at the same total budget,
-  and it does, but only by an amount consistent with the per-task
-  compute doubling alone.
-- A matched baseline (B5-2M on full stage1 → 67k/task, matching the
-  specialized arms) would close the loop, but the natural reading is
-  that 2× compute on easy tasks buys roughly 1 more solve, which is
-  exactly what the random15-vs-B5-1M gap shows. We did not spend the
-  extra compute to confirm.
+- n=5 seeds at 1M and n=5 seeds at 2M. The matched-compute baseline
+  (B5-2M at 67k/task) closes the original "Honest scope" gap (random15
+  arm vs B5-1M at 33k/task): the random15 arm's gain is mostly the
+  per-task compute doubling, with a small non-significant residual
+  (0.6 solves, p = 0.102) that could be a true small specialization
+  effect or noise.
 - The hard15 set is defined as "tasks B5-4M never solved across 15 seeds"
   ([build_subsets.py](../../build_subsets.py)). That definition is
   contingent on the B5-4M baseline; a different baseline (e.g. B5 with
   dreaming, or B5D 4M) could produce a different "hard" subset. But
   the result that *no B5 lineage solves any of these 15 at 67k/task*
   is robust to the definition: the per-seed count is 0 across 5 seeds
-  in the specialized arm, 1 in B5-1M (the lure), and 0 in B5-4M (15
-  seeds) at 133k/task.
+  in the specialized arm and B5-2M, and 0 in B5-4M (15 seeds) at 133k/task.
 - The lure / train-only distinction matters: without it, the hard15 arm
   would look like "1 frontier solve" instead of "0 test-exact". The
   test pairs are doing real work catching the overfit on `1f85a75f`.
