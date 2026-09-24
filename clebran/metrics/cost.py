@@ -276,6 +276,23 @@ def load_all_4m_seeds() -> dict[str, list[ArmSeed]]:
             a.seed = seed
             out["B5-4M"].append(a)
 
+    # B5N (B5 + novelty-search primary score, roadmap §1 #4, discovery-
+    # bottleneck menu). Logs b5n_<budget_tag>_seed<N>.jsonl. Per-solve
+    # records use the standard solve event (test_exact=True on train
+    # + test pair match) so the existing _load_per_solve_from_log loader
+    # works; the novelty arm writes a solve record whenever a program passes
+    # test pairs (pop.solution may not be a solver in novelty mode, but
+    # test-exact individuals are recorded as solve events in the log).
+    b5n_files = [f for f in LOG_DIR.glob("b5n_*_seed*.jsonl")
+                 if seed_pat.match(f.stem)]
+    for f in sorted(b5n_files):
+        m = seed_pat.match(f.stem)
+        seed = int(m.group(1))
+        a = _load_per_solve_from_log(f, "B5N-1M", budget=1_000_000)
+        if a:
+            a.seed = seed
+            out["B5N-1M"].append(a)
+
     # Per-solve level: B5D (B5 + dreaming, roadmap §9b)
     b5d_files = [f for f in LOG_DIR.glob("b5d*.jsonl")
                  if seed_pat.match(f.stem) and "nm" not in f.stem.lower()]

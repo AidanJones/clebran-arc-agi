@@ -138,6 +138,7 @@ class Lineage:
         max_library: int = 50,
         lam_mdl: float = 1.05,
         evaluator: Evaluator | None = None,
+        fitness_mode: str = "accuracy",
     ):
         self.lineage_id = lineage_id
         self.rng = random.Random(seed)  # lineage-level (library picks)
@@ -174,7 +175,7 @@ class Lineage:
         self.p_crossover = p_crossover
         self.p_fragment = p_fragment
         self.max_library = max_library
-        self.evaluator = evaluator or Evaluator(lam_mdl=lam_mdl)
+        self.evaluator = evaluator or Evaluator(lam_mdl=lam_mdl, fitness_mode=fitness_mode)
         self.evaluator.abstractions = self.abstractions
         self.library: list[LibraryEntry] = []
         self.pops: dict[str, Population] = {
@@ -195,13 +196,13 @@ class Lineage:
         if first_time:
             scored = []
             for prog in ops.enumerate_depth1():
-                fit = self.evaluator.evaluate(prog, task)
+                fit = self.evaluator.evaluate_for_mode(prog, task)
                 scored.append(Individual(prog, fit))
                 if fit.solved_all:
                     break
             if not (scored and scored[-1].fit.solved_all):
                 for prog in ops.enumerate_depth2():
-                    fit = self.evaluator.evaluate(prog, task)
+                    fit = self.evaluator.evaluate_for_mode(prog, task)
                     scored.append(Individual(prog, fit))
                     if fit.solved_all:
                         break
@@ -223,7 +224,7 @@ class Lineage:
                 if prog is None:
                     continue
                 pop.individuals.append(
-                    Individual(prog, self.evaluator.evaluate(prog, task))
+                    Individual(prog, self.evaluator.evaluate_for_mode(prog, task))
                 )
             self._sort(pop)
             if not pop.individuals[0].fit.solved_all:
@@ -268,13 +269,13 @@ class Lineage:
             prog = ops.single_statement_program(fn)
             if prog is None:
                 continue
-            fit = self.evaluator.evaluate(prog, task)
+            fit = self.evaluator.evaluate_for_mode(prog, task)
             pop.individuals.append(Individual(prog, fit))
         while len(pop.individuals) < self.pop_size:
             prog = ops.random_program()
             if prog is None:
                 continue
-            fit = self.evaluator.evaluate(prog, task)
+            fit = self.evaluator.evaluate_for_mode(prog, task)
             pop.individuals.append(Individual(prog, fit))
         self._sort(pop)
 
@@ -337,7 +338,7 @@ class Lineage:
         prog = result["program"]
         if not prog.statements:
             return False
-        fit = self.evaluator.evaluate(prog, task)
+        fit = self.evaluator.evaluate_for_mode(prog, task)
         # Insert at the front; the next _sort will keep it if it's
         # competitive.
         pop.individuals.insert(0, Individual(prog, fit))
@@ -419,7 +420,7 @@ class Lineage:
                     fn=("prim", name), args=classified
                 )
                 prog = Program(statements=[statement])
-                fit = self.evaluator.evaluate(prog, task)
+                fit = self.evaluator.evaluate_for_mode(prog, task)
             except Exception:
                 continue
             # Insert at the front (sorted by fitness descending,
@@ -454,7 +455,7 @@ class Lineage:
                 child, used_frag, op, parent_key = self._make_child(pop, inds)
             if child is None:
                 continue
-            fit = self.evaluator.evaluate(child, task)
+            fit = self.evaluator.evaluate_for_mode(child, task)
             next_gen.append(Individual(child, fit, from_fragment=used_frag))
             if op is not None:
                 pop.op_credit(op, fit.key >= parent_key)
@@ -595,7 +596,7 @@ class Lineage:
                         args[k] = cand
                         trial = Program(list(prog.statements))
                         trial.statements[i] = Statement(st.fn, tuple(args))
-                        tfit = self.evaluator.evaluate(trial, task)
+                        tfit = self.evaluator.evaluate_for_mode(trial, task)
                         if tfit.key > fit.key:
                             prog, fit = trial, tfit
                             st = trial.statements[i]
@@ -678,7 +679,7 @@ class Lineage:
                     args = list(sb.args)
                     args[kb] = vb
                     trial.statements[ib] = Statement(sb.fn, tuple(args))
-                    tfit = self.evaluator.evaluate(trial, task)
+                    tfit = self.evaluator.evaluate_for_mode(trial, task)
                     if tfit.key > fit.key:
                         prog, fit = trial, tfit
                         improved = True

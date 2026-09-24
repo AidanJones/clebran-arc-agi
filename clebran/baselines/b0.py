@@ -62,10 +62,11 @@ def run_single(
     dream_near_miss_min: float = 0.4,
     dream_near_miss_aggressive: bool = False,
     lam_mdl: float = 1.05,
+    fitness_mode: str = "accuracy",
 ) -> dict:
     tasks = subset_tasks()
     pool = subset_pool()
-    ev = Evaluator(lam_mdl=lam_mdl)
+    ev = Evaluator(lam_mdl=lam_mdl, fitness_mode=fitness_mode)
     lin = Lineage(
         lineage_id=f"{arm.lower()}-s{seed}",
         pool=pool,
@@ -74,6 +75,7 @@ def run_single(
         pop_size=pop_size,
         evaluator=ev,
         p_fragment=p_fragment,
+        fitness_mode=fitness_mode,
     )
     log = RunLog(
         run_name
@@ -114,6 +116,12 @@ def run_single(
             if ev.evaluations >= budget:
                 break
             before = lin.pops[tid].solved
+            # In novelty mode, pop.solved rarely flips (the most-novel
+            # individual is unlikely to also be a solver). Track test-exact
+            # archive size instead so we still emit a solve event when a
+            # *test-exact* solver appears (regardless of whether it's the
+            # most-novel individual in the population).
+            te_before = ev.test_exact_count(tasks[tid])
             lin.step_generation(tid)
             if lin.pops[tid].solved and not before:
                 sol = lin.pops[tid].solution
@@ -128,6 +136,21 @@ def run_single(
                         for n in sol.prog.abstractions_used()
                     },
                 })
+            elif ev.fitness_mode == "novelty":
+                # Novelty mode: emit a solve event whenever a *new*
+                # test-exact solver appears for this task (pop.solved
+                # doesn't track it). Use the most-novel individual that
+                # happens to be test-exact as the "sol" reference.
+                te_after = ev.test_exact_count(tasks[tid])
+                if te_after > te_before:
+                    sol = lin.pops[tid].solution  # most-novel
+                    log.write({
+                        "event": "solve", "task": tid, "epoch": epoch,
+                        "evals": ev.evaluations, "len": sol.fit.length,
+                        "phase": "novelty",
+                        "test_exact": True,
+                        "n_test_exact_for_task": te_after,
+                    })
                 # ----- dreaming hook (roadmap §9b) -----
                 # After every solve, synthesise a variant task from the
                 # just-solved program and add it to the lineage's task
@@ -227,6 +250,44 @@ def run_single(
             "n_dream_near_miss": near_miss_synthesised,
         })
 
+    if ev.fitness_mode == "novelty":
+        # Novelty mode: pop.solution is the most-novel individual, not
+        # necessarily a solver. The test-exact archive (populated whenever
+        # *any* candidate passes all train + test pairs, regardless of mode)
+        # is the source of truth for test-exact solves.
+        solved_real = {tid for tid in ev.test_exact_tasks()
+                       if not tid.startswith("gen_")}
+        test_exact = len(solved_real)
+        # Phase bookkeeping is undefined in novelty mode (no "best" program).
+        by_phase_real = {"phase1": set(), "evolution": set()}
+        mean_len = 0.0
+        summary = {
+            "event": "summary", "arm": arm, "seed": seed,
+            "evals": ev.evaluations, "budget": budget,
+            "solved": len(solved_real),
+            "solved_tasks": sorted(solved_real),
+            "solved_phase1": [],
+            "solved_evolution": [],
+            "solved_dream": [],
+            "n_dream_added": n_dream_added,
+            "n_dream_solved": 0,
+            "n_dream_near_miss_synthesised": near_miss_synthesised,
+            "test_exact": test_exact,
+            "mean_solution_len": 0.0,
+            "novelty_archive_size": sum(
+                ev.novelty_archive_size(tasks[tid]) for tid in tasks
+            ),
+            "novelty_archive_per_task": {
+                tid: ev.novelty_archive_size(tasks[tid]) for tid in tasks
+            },
+            "primitive_usage": lin.primitive_usage(),
+        }
+        if self_mine:
+            summary["abstraction_stats"] = {lin.lineage_id: abstraction_stats(lin)}
+        log.write(summary)
+        log.close()
+        return summary
+
     solved = lin.solved_tasks()
     # Split solved into real (frontier) vs dream-sourced, by task-ID prefix.
     solved_real = {t for t in solved if not t.startswith("gen_")}
@@ -299,6 +360,26 @@ def run_b5_dream(seed: int, budget: int = 500_000, pop_size: int = 100,
                       lam_mdl=lam_mdl)
 
 
+def run_b5_novelty(seed: int, budget: int = 500_000, pop_size: int = 100,
+                   run_name: str | None = None,
+                   lam_mdl: float = 1.05) -> dict:
+    """B5N: B5 + novelty-search primary score (roadmap §1 #4, discovery-
+    bottleneck menu).
+
+    Same lineage machinery as B5 (central library, library mining,
+    AOS, fragment injection, restart, hall-of-fame) but the
+    primary selection criterion is *behavioral novelty* (mean
+    nearest-neighbor Hamming distance to the population's outputs on
+    the task) instead of task accuracy. Tests whether searching the
+    program space by diversity finds anything test-exact that B5
+    doesn't. Library mining stays accuracy-driven (only programs that
+    solve all train pairs are mined into the library).
+    """
+    return run_single(seed, budget, pop_size, run_name, arm="B5N",
+                      self_mine=True, lam_mdl=lam_mdl,
+                      fitness_mode="novelty")
+
+
 def run_b5_dream_near_miss(seed: int, budget: int = 500_000, pop_size: int = 100,
                             run_name: str | None = None,
                             near_miss_min: float = 0.4,
@@ -334,7 +415,7 @@ if __name__ == "__main__":
     ap.add_argument("--budget", type=int, default=500_000)
     ap.add_argument("--pop", type=int, default=100)
     ap.add_argument(
-        "--arm", choices=["B0", "B5", "B5D", "B5D-NM"], default="B0",
+        "--arm", choices=["B0", "B5", "B5N", "B5D", "B5D-NM"], default="B0",
     )
     ap.add_argument(
         "--near-miss-min", type=float, default=0.4,
@@ -352,6 +433,8 @@ if __name__ == "__main__":
     args = ap.parse_args()
     if args.arm == "B5":
         runner = (lambda **kw: run_b5(lam_mdl=args.lam_mdl or 1.05, **kw))
+    elif args.arm == "B5N":
+        runner = (lambda **kw: run_b5_novelty(lam_mdl=args.lam_mdl or 1.05, **kw))
     elif args.arm == "B5D":
         runner = lambda **kw: run_b5_dream(
             lam_mdl=args.lam_mdl or 1.05, **kw
