@@ -265,14 +265,14 @@ dreaming's library is *transportable* across lineages.
 
 ---
 
-## F. Discovery-bottleneck menu — three concrete nulls at 1M
+## F. Discovery-bottleneck menu — four concrete nulls at 1M (2026-09-24)
 
 The transport side of clebran is solved (Paper 1: B5 is 7–10× more
 cost-efficient than every multi-agent arm, +0.85 SE-significant vs the
 recovered-primitive channel; dreaming builds libraries 2×/13×/124×
 richer than B5 at 4M). The discovery side is the open problem: every
 arm in the rig runs the same DSL, the same interpreter, the same pure-
-outcome fitness, on the same 30 frontier tasks. **Three concrete
+outcome fitness, on the same 30 frontier tasks. **Four concrete
 attacks on the discovery-bottleneck menu returned null at 1M pilots.**
 
 | # | mechanism | kind of attack | result |
@@ -280,16 +280,19 @@ attacks on the discovery-bottleneck menu returned null at 1M pilots.**
 | 1 | failure-mode dreaming (B5D-NM-cons, B5D-NM-aggr) | change the *practice pool* (targeted) | **null** — aggressive variant 8.80 vs 10.40, **p = 0.007**; conservative 9.80, ns |
 | 2 | heterogeneous fitness (B5-strongmdl, λ = 1.5) | change the *fitness signal* (parsimony pressure) | **null** — 9.60, ns; produces *shorter*, not *more compositional*, programs |
 | 3 | task-subset specialization (hard15, random15) | change *what the lineage searches on* (subset) | **null** — hard subset: 0 test-exact (B5-4M also 0 at 2× per-task compute); random subset: gain = 2× per-task compute |
+| 4 | novelty search (B5N) | change the *objective* (behavioral diversity) | **null** — finds 6 tasks (overlap = 100% with B5-1M); mean 2.0 vs B5-1M 10.2; novelty degenerates in evolution phase |
 
-**Reading**: the three attack the same search space from three different
-angles (practice pool, fitness signal, task pool); all three return null
-at 1M. **No mechanism operating inside the current DSL/interpreter/
-fitness on this frontier will expand B5's reach at 1M.** The remaining
-bets — novelty search (#4), learned L1 as proposer (#5), operator
-self-modification (#6), L3 evoker (#7) — all attack the problem by
-adding a *new dimension* the lineage can search, rather than
-redistributing budget across the same DSL. The **structural-change bet
-is now the dominant remaining strategy on this rig.**
+**Reading**: the four attack the same search space from four different
+angles (practice pool, fitness signal, task pool, **objective**); all
+four return null at 1M. **No mechanism operating inside the current
+DSL/interpreter/fitness on this frontier will expand B5's reach at
+1M, regardless of which axis you vary.** The remaining bets — learned
+L1 as proposer (#5), operator self-modification (#6), L3 evoker (#7) —
+all attack the problem by adding a *new dimension* the lineage can
+search (a new primitive distribution, a new operator pool, a new
+world model), rather than redistributing budget across the same DSL.
+The **structural-change bet is now the dominant remaining strategy on
+this rig.**
 
 **Frozen data**:
 - `#1`: `experiments/2026-08-31_b5d_nm_1m/`,
@@ -297,6 +300,14 @@ is now the dominant remaining strategy on this rig.**
 - `#2`: `experiments/2026-08-31_b5_heterogeneous_1m/`.
 - `#3`: `experiments/2026-09-22_task_subset_specialization/`
   (cost-axis loader at `clebran/metrics/cost.py` now picks up the
+  B5-hard15 / B5-random15 arms so the menu pilots roll into the cost
+  ranking).
+- `#4`: `experiments/2026-09-24_novelty_search/`. **Note**: the 1M ×
+  5 seeds runs did not finish — novelty scoring as primary doesn't
+  reward accuracy-improving mutations, so once the per-task archive
+  fills, the eval rate collapses. The data of record is from the
+  seeding phase + early evolution (see the README's "Honest scope"
+  for details).
   B5-hard15 / B5-random15 arms so the menu pilots roll into the cost
   ranking).
 
