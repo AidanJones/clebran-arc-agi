@@ -171,16 +171,27 @@ class Evaluator:
         return fit
 
     # ---------- novelty search (roadmap #4, discovery-bottleneck menu) ----------
-    # A per-task archive of outputs from previously evaluated programs.
-    # The novelty score for a candidate is mean (over train inputs) of
-    # the minimum Hamming distance from the candidate's output to any
-    # archived output on the same input. This rewards programs whose
-    # behavioral signature differs from what we've already seen on the task.
+    # Pure distinct-output novelty: the score for a candidate is 1.0 if
+    # its output tuple (across train pairs) is new to the task archive,
+    # and decreases toward 0 as the same output is produced by more
+    # programs. Pure novelty = "find programs that produce unseen
+    # outputs". This is O(1) per evaluation (just a dict lookup), so
+    # the per-eval cost matches accuracy mode. The earlier Hamming
+    # nearest-neighbor version (preserved in `_hamming_outputs` below)
+    # is kept available as a more expensive alternative.
     def _novelty_init(self) -> None:
         if not hasattr(self, "_output_archive"):
-            self._output_archive: dict[str, list[tuple]] = {}
-        if not hasattr(self, "_novelty_cap"):
-            self._novelty_cap = 5000  # FIFO cap per task
+            # task_id -> dict[hash_int, count]; hash the output tuple rather
+            # than store it (ARC grids are big — storing thousands of them
+            # in memory dominated the early novelty runs). Hash collisions
+            # on the 64-bit space are astronomically rare and only affect
+            # novelty scoring, not accuracy.
+            self._output_archive: dict[str, dict] = {}
+        if not hasattr(self, "_distinct_order"):
+            # task_id -> list of hash_int (insertion order, for FIFO eviction)
+            self._distinct_order: dict[str, list] = {}
+        if not hasattr(self, "_novelty_distinct_cap"):
+            self._novelty_distinct_cap = 500
 
     def _hamming_outputs(self, a, b) -> float:
         """Hamming distance between two ARC grid outputs, normalised by
@@ -193,29 +204,21 @@ class Evaluator:
         if ah == 0 or aw == 0 or bh == 0 or bw == 0:
             return 1.0
         oh, ow = min(ah, bh), min(aw, bw)
-        # count matching cells in overlap
         match = 0
         for r in range(oh):
             for c in range(ow):
                 if a[r][c] == b[r][c]:
                     match += 1
-        # area of the larger of the two grids
         area = max(ah * aw, bh * bw)
-        # dissimilarity in overlap (0 if identical, 1 if no match)
         dissim_overlap = 1.0 - match / (oh * ow)
-        # shape mismatch penalty (0 if same shape, 1 if no overlap)
-        if (ah, aw) == (bh, bw):
-            shape_pen = 0.0
-        else:
-            shape_pen = 1.0 - (oh * ow) / area
+        shape_pen = 0.0 if (ah, aw) == (bh, bw) else 1.0 - (oh * ow) / area
         return 0.7 * dissim_overlap + 0.3 * shape_pen
 
     def evaluate_novelty(self, prog: Program, task: Task) -> Fitness:
-        """Score a candidate by behavioral novelty (mean nearest-neighbor
-        Hamming distance on the task's train inputs) instead of accuracy.
-        Returns a Fitness with mode="novelty" so the lineage ranks by
-        the novelty tuple; accuracy fields are still populated so
-        `test_exact` reporting works unchanged at the end of the run."""
+        """Score a candidate by behavioral novelty (distinct-output) instead
+        of accuracy. Returns a Fitness with mode="novelty" so the lineage
+        ranks by the novelty tuple; accuracy fields are still populated
+        so `test_exact` reporting works unchanged at the end of the run."""
         self._novelty_init()
         self.evaluations += 1
         # Run the program on all train inputs.
@@ -223,28 +226,41 @@ class Evaluator:
         for inp, _ in task.train:
             outputs.append(run_safe(prog, inp, self.abstractions))
 
-        # Mean nearest-neighbor Hamming distance over the archive.
-        archive = self._output_archive.setdefault(task.task_id, [])
-        if not archive:
-            # Cold start: full novelty (we're the first on this task).
-            novelty = 1.0
-        else:
-            per_pair: list[float] = []
-            for i, got in enumerate(outputs):
-                # nearest-neighbor distance to archive on input i
-                best = 1.0
-                for arch_out in archive:
-                    arch_got = arch_out[i]
-                    d = self._hamming_outputs(got, arch_got)
-                    if d < best:
-                        best = d
-                per_pair.append(best)
-            novelty = sum(per_pair) / len(per_pair) if per_pair else 1.0
+        # Hash the per-pair output grids (None grids hash to a sentinel
+        # value). The hash is much cheaper to store than the full grid
+        # tuple — ARC grids can be 30x30 and storing thousands of them
+        # dominated the early novelty runs.
+        from collections import Counter
+        h = 0
+        for g in outputs:
+            if g is None:
+                h = (h * 1000003) ^ 0xDEADBEEF
+            else:
+                for row in g:
+                    for cell in row:
+                        h = (h * 1000003) ^ cell
+        # Use Python's built-in hash mix to spread bits; combine with a
+        # task-id salt so two tasks producing identical outputs get
+        # distinct hashes.
+        output_key = h ^ hash(task.task_id)
 
-        # Append current outputs to the archive (FIFO).
-        archive.append(tuple(outputs))
-        if len(archive) > self._novelty_cap:
-            archive.pop(0)
+        # Distinct-output novelty: high when this is a new behavioral
+        # signature, decays toward 0 as the same signature is produced
+        # by more programs. Score in [0, 1].
+        counter = self._output_archive.setdefault(task.task_id, {})
+        order = self._distinct_order.setdefault(task.task_id, [])
+        seen = counter.get(output_key)
+        if seen is None:
+            # New output hash: novelty = 1.0, FIFO-evict if at cap.
+            novelty = 1.0
+            counter[output_key] = 1
+            order.append(output_key)
+            if len(order) > self._novelty_distinct_cap:
+                evict = order.pop(0)
+                del counter[evict]
+        else:
+            novelty = 1.0 / (1.0 + seen)
+            counter[output_key] = seen + 1
 
         # Accuracy fields still populated (for reporting and library mining).
         n = len(task.train)
@@ -268,10 +284,10 @@ class Evaluator:
         return fit
 
     def novelty_archive_size(self, task: Task) -> int:
-        """How many programs are archived for this task (used by the
-        summary line for the novelty arm)."""
+        """How many *distinct* output tuples have been archived for this
+        task (used by the summary line for the novelty arm)."""
         self._novelty_init()
-        return len(self._output_archive.get(task.task_id, []))
+        return len(self._distinct_order.get(task.task_id, []))
 
     def test_exact(self, prog: Program, task: Task) -> bool:
         """Held-out check: does the program solve the task's test pair(s)?

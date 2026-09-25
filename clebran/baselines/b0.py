@@ -139,14 +139,17 @@ def run_single(
             elif ev.fitness_mode == "novelty":
                 # Novelty mode: emit a solve event whenever a *new*
                 # test-exact solver appears for this task (pop.solved
-                # doesn't track it). Use the most-novel individual that
-                # happens to be test-exact as the "sol" reference.
+                # doesn't track it). Use the most-novel individual
+                # (pop.individuals[0]) as the reference for length,
+                # since pop.solution is only set on accuracy-mode
+                # solves.
                 te_after = ev.test_exact_count(tasks[tid])
                 if te_after > te_before:
-                    sol = lin.pops[tid].solution  # most-novel
+                    ind = lin.pops[tid].individuals[0] if lin.pops[tid].individuals else None
                     log.write({
                         "event": "solve", "task": tid, "epoch": epoch,
-                        "evals": ev.evaluations, "len": sol.fit.length,
+                        "evals": ev.evaluations,
+                        "len": ind.fit.length if ind else 0,
                         "phase": "novelty",
                         "test_exact": True,
                         "n_test_exact_for_task": te_after,
