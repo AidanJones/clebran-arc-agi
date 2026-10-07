@@ -62,15 +62,21 @@ L3 evoker (9f.4). **Any mechanism that expands what a single lineage can
 discover is worth more, on this rig, than any mechanism that improves how
 discoveries are shared.** We have the second; we need the first.
 
-**Menu status (1M pilot each):** #1 failure-mode dreaming — **null**
+**Menu status (1M × 5 seeds each):** #1 failure-mode dreaming — **null**
 (frontier tied 10.40 vs 10.40 at 1M, library is the substantive result;
 [§Dreaming B5D](#dreaming-b5d--roadmap-9b-1m-pilot-2026-08-29)). #2
 heterogeneous fitness (B5-strongmdl, λ = 1.5) — **null**
 (`experiments/2026-08-31_b5_heterogeneous_1m/`,
 `experiments/2026-08-31_b5d_nm_aggressive_1m/`,
 `experiments/2026-08-29_dreaming_pilot/`). #3 task-subset specialization —
-**null** ([§Discovery-bottleneck menu 1M pilots](#discovery-bottleneck-menu-1m-pilots-2026-09-22--1-2-3-all-null)).
-#4 novelty search onward are un-started.
+**null** ([§Discovery-bottleneck menu 1M pilots](#discovery-bottleneck-menu-1m-pilots-2026-09-24--1-2-3-4-all-null)).
+#4 novelty search (B5N, behavioral diversity as primary objective) —
+**null** (`experiments/2026-09-24_novelty_search/`): finds exactly the
+6 easy tasks B5-1M also finds (100% overlap, 0 unique-to-novelty),
+mean solves 2.0 vs B5-1M 10.2, novelty degenerates in evolution phase.
+The menu is **0-for-4 at 1M × 5 seeds**. **#5 onward are un-started** —
+the structural-change bet (learned L1 as proposer, operator
+self-modification, L3 evoker; see [roadmap §A](roadmap.md)).
 
 ## Headline
 
@@ -431,17 +437,19 @@ with [cost.txt](experiments/2026-08-30_b5d_4m/cost.txt),
 [library.txt](experiments/2026-08-30_b5d_4m/library.txt), and
 [dream_split.txt](experiments/2026-08-30_b5d_4m/dream_split.txt).
 
-## Discovery-bottleneck menu 1M pilots (2026-09-22) — #1, #2, #3 all null
+## Discovery-bottleneck menu 1M pilots (2026-09-24) — #1, #2, #3, #4 all null
 
 The transport side of clebran is solved (Paper 1: B5 is 7–10× more
 cost-efficient than every multi-agent arm, +0.85 SE-significant vs the
 recovered-primitive channel; dreaming builds libraries 2×/13×/124× richer
 than B5 at 4M). The discovery side is the open problem: every arm in the
 rig runs the same DSL, the same interpreter, the same pure-outcome fitness,
-on the same 30 frontier tasks. **Three concrete attacks on the
-discovery-bottleneck menu (the README's "the open problem") returned null at
-1M pilots.** Each was chosen for a different reason, so the menu returns
-*one null at a time*, not the same null three times.
+on the same 30 frontier tasks. **Four concrete attacks on the
+discovery-bottleneck menu (the README's "the open problem") returned null
+at 1M × 5 seeds each.** Each was chosen for a different reason (a
+different *axis* of the rig), so the menu returns *one null at a time*,
+not the same null four times. Focused paper at
+[`papers/04-discovery-bottleneck/`](papers/04-discovery-bottleneck/).
 
 ### #1 Failure-mode dreaming — null at 1M (B5D-NM-cons, B5D-NM-aggr)
 
@@ -528,28 +536,35 @@ None of the three mechanisms expanded B5's frontier at 1M:
 | 1 | failure-mode dreaming | change the *practice pool* (targeted) | null | more aggressive targeting → significant regression (p=0.007) |
 | 2 | heterogeneous fitness | change the *fitness signal* (parsimony pressure) | null | stronger MDL → mild regression; produces *shorter*, not *more compositional*, programs |
 | 3 | task-subset specialization | change *what the lineage searches on* (subset) | null | hard set out of reach; random subset gain = compute |
+| 4 | novelty search (B5N) | change the *objective* (behavioral diversity) | null | finds the same 6 easy tasks B5-1M also finds (100% overlap); novelty-as-objective degenerates |
 
-The three attack the same search space from three different angles:
-practice pool, fitness signal, task pool. All three return null at 1M.
-The cheapest reading is that **no mechanism operating *inside* the
-current DSL/interpreter/fitness on the current 30-task frontier will
-expand B5's reach at 1M.** The next bets in the menu — novelty search
-(#4, behavioral diversity), learned L1 as proposer (#5, programmatic L1),
-operator self-modification (#6, learning to learn), L3 evoker (#7, 9f.4
-world-modeling capstone) — all attack the problem by adding a *new
-dimension* the lineage can search (a new objective, a new primitive
-distribution, a new operator pool, a new world model), rather than
-redistributing budget across the same DSL. **The structural-change bet
-is now the dominant remaining strategy on this rig.**
+The four attack the same search space from four different angles:
+practice pool, fitness signal, task pool, **objective**. All four
+return null at 1M. The cheapest reading is that **no mechanism
+operating *inside* the current DSL/interpreter/fitness on the current
+30-task frontier will expand B5's reach at 1M, regardless of which
+axis you vary.** The next bets in the menu — learned L1 as proposer
+(#5, programmatic L1), operator self-modification (#6, learning to
+learn), L3 evoker (#7, 9f.4 world-modeling capstone) — all attack the
+problem by adding a *new dimension* the lineage can search (a new
+primitive distribution, a new operator pool, a new world model),
+rather than redistributing budget across the same DSL. **The
+structural-change bet is now the dominant remaining strategy on this
+rig.** If #5–#7 also return null, the menu closes and the project's
+natural next move is to bring in a genuinely new substrate (ARCTraj,
+ARC-AGI-3) — not to keep attacking the same DSL with new mechanisms.
 
-*Artifacts:* the three pilots are frozen at
+*Artifacts:* the four pilots are frozen at
 [`experiments/2026-08-31_b5d_nm_1m/`](experiments/2026-08-31_b5d_nm_1m/),
 [`experiments/2026-08-31_b5d_nm_aggressive_1m/`](experiments/2026-08-31_b5d_nm_aggressive_1m/) (#1),
 [`experiments/2026-08-31_b5_heterogeneous_1m/`](experiments/2026-08-31_b5_heterogeneous_1m/) (#2),
+[`experiments/2026-09-22_task_subset_specialization/`](experiments/2026-09-22_task_subset_specialization/) (#3),
 and
-[`experiments/2026-09-22_task_subset_specialization/`](experiments/2026-09-22_task_subset_specialization/) (#3).
+[`experiments/2026-09-24_novelty_search/`](experiments/2026-09-24_novelty_search/) (#4).
 The cost-axis loader (`clebran/metrics/cost.py`) now picks up the #3
-arms so the menu pilots roll into the cost-axis ranking.
+arms so the menu pilots roll into the cost-axis ranking; #4's
+truncated logs (5 seeds that all degenerated before 1M) are at
+`logs/b5n_1m_seed{1..5}.jsonl`.
 
 ## Open leads the 9a + 9b results sharpen
 

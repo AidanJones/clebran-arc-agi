@@ -1101,6 +1101,27 @@ separate arm. The 4M null result is specifically a B5 vs
 B5+planner comparison, not a question about whether the
 planner seed helps *any* arm.
 
+**The novelty search arm (#4) is now closed.** A 1M × 5-seed
+pilot was run on 2026-09-24 (see [`papers/01-communication-cost/`](../01-communication-cost/),
+§3.6.4, and
+[`experiments/2026-09-24_novelty_search/`](../../experiments/2026-09-24_novelty_search/))
+testing whether scoring on **behavioral novelty** (distinct output
+grids) instead of task accuracy could expand B5's frontier.
+Result: B5N finds exactly the 6 easy tasks B5-1M also finds
+(100% overlap), 0 unique-to-novelty tasks; all 5 seeds degenerated
+partway through evolution (novelty plateau near 0 once the
+per-task archive filled with distinct outputs, and accuracy was
+not the primary objective so accuracy-improving mutations got no
+reward). The discovery-bottleneck menu is now **0-for-4 at 1M × 5
+seeds** (paper 1, §3.6.5). For the world-modeling direction this
+matters in two ways: (i) it removes "novelty search" from the
+open-work list — the only remaining structural-change bets are the
+ones that change the *substrate* (learned L1 as proposer #5,
+operator self-modification #6, L3 evoker #7); (ii) it strengthens
+the case for #7, because *changing the objective* with the same
+DSL/integration was shown to be null, so a different objective in
+the same evolution loop is unlikely to be the unlock.
+
 # 6. Conclusion
 
 The world-modeling direction for clebran is **alive but
@@ -1148,3 +1169,10 @@ natural supporting improvements; the direction is exactly what
 ARC-AGI-3 (arXiv:2603.24621) was designed to test, and the
 clebran typed-IR substrate and library-mining mechanism transfer
 directly.
+
+The novelty-search follow-up (paper 1, §3.6.4) closed the same
+menu with the same outcome, and the remaining bets on the
+discovery-bottleneck menu (#5, #6, #7) are all *substrate* bets:
+each replaces one piece of the clebran rig with something
+learned. The world-modeling direction's L3 evoker (#7) is the
+capstone of this substrate-bet cluster.

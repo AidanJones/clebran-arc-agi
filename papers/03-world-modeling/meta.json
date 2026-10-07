@@ -2,6 +2,6 @@
   "title": "A World-Model Substrate for ARC Program Synthesis",
   "subtitle": "The clebran interpreter as a perfect L1 oracle, an L2 multi-pair planner, and a budget-conditional integration result on the clebran rig",
   "author": "Aidan Jones",
-  "date": "July 2026",
-  "footnote": "Source: clebran-arc-agi. Evidence reproduction in this directory's REPRODUCE.md; trace dataset at data/traces.jsonl; per-experiment data under experiments/2026-07-2*."
+  "date": "September 2026",
+  "footnote": "Source: clebran-arc-agi. Evidence reproduction in this directory's REPRODUCE.md; trace dataset at data/traces.jsonl; per-experiment data under experiments/2026-07-2*. Discovery-bottleneck menu closed 0-for-4 at 1M on 2026-09-24 (paper 4); novelty search pilot at experiments/2026-09-24_novelty_search/."
 }

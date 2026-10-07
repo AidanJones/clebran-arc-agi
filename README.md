@@ -2,9 +2,58 @@
 
 *clebran* (Welsh: to chatter, to gossip) — gossip protocols for divergent program evolution. Multiple populations of DSL programs evolve under pure reward on ARC-AGI-1 tasks, diverge into different solution strategies, and pass fragments of "what works" to each other through a deliberately narrow communication channel. The experiment tests whether that constrained gossip preserves better abstractions than isolation, ensembling, or unconstrained sharing — at matched compute, with baselines strong enough that a null result is trustworthy.
 
-The full design is in [emergent-dsl-arc-spec.md](emergent-dsl-arc-spec.md). **What the experiment found: [FINDINGS.md](FINDINGS.md).** What has been done, structured by topic: [STATUS.md](STATUS.md). Open work with hypothesis / expected payoff: [roadmap.md](roadmap.md). **The papers: [papers/](papers/README.md)** — one focused paper per set of experiments (paper 1: communication cost; paper 2: how you learned it; paper 3: world modeling) plus a combined summary at `papers/00-combined/`.
+The full design is in [emergent-dsl-arc-spec.md](emergent-dsl-arc-spec.md). **What the experiment found: [FINDINGS.md](FINDINGS.md).** What has been done, structured by topic: [STATUS.md](STATUS.md). Open work with hypothesis / expected payoff: [roadmap.md](roadmap.md). **The papers: [papers/](papers/README.md)** — one focused paper per set of experiments (paper 1: communication cost; paper 2: how you learned it; paper 3: world modeling; paper 4: discovery-bottleneck 0-for-4) plus a combined summary at `papers/00-combined/`.
 
 > **Headline result.** At matched compute on ARC, a single population that mines its own solutions into a growing abstraction library (a DreamCoder/Stitch-style central learner, arm **B5**) *significantly* outperforms divergent lineages communicating over a constrained channel (B6): `B5 2.65 > B0 2.25 > B7≈B6 1.8 > B2 1.6 > B1 1.45` evolution-phase solves; B6−B5 = −0.85 (~2.2 se, the only significant comparison). The central hypothesis is not supported — the strongest control wins. A trustworthy negative result, which is exactly what the baselines were built to make believable.
+
+## Project at a glance
+
+- **Substrate.** Typed evolutionary program synthesis over
+  [michaelhodel/arc-dsl](https://github.com/michaelhodel/arc-dsl) on the
+  ARC-AGI-1 training split; 30-task frontier subset (25 D2 + 5 D3) for
+  the headline numbers. Programs are linear SSA-style register
+  programs (the shape Hodel's hand-written solvers already take), so
+  reference solvers parse *losslessly* into our genome.
+- **Rig.** Matched-compute evaluation with ≤ 0.27% audit spread; the
+  compute unit is candidate-evaluations (wall-clock never enters a
+  comparison). Each headline arm runs ≥ 5 seeds; the B5 vs multi-agent
+  frontier sweep is 20 seeds.
+- **Transport.** B5 (single learner with a growing central abstraction
+  library) sits at the top of every matched-compute ranking; the
+  multi-agent sharing arms are 7–10× less cost-efficient on top of
+  solving fewer tasks. The dreaming arm B5D builds a library 2× larger
+  and 124× more cross-task-reused than B5 at 4M — the library mechanism
+  is real and reusable. Communication is **a transport mechanism, not
+  a discovery mechanism**, and in this substrate transport does not
+  pay back the cost of dividing the compute. (Paper 1.)
+- **Process.** Teaching content between agents is neutral or harmful
+  at matched compute, but *order* matters: a foundations-first curriculum
+  significantly outperforms the same curriculum taught
+  foundations-last (paired McNemar p = 0.021), because a
+  dependency-violating order halves how much of the same content
+  transfers. (Paper 2.)
+- **World-modeling substrate.** The trace dataset (16,149 rows from
+  Hodel's 400 reference solvers) and the L2 multi-pair planner are
+  built; the L1 baseline shows k-NN is the wrong model class (0% OOD
+  exact-match); programmatic learned L1s are characterised (lookup-table
+  L1 = 25.5% OOD exact-match but 0% OOD hit-rate; GP-evolved L1 = 18.7%
+  OOD exact-match, 52.7% shape-match, perfect on pure-geometric
+  primitives). The B5+planner integration is **budget-conditional**:
+  positive on starved GP (500K-1M, ties B5 with 1 unique task) and
+  *null at scale* (4M, 20 seeds: 12.45 ± 1.15 vs 12.35 ± 0.99,
+  mean delta −0.10, t = 0.26). (Paper 3.)
+- **Discovery bottleneck — the open problem.** Four pre-registered
+  attacks on the central library's reach (failure-mode dreaming,
+  heterogeneous fitness, task-subset specialization, novelty search)
+  return null at 1M × 5 seeds. The discovery-bottleneck menu is
+  **0-for-4**: *no mechanism operating inside the current
+  DSL/interpreter/fitness on this frontier will expand B5's reach at
+  1M, regardless of which axis you vary*. The remaining bets (learned
+  L1 as proposer #5, operator self-modification #6, L3 evoker #7) all
+  change the *substrate* — they are the structural-change bet. (Paper 4.)
+- **What's next.** See [roadmap.md](roadmap.md) for the open work,
+  organised by research strand with hypothesis and expected payoff for
+  each.
 
 ## Research direction: *not what you know, but how you learned it*
 
@@ -86,14 +135,16 @@ Each is a mechanism for an *individual* lineage to find something
 genuinely new, distinct from its prior. After discovery, the existing
 transport machinery can carry it.
 
-**Menu status (2026-09-23):** #1, #2, #3 have been run at 1M × 5
-seeds and all returned **null**. See [STATUS.md §F](STATUS.md) for the
-three pilots' results, the discovery-bottleneck pattern, and frozen
-data pointers. **#4 onward are un-started.** The discovery-bottleneck
-menu is now the structural-change bet — each remaining item tests
-whether adding a *new dimension* (a new objective, a new primitive
-distribution, a new operator pool, a new world model) can expand
-B5's reach.
+**Menu status (2026-09-24):** #1, #2, #3, #4 have been run at 1M × 5
+seeds and all returned **null** — **0-for-4 at 1M**, across four
+different axes (practice pool, fitness signal, task pool, objective).
+See [STATUS.md §F](STATUS.md) for the four pilots' results, the
+discovery-bottleneck pattern, and frozen data pointers; the focused
+paper is at [`papers/04-discovery-bottleneck/`](papers/04-discovery-bottleneck/).
+**#5 onward are un-started.** The discovery-bottleneck menu is now
+the structural-change bet — each remaining item tests whether
+adding a *new dimension* (a new primitive distribution, a new operator
+pool, a new world model) can expand B5's reach.
 
 1. ~~**Failure-mode dreaming**~~ — **DONE 2026-09, NULL.** B5D-NM-aggr
    regresses (8.80 vs B5 10.40, **p = 0.007**); B5D-NM-cons 9.80 (ns).
@@ -115,22 +166,29 @@ B5's reach.
    33k/task). No signal beyond compute.
    [`experiments/2026-09-22_task_subset_specialization/`](experiments/2026-09-22_task_subset_specialization/). ([STATUS §F #3](STATUS.md).)
 
-4. **Novelty search arm** (medium, ~3 days) — **next discovery-bottleneck
-   bet, on the [roadmap](roadmap.md) as item 1.** Add a B5+novelty arm
-   that scores on behavioral diversity of the program (novel output
-   grids) rather than task accuracy. Different *objective* in the same
-   DSL. If null at 1M, the menu is 0-for-4 — strong evidence that no
-   mechanism *inside* the current DSL can expand B5's frontier,
-   regardless of objective.
+4. ~~**Novelty search arm**~~ — **DONE 2026-09-24, NULL.** B5N
+   (objective: distinct output grids) finds exactly the 6 easy tasks
+   B5-1M also finds (100% overlap, 0 unique-to-novelty tasks); all
+   5 seeds degenerated partway through evolution (novelty plateau
+   near 0 once the per-task archive filled). Mean solves: B5N 2.00
+   vs B5-1M 10.20 (degeneration). The novelty arm's reading is that
+   *novelty-as-objective can't drive B5's evolution* — it doesn't
+   reward improvement. See
+   [`experiments/2026-09-24_novelty_search/`](experiments/2026-09-24_novelty_search/).
+   The discovery-bottleneck menu is **0-for-4 at 1M × 5 seeds**.
+   ([STATUS §F #4](STATUS.md); focused paper at
+   [`papers/04-discovery-bottleneck/`](papers/04-discovery-bottleneck/).)
 
-5. **Learned L1 as proposer** (large, ~1 week). Train a small
-   programmatic L1 on the trace dataset
+5. **Learned L1 as proposer** (large, ~1 week) — **next
+   discovery-bottleneck bet, on the [roadmap](roadmap.md) as item 1.**
+   Train a small programmatic L1 on the trace dataset
    ([`data/traces.jsonl`](data/traces.jsonl), 16,149 rows from
    Hodel's 400 solvers). Use the L1 to *propose* candidate
    programs for unsolved frontier tasks. The L1's generalization
    is what it has learned across all 400 reference solvers —
    a different *kind* of discovery from the lineage's own search.
-   ([roadmap](roadmap.md) item 2.)
+   If null at 1M, the menu is 0-for-5 and the structural-change bet
+   continues with #6.
 
 6. **Operator self-modification** (large, ~2 weeks). The lineage
    modifies its own mutation/crossover operators based on what
@@ -202,13 +260,16 @@ B5 and B5+planner are 7–10× more cost-efficient than every multi-agent
 arm, on top of solving 6× more tasks.
 
 **Discovery side** (the open problem; STATUS §F and FINDINGS §Discovery-
-bottleneck menu): three concrete attacks on the discovery-bottleneck
+bottleneck menu): four concrete attacks on the discovery-bottleneck
 menu (failure-mode dreaming, heterogeneous fitness, task-subset
-specialization) return null at 1M × 5 seeds. No mechanism operating
-*inside* the current DSL/interpreter/fitness has expanded B5's reach.
-The remaining bets (novelty search, learned L1 as proposer, operator
+specialization, novelty search) return null at 1M × 5 seeds. The menu
+is **0-for-4** — no mechanism operating *inside* the current
+DSL/interpreter/fitness has expanded B5's reach, regardless of which
+axis is varied. The remaining bets (learned L1 as proposer, operator
 self-modification, L3 evoker) all attack the problem by adding a *new
 dimension* the lineage can search — the **structural-change bet**.
+Focused paper at
+[`papers/04-discovery-bottleneck/`](papers/04-discovery-bottleneck/).
 
 ## External repositories and references
 

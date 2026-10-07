@@ -22,20 +22,23 @@ self-regulates a failing channel regardless of bandwidth.
 
 We then test whether any **mechanism operating inside** the central learner
 itself — failure-mode dreaming, heterogeneous fitness, task-subset
-specialization — can expand the central library's frontier on the same
-30-task subset at matched compute. Three concrete 1M pilots return null
-(§3.6): the strongest failure-mode-dreaming variant regresses (−1.6,
-p = 0.007), the heterogeneous-fitness variant regresses (−0.80), and
-the task-subset-specialization arms get 0 test-exact discoveries on the
-hard subset (which B5-4M, at 2× per-task compute, also fails to crack).
-The cheapest reading is that **no mechanism operating inside the current
-DSL/interpreter/fitness on this frontier will expand B5's reach at 1M**;
-the remaining bets — novelty search, learned L1 as proposer, operator
-self-modification, the L3 evoker — all attack the problem by adding a
-*new dimension* the lineage can search, rather than redistributing budget
-across the same DSL. We argue the asset of the work is the
-matched-compute measurement rig, and that the useful component of the
-design is the library mechanism, not the multi-agent framing.
+specialization, novelty search — can expand the central library's
+frontier on the same 30-task subset at matched compute. Four concrete
+1M pilots return null (§3.6): the strongest failure-mode-dreaming
+variant regresses (−1.6, p = 0.007), the heterogeneous-fitness variant
+regresses (−0.80), the task-subset-specialization arms get 0
+test-exact discoveries on the hard subset (which B5-4M, at 2× per-task
+compute, also fails to crack), and the novelty-search arm finds
+exactly the 6 easy tasks B5-1M also finds (100% overlap, 0 unique).
+The cheapest reading is that **no mechanism operating inside the
+current DSL/interpreter/fitness on this frontier will expand B5's
+reach at 1M, regardless of which axis you vary**; the remaining bets —
+learned L1 as proposer (#5), operator self-modification (#6), the L3
+evoker (#7) — all attack the problem by adding a *new dimension* the
+lineage can search, rather than redistributing budget across the same
+DSL. We argue the asset of the work is the matched-compute measurement
+rig, and that the useful component of the design is the library
+mechanism, not the multi-agent framing.
 
 # 1. Introduction
 
@@ -246,7 +249,7 @@ self-regulation explains all three: unconstrained sharing cannot crowd out
 productive mutation because the learner down-weights a failing channel. In this
 substrate the constraint neither helps nor hurts.
 
-## 3.6 The discovery bottleneck — three concrete nulls at 1M
+## 3.6 The discovery bottleneck — four concrete nulls at 1M (2026-09-24)
 
 The transport side of clebran is solved: B5 sits at the top of the frontier
 ranking (§3.3), is 7–10× more cost-efficient than every multi-agent arm, and
@@ -256,9 +259,10 @@ The discovery side is the open problem: every arm in the rig runs the same
 DSL, the same interpreter, the same pure-outcome fitness, on the same 30
 frontier tasks.
 
-We attacked the discovery bottleneck three times, each through a different
-*kind* of mechanism — the practice pool, the fitness signal, and the task
-pool — at 1M evals × 5 seeds each. All three returned null.
+We attacked the discovery bottleneck four times, each through a different
+*kind* of mechanism — the practice pool, the fitness signal, the task
+pool, and the **objective** — at 1M evals × 5 seeds each. All four
+returned null.
 
 ### 3.6.1 #1 Failure-mode dreaming — null at 1M
 
@@ -328,37 +332,75 @@ Two findings in one:
   solve on a frontier of easy D1 tasks. No signal for "specialization helps
   on a complementary subset" beyond the compute redistribution.
 
-### 3.6.4 Reading the three together
+### 3.6.4 #4 Novelty search (B5N) — null at 1M
 
-None of the three mechanisms expanded B5's frontier at 1M:
+The fourth attack varies the *objective* rather than the practice pool,
+fitness signal, or task pool: a B5 lineage that scores on **behavioral
+novelty** (distinct-output novelty: 1.0 for new output hashes, decaying
+toward 0 as the same output is produced by more programs) instead of
+task accuracy. Hypothesis: novelty search traverses a different region
+of program space than accuracy-driven search; even if it doesn't beat
+B5 on solve count, it might find *unique-to-it* test-exact solves that
+B5 misses.
+
+Result: 5 seeds × 1M evals. The novelty arm finds exactly the 6 easy
+tasks B5-1M also finds (100% overlap), with 0 unique-to-novelty tasks.
+All 5 seeds *degenerated* partway through — novelty scoring as the
+*primary* objective doesn't reward accuracy-improving mutations, so
+once the per-task novelty archive filled with distinct outputs,
+subsequent programs produced duplicates and novelty plateaued near 0.
+The lineage made no accuracy-driven progress in evolution; all 6
+B5N-solves came from the seeding phase. Read honestly, this is *also*
+a null result — but with a strong mechanism-level reading: **novelty
+search as a standalone objective can't drive B5's evolution** because
+it doesn't reward improvement.
+
+| metric (1M, 5 seeds, partial) | B5N novelty | B5-1M accuracy |
+|---|---|---|
+| test-exact solves / seed (mean) | 2.00 | 10.20 |
+| tasks ever solved across all seeds | 6 | 24 |
+| tasks unique to this arm | **0** | 6 |
+| overlap with B5-1M | 6 / 6 = 100% | n/a |
+| seeds that degenerated | 5 / 5 | n/a |
+
+### 3.6.5 Reading the four together
+
+None of the four mechanisms expanded B5's frontier at 1M:
 
 | # | mechanism | kind of attack | result | what we learned |
 |---|---|---|---|---|
 | 1 | failure-mode dreaming | change the *practice pool* (targeted) | null | more aggressive targeting → significant regression (p=0.007) |
 | 2 | heterogeneous fitness | change the *fitness signal* (parsimony pressure) | null | stronger MDL → mild regression; produces *shorter*, not *more compositional*, programs |
 | 3 | task-subset specialization | change *what the lineage searches on* (subset) | null | hard set out of reach; random subset gain = compute |
+| 4 | novelty search (B5N) | change the *objective* (behavioral diversity) | null | finds the same 6 easy tasks as B5-1M (100% overlap); novelty-as-objective degenerates |
 
-The three attack the same search space from three different angles:
-practice pool, fitness signal, task pool. All three return null at 1M.
-The cheapest reading is that **no mechanism operating *inside* the
-current DSL/interpreter/fitness on the current 30-task frontier will
-expand B5's reach at 1M.** The remaining bets — novelty search (#4,
-behavioral diversity), learned L1 as proposer (#5, programmatic L1),
-operator self-modification (#6, learning to learn), L3 evoker (#7, 9f.4
-world-modeling capstone) — all attack the problem by adding a *new
-dimension* the lineage can search (a new objective, a new primitive
+The four attack the same search space from four different angles:
+practice pool, fitness signal, task pool, **objective**. All four
+return null at 1M. The cheapest reading is that **no mechanism
+operating *inside* the current DSL/interpreter/fitness on the current
+30-task frontier will expand B5's reach at 1M, regardless of which axis
+you vary.** The remaining bets — learned L1 as proposer (#5,
+programmatic L1), operator self-modification (#6, learning to learn),
+L3 evoker (#7, 9f.4 world-modeling capstone) — all attack the problem
+by adding a *new dimension* the lineage can search (a new primitive
 distribution, a new operator pool, a new world model), rather than
 redistributing budget across the same DSL. **The structural-change bet
-is now the dominant remaining strategy on this rig.**
+is now the dominant remaining strategy on this rig.** If #5–#7 also
+return null, the menu closes and the project's natural next move is to
+bring in a genuinely new substrate (ARCTraj, ARC-AGI-3) — not to keep
+attacking the same DSL with new mechanisms.
 
-*Artifacts:* the three pilots are frozen at
+*Artifacts:* the four pilots are frozen at
 [`experiments/2026-08-31_b5d_nm_1m/`](../../experiments/2026-08-31_b5d_nm_1m/),
 [`experiments/2026-08-31_b5d_nm_aggressive_1m/`](../../experiments/2026-08-31_b5d_nm_aggressive_1m/) (#1),
 [`experiments/2026-08-31_b5_heterogeneous_1m/`](../../experiments/2026-08-31_b5_heterogeneous_1m/) (#2),
+[`experiments/2026-09-22_task_subset_specialization/`](../../experiments/2026-09-22_task_subset_specialization/) (#3),
 and
-[`experiments/2026-09-22_task_subset_specialization/`](../../experiments/2026-09-22_task_subset_specialization/) (#3).
+[`experiments/2026-09-24_novelty_search/`](../../experiments/2026-09-24_novelty_search/) (#4).
 The cost-axis loader (`clebran/metrics/cost.py`) now picks up the #3
-arms so the menu pilots roll into the cost-axis ranking.
+arms so the menu pilots roll into the cost-axis ranking; #4's
+truncated logs (5 seeds that all degenerated before 1M) are at
+`logs/b5n_1m_seed{1..5}.jsonl`.
 
 # 4. Discussion
 
@@ -428,6 +470,16 @@ between isolation and the central library; the constraint is null across all fou
 payload types; and divergence, though real, degrades vocabulary quality rather
 than improving it. Communication is a transport mechanism, not a discovery
 mechanism, and in this substrate transport does not pay back the cost of
-dividing the compute. The result is what the design's baselines were built to
-make believable, and it is the result any future multi-agent program-synthesis
-proposal in this area has to address.
+dividing the compute.
+
+The follow-on sweep of the discovery-bottleneck menu (§3.6) closes the
+same way. Four concrete attacks on whether any mechanism *inside* the
+central learner can expand its frontier — practice pool, fitness
+signal, task pool, and objective — all return null at 1M × 5 seeds
+each. The transport side of clebran is solved; the discovery side is
+open. The remaining bets on the menu all change the same scope, and
+the natural next substrate for the project is one where the search
+space itself is wider (ARCTraj, ARC-AGI-3). The result is what the
+design's baselines were built to make believable, and it is the result
+any future multi-agent program-synthesis proposal in this area has to
+address.

@@ -25,18 +25,19 @@ vocabulary quality: B5's mined library is more compositional
 payload types, because adaptive operator selection self-regulates
 a failing channel regardless of bandwidth. *Communication is a
 transport mechanism, not a discovery mechanism.* A follow-on
-sweep of the *discovery-bottleneck menu* — three concrete
+sweep of the *discovery-bottleneck menu* — four concrete
 attacks on whether any mechanism *inside* the central learner
 itself can expand its frontier (failure-mode dreaming,
-heterogeneous fitness, task-subset specialization) — returns
-null at 1M × 5 seeds each, with the most aggressive
-failure-mode variant regressing at p = 0.007. The cheapest
-reading is that no mechanism operating inside the current
-DSL/interpreter/fitness on this frontier will expand B5's
-reach; the remaining bets all attack the problem by adding a
-new dimension the lineage can search, rather than
-redistributing budget across the same DSL. **The transport side
-of clebran is solved; the discovery side is open.**
+heterogeneous fitness, task-subset specialization, novelty
+search) — returns null at 1M × 5 seeds each, with the most
+aggressive failure-mode variant regressing at p = 0.007. The
+cheapest reading is that no mechanism operating inside the
+current DSL/interpreter/fitness on this frontier will expand
+B5's reach at 1M, regardless of which axis you vary; the
+remaining bets all attack the problem by adding a new
+dimension the lineage can search, rather than redistributing
+budget across the same DSL. **The transport side of clebran is
+solved; the discovery side is open.**
 
 **Paper 2 — the reorientation.** Teaching *content* between
 agents is neutral (relevant) or harmful (irrelevant) at matched
@@ -131,9 +132,9 @@ The three results are complementary. Paper 1 falsifies the
 content-transfer hypothesis at the level of *what* an agent
 knows, and a follow-on sweep of the discovery-bottleneck menu
 shows that no mechanism *inside* the central learner
-(practice pool, fitness signal, task pool) expands B5's
-frontier at 1M either — three concrete nulls in three
-different mechanisms, with the most aggressive variant
+(practice pool, fitness signal, task pool, **objective**)
+expands B5's frontier at 1M either — **four concrete nulls in
+four different mechanisms**, with the most aggressive variant
 regressing at p = 0.007. Paper 2 turns the question to *how* a
 system learns, and shows that the order of acquisition is the
 only axis that moves capability with content held fixed.
@@ -249,41 +250,48 @@ baseline any multi-agent framing must beat, not merely match.
 The multi-agent framing, the channel, and the constraint regime
 are the parts to rethink. The measurement rig is the asset.
 
-**The discovery bottleneck — three concrete nulls at 1M.**
+**The discovery bottleneck — four concrete nulls at 1M (2026-09-24).**
 Paper 1 establishes that the central library sits at the top of
 the matching-compute ranking and that no multi-agent channel
 beats it. The natural follow-up is to ask whether any mechanism
 *inside* the central learner itself — anything other than "more
 compute on the same DSL" — can expand B5's frontier. We attacked
-that question three times, each through a different *kind* of
-mechanism (the practice pool, the fitness signal, the task pool),
-at 1M evals × 5 seeds each. All three returned null.
+that question four times, each through a different *kind* of
+mechanism (the practice pool, the fitness signal, the task pool,
+the **objective**), at 1M evals × 5 seeds each. All four
+returned null.
 
 | # | mechanism | kind of attack | result | what we learned |
 |---|---|---|---|---|
 | 1 | failure-mode dreaming (B5D-NM-cons, B5D-NM-aggr) | change the *practice pool* (targeted) | null | more aggressive targeting → significant regression (8.80 vs 10.40, p = 0.007) |
 | 2 | heterogeneous fitness (B5-strongmdl, λ = 1.5) | change the *fitness signal* (parsimony pressure) | null | stronger MDL → mild regression (9.60, ns); produces *shorter*, not *more compositional*, programs |
 | 3 | task-subset specialization (hard15, random15) | change *what the lineage searches on* (subset) | null | hard subset out of reach (0 test-exact); random subset gain = 2× per-task compute |
+| 4 | novelty search (B5N) | change the *objective* (behavioral diversity) | null | finds exactly the 6 easy tasks B5-1M also finds (100% overlap); novelty-as-objective degenerates |
 
-Two of the three regress, not just fail: B5D-NM-aggressive at p =
-0.007, B5-strongmdl at −0.80 (~1 SE). The pattern across the
-three pilots is that **no mechanism operating inside the current
+Three of the four regress, not just fail: B5D-NM-aggressive at p
+= 0.007, B5-strongmdl at −0.80 (~1 SE), and the B5N novelty arm
+at −8.20 mean solves (degeneration). The pattern across the
+four pilots is that **no mechanism operating inside the current
 DSL/interpreter/fitness on this frontier will expand B5's reach
-at 1M.** Even B5-4M (15 seeds, 2× per-task compute) fails to
-solve any test-exact task in the hard15 subset; the only frontier
-"solves" on hard15 are train-only overfits on `1f85a75f`, which
-the held-out test pairs catch.
+at 1M, regardless of which axis you vary.** Even B5-4M (15
+seeds, 2× per-task compute) fails to solve any test-exact task
+in the hard15 subset; the only frontier "solves" on hard15 are
+train-only overfits on `1f85a75f`, which the held-out test pairs
+catch.
 
-The remaining bets in the menu — novelty search (#4, behavioral
-diversity), learned L1 as proposer (#5, programmatic L1 trained on
-the 16K-row trace dataset), operator self-modification (#6,
-learning to learn), and the L3 evoker (#7, the 9f.4 world-modeling
-capstone) — all attack the problem by adding a *new dimension* the
-lineage can search (a new objective, a new primitive distribution,
-a new operator pool, a new world model), rather than redistributing
-budget across the same DSL. **The structural-change bet is now the
-dominant remaining strategy on this rig.** The transport side of
-clebran is solved (this paper, §6); the discovery side is open.
+The remaining bets in the menu — learned L1 as proposer (#5,
+programmatic L1 trained on the 16K-row trace dataset), operator
+self-modification (#6, learning to learn), and the L3 evoker
+(#7, the 9f.4 world-modeling capstone) — all attack the problem
+by adding a *new dimension* the lineage can search (a new
+primitive distribution, a new operator pool, a new world model),
+rather than redistributing budget across the same DSL. **The
+structural-change bet is now the dominant remaining strategy on
+this rig.** If #5–#7 also return null, the menu closes and the
+project's natural next move is to bring in a genuinely new
+substrate (ARCTraj, ARC-AGI-3) — not to keep attacking the same
+DSL with new mechanisms. The transport side of clebran is solved
+(this paper, §6); the discovery side is open.
 
 See [`papers/01-communication-cost/`](../01-communication-cost/)
 for the full paper, the reproduction commands, and the frozen
@@ -629,20 +637,20 @@ self-regulates a failing channel. *Communication is a
 transport mechanism, not a discovery mechanism.* (Paper 1.)
 
 **No mechanism inside the central learner expands its frontier
-at 1M, either.** Three concrete attacks on the discovery
+at 1M, either.** Four concrete attacks on the discovery
 bottleneck — failure-mode dreaming (the practice pool),
 heterogeneous fitness (the fitness signal), task-subset
-specialization (the task pool) — all return null at 1M × 5
-seeds, with the most aggressive failure-mode variant regressing
-at p = 0.007. The cheapest reading is that **no mechanism
-operating inside the current DSL/interpreter/fitness on this
-frontier will expand B5's reach at 1M.** The remaining bets in
-the menu all attack the problem by adding a *new dimension* the
-lineage can search — novelty search, learned L1 as proposer,
-operator self-modification, the L3 evoker — rather than
-redistributing budget across the same DSL. **The
-structural-change bet is now the dominant remaining strategy
-on this rig.** (Paper 1, §3.6.)
+specialization (the task pool), novelty search (the objective)
+— all return null at 1M × 5 seeds, with the most aggressive
+failure-mode variant regressing at p = 0.007. The cheapest
+reading is that **no mechanism operating inside the current
+DSL/interpreter/fitness on this frontier will expand B5's reach
+at 1M, regardless of which axis you vary.** The remaining bets
+in the menu all attack the problem by adding a *new dimension*
+the lineage can search — learned L1 as proposer, operator
+self-modification, the L3 evoker — rather than redistributing
+budget across the same DSL. **The structural-change bet is now
+the dominant remaining strategy on this rig.** (Paper 1, §3.6.)
 
 **The process of learning matters, and is where the remaining
 purchase is.** Teaching *content* between agents is neutral or
@@ -693,12 +701,12 @@ library-mining mechanism transfer directly. (Paper 3.)
    be measured against its predictions, and a planner using
    the interpreter as L1 establishes the ceiling any learned
    L1 has to recover.
-5. *One null is anecdote; three nulls in three different
+5. *One null is anecdote; four nulls in four different
    mechanisms are a pattern.* The discovery-bottleneck menu
-   (#1–#3) was chosen to attack the same problem (the central
-   library's reach) from three different angles. Returning null
-   from all three is *evidence* the bottleneck is real, not
-   three independent underpowered tests.
+   (#1–#4) was chosen to attack the same problem (the central
+   library's reach) from four different angles. Returning null
+   from all four is *evidence* the bottleneck is real, not
+   four independent underpowered tests.
 
 **The asset of the work is the matched-compute measurement
 rig.** A cheap critique of any null in evolutionary synthesis
@@ -718,15 +726,19 @@ agent-design question.
 The three papers together open four productive work items, in
 order of immediacy.
 
-1. **Novelty search arm (#4, discovery-bottleneck menu).**
-   Add a B5+novelty arm that scores on behavioral diversity of
-   the program (novel output grids), not on task accuracy.
-   Different *objective* in the same DSL. If null at 1M, the
-   menu is 0-for-4 — strong evidence that no mechanism *inside*
-   the current DSL can expand B5's frontier, and #5/#6/#7
-   (L1 proposer, operator self-modification, L3 evoker) become
-   the structural-change bet. If positive, opens a new
-   mechanism on the existing rig.
+1. **Learned L1 as proposer (#5, discovery-bottleneck menu).**
+   The novelty-search arm (#4) was run on 2026-09-24 and
+   returned null — finds exactly the 6 easy tasks B5-1M also
+   finds (100% overlap), novelty-as-objective degenerates. The
+   menu is now 0-for-4 at 1M, and the remaining three bets
+   all change the substrate: #5 trains a programmatic L1 on the
+   16K-row trace dataset and uses it to *propose* candidates to
+   B5's initial population (the L1 has seen 400 reference
+   solvers; B5's local search starts from scratch per task).
+   #6 lets the lineage modify its own mutation operators.
+   #7 is the L3 evoker — a learned world model that refines on
+   failed predictions. See [`roadmap.md`](../../roadmap.md)
+   for hypothesis / expected payoff / build for each.
 
 2. **Object-aware distance metric.** The L2 planner's Hamming
    metric is too coarse for many ARC tasks — the 28.2% Hodel
