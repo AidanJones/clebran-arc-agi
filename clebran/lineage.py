@@ -281,7 +281,8 @@ class Lineage:
 
     def seed_with_planner(self, tid: str, max_steps: int = 20,
                           lookahead: int = 1,
-                          distance: str = "hamming") -> bool:
+                          distance: str = "hamming",
+                          planner: "L2Planner | None" = None) -> bool:
         """Run the L2 planner on *all* of the task's demo pairs and
         add the resulting program to the population as a
         high-priority seed. Returns True if the planner produced a
@@ -313,6 +314,14 @@ class Lineage:
             match (number of disconnected disagreement regions)
             rather than cell-wise Hamming, which is the right
             metric for tasks that change a small region of the grid.
+        planner : L2Planner, optional
+            A pre-built ``L2Planner`` to use. If ``None`` (the
+            default), a planner with the perfect-interpreter
+            rollout engine is constructed. Pass a pre-built
+            planner to swap in a different rollout engine
+            (e.g. ``L2Planner(rollout_fn=make_l1_rollout(gp))``
+            for the L1-as-rollout-engine arm — see
+            ``b5_l1_planner.py``).
         """
         from .world_model.l2_planner import L2Planner
         task = self.tasks[tid]
@@ -333,7 +342,8 @@ class Lineage:
                 return False
             if not (isinstance(tg, tuple) and tg and isinstance(tg[0], tuple)):
                 return False
-        planner = L2Planner(lookahead=lookahead, distance=distance)
+        if planner is None:
+            planner = L2Planner(lookahead=lookahead, distance=distance)
         result = planner.plan_to_program(demos, max_steps=max_steps)
         prog = result["program"]
         if not prog.statements:
@@ -347,7 +357,8 @@ class Lineage:
 
     def seed_with_planner_topk(self, tid: str, k: int = 3,
                                 lookahead: int = 1,
-                                distance: str = "hamming") -> int:
+                                distance: str = "hamming",
+                                planner: "L2Planner | None" = None) -> int:
         """Top-K variant of ``seed_with_planner``: seed the top-K
         planner candidates as K individuals in the population. The
         planner call is shared (one rollout); only the program
@@ -375,6 +386,14 @@ class Lineage:
             Number of top candidates to seed.
         lookahead, distance
             Forwarded to ``L2Planner``.
+        planner : L2Planner, optional
+            A pre-built ``L2Planner`` to use. If ``None`` (the
+            default), a planner with the perfect-interpreter
+            rollout engine is constructed. Pass a pre-built
+            planner to swap in a different rollout engine
+            (e.g. ``L2Planner(rollout_fn=make_l1_rollout(gp))``
+            for the L1-as-rollout-engine arm — see
+            ``b5_l1_planner.py``).
         """
         from .world_model.l2_planner import L2Planner
         task = self.tasks[tid]
@@ -397,7 +416,8 @@ class Lineage:
         # crowd out the random initial population.
         max_seeds = max(1, self.pop_size // 4)
         k_eff = min(k, max_seeds)
-        planner = L2Planner(lookahead=lookahead, distance=distance)
+        if planner is None:
+            planner = L2Planner(lookahead=lookahead, distance=distance)
         top_k = planner.top_k_candidates(demos, k=k_eff)
         if not top_k:
             return 0

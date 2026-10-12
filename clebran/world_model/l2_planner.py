@@ -218,7 +218,19 @@ def _most_common_color(grid: tuple) -> int:
 
 def _safe_call(fn_name: str, *args) -> object | None:
     """Call a primitive by name with try/except, returning None on any
-    error. Used by the planner to safely probe each candidate."""
+    error. Used by the planner to safely probe each candidate. This is
+    the *perfect* L1: the clebran interpreter itself, called directly.
+
+    The planner can swap this for a learned-L1 rollout function via
+    the ``rollout_fn`` constructor argument — see ``L1Rollout`` in
+    ``l1_rollout.py`` for a hybrid that prefers the GPL1's prediction
+    on the primitives it has learned, and falls back to the
+    interpreter on miss. The trade-off is accuracy vs rollout speed:
+    paper 3's §6 conclusion names this as the explicit "next push"
+    ("The learned L1's job is to be a fast approximation of the
+    perfect L1, with a tolerable accuracy loss in exchange for
+    rollout speed").
+    """
     try:
         return PRIMITIVES[fn_name].fn(*args)
     except Exception:
@@ -413,7 +425,36 @@ class L2Planner:
     def __init__(self, candidate_fn: Callable | None = None,
                  distance: "str | Callable" = "hamming",
                  lookahead: int = 1,
-                 loop_penalty: float = 1e9):
+                 loop_penalty: float = 1e9,
+                 rollout_fn: Callable | None = None):
+        """Construct an L2 planner.
+
+        Parameters
+        ----------
+        candidate_fn : callable, optional
+            ``(state, target) -> list[(primitive_name, args)]``. The
+            candidate-generator. Defaults to ``_default_candidates``.
+        distance : str or callable, default "hamming"
+            Distance metric name (one of ``DISTANCES``) or a custom
+            ``(next_state, target) -> float`` callable.
+        lookahead : int, default 1
+            Lookahead depth for the iterative planner. ``1`` is
+            greedy; ``2`` does two-step lookahead.
+        loop_penalty : float, default 1e9
+            Penalty added to a candidate's distance if it produces a
+            state already in the iterative planner's visited set.
+        rollout_fn : callable, optional
+            ``(primitive_name, *args) -> result_or_None`` — the
+            rollout engine. The planner uses this to predict
+            ``(state, action) → next_state`` for each candidate.
+            Defaults to ``_safe_call`` (the clebran interpreter —
+            the *perfect* L1). Pass an L1-rollout function to use
+            a learned L1 (e.g. ``L1Rollout(gp_l1).predict``) —
+            see ``l1_rollout.py`` for the hybrid
+            L1-then-interpreter pattern that trades accuracy for
+            rollout speed (paper 3 §6, "the learned L1's job is
+            to be a fast approximation of the perfect L1").
+        """
         if lookahead < 1:
             raise ValueError("lookahead must be >= 1")
         self.candidate_fn = candidate_fn or _default_candidates
@@ -430,6 +471,7 @@ class L2Planner:
             self.distance_name = getattr(distance, "__name__", "custom")
         self.lookahead = lookahead
         self.loop_penalty = loop_penalty
+        self.rollout_fn = rollout_fn or _safe_call
 
     # -- single-pair greedy -------------------------------------------------
 
@@ -455,7 +497,7 @@ class L2Planner:
         best = {"primitive": None, "args": None, "next_state": None,
                 "distance": float("inf")}
         for name, args in self.candidate_fn(state, target):
-            result = _safe_call(name, *args)
+            result = self.rollout_fn(name, *args)
             if result is None or not isinstance(result, tuple):
                 continue
             if not result or not isinstance(result[0], tuple):
@@ -514,7 +556,7 @@ class L2Planner:
             for st, tg in demos:
                 # Substitute the first state in `args` with `st`.
                 remapped = tuple(st if a is first_state else a for a in args)
-                result = _safe_call(name, *remapped)
+                result = self.rollout_fn(name, *remapped)
                 if result is None or not isinstance(result, tuple):
                     bad = True
                     break
@@ -577,7 +619,7 @@ class L2Planner:
             bad = False
             for st, tg in demos:
                 remapped = tuple(st if a is first_state else a for a in args)
-                result = _safe_call(name, *remapped)
+                result = self.rollout_fn(name, *remapped)
                 if result is None or not isinstance(result, tuple):
                     bad = True; break
                 if not result or not isinstance(result[0], tuple):
@@ -643,7 +685,7 @@ class L2Planner:
             bad = False
             for st, tg in demos:
                 remapped = tuple(st if a is first_state else a for a in args)
-                result = _safe_call(name, *remapped)
+                result = self.rollout_fn(name, *remapped)
                 if result is None or not isinstance(result, tuple):
                     bad = True; break
                 if not result or not isinstance(result[0], tuple):
@@ -786,7 +828,7 @@ class L2Planner:
                     remapped = tuple(
                         st if a is first_state_now else a for a in args
                     )
-                    ns = _safe_call(best["primitive"], *remapped)
+                    ns = self.rollout_fn(best["primitive"], *remapped)
                     per_demo_next_states.append(ns)
             per_demo_dists = [
                 _grid_hamming(ns, tg) if ns is not None else float("inf")

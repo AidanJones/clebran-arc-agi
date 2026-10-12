@@ -16,6 +16,7 @@ from ..orchestrator import run_multi
 from .b0 import run_b0, run_b5, run_b5_dream, run_b5_dream_near_miss
 from .b5_planner import run_single as run_b5_planner
 from .b5_l1_proposer import run_single as run_b5_l1_proposer
+from .b5_l1_planner import run_single as run_b5_l1_planner
 from .common import LOG_DIR, run_prefix
 
 ARM_CHANNEL = {
@@ -57,6 +58,8 @@ def run_arm(
         return run_b5_planner(seed=seed, budget=budget, pop_size=pop_size)
     if arm == "B5L1":
         return run_b5_l1_proposer(seed=seed, budget=budget, pop_size=pop_size)
+    if arm == "B5L1P":
+        return run_b5_l1_planner(seed=seed, budget=budget, pop_size=pop_size)
     spec = dict(ARM_CHANNEL[arm])
     kind = spec.pop("kind")
     if kind == "constrained":
