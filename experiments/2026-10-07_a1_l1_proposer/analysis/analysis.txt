@@ -1,0 +1,36 @@
+========================================================================
+A1 — #5 Learned L1 as proposer (2026-10-07)
+========================================================================
+
+B5L1 logs:    5 seeds
+B5 (control) logs:  5 seeds
+
+Per-arm frontier solves / 30 (mean ± SE):
+  B5L1 (L1 proposer + B5):    10.00 ± 0.32
+  B5  (control):              10.40 ± 0.51
+  delta (B5L1 - B5):          -0.40
+
+Per-arm evo-solved / 30 (mean ± SE):
+  B5L1:   2.80 ± 0.37
+  B5:     3.20 ± 0.37
+  delta: -0.40
+
+Per-arm test-exact / 30 (mean ± SE):
+  B5L1:  10.00 ± 0.32
+  B5:    10.20 ± 0.37
+  delta: -0.20
+
+Per-seed frontier solves / 30:
+  seed  | B5L1 | B5  | delta
+  ------+------+-----+------
+     1  |    9 |  10 |    -1
+     2  |   10 |  10 |     0
+     3  |   11 |   9 |     2
+     4  |   10 |  11 |    -1
+     5  |   10 |  12 |    -2
+
+Tasks solved by any B5L1 seed:    12 (['5582e5ca', '5614dbcf', '5bd6f4ac', '6150a2bd', '6d0aefbc', '9172f3a0', 'a416b8f3', 'b1948b0a', 'd10ecb37', 'dc0a314f', 'ed36ccf7', 'f76d97a5'])
+Tasks solved by any B5 seed:      13 (['0d3d703e', '1f85a75f', '5582e5ca', '5614dbcf', '5bd6f4ac', '6150a2bd', '6d0aefbc', '9172f3a0', 'a416b8f3', 'b1948b0a', 'd10ecb37', 'dc0a314f', 'ed36ccf7'])
+Overlap:                          11
+Unique to B5L1:                   1 (['f76d97a5'])
+Unique to B5:                     2 (['0d3d703e', '1f85a75f'])

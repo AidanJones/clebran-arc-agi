@@ -430,6 +430,85 @@ class Lineage:
         self._sort(pop)
         return added
 
+    def seed_with_l1_proposer(self, tid: str, proposer,
+                              k: int = 3) -> int:
+        """Seed the population with the L1 proposer's top-K
+        first-step primitives for the task's demo inputs.
+
+        The proposer is queried once per demo pair (using the first
+        demo's input grid as the signature), and the resulting
+        candidates are de-duplicated and added at the front of the
+        population. Each proposal is a 1-statement program applied
+        to the first demo's input grid; the proposal is evaluated
+        normally (against ALL demos) by ``evaluate_for_mode`` so the
+        budget cost is one candidate-evaluation per proposal.
+
+        Parameters
+        ----------
+        tid : str
+            The task ID to seed.
+        proposer : L1Proposer
+            An ``L1Proposer`` instance (see
+            ``clebran.world_model.l1_proposer``).
+        k : int, default 3
+            Number of top-K proposals to add per task (across all
+            demo pairs, de-duplicated by primitive name).
+
+        Returns the number of seeds actually added (0 if no
+        proposals could be built). The maximum is bounded by the
+        population size; we cap at ``pop_size // 4`` to avoid
+        swamping the random initial population with proposer seeds.
+
+        See :mod:`clebran.world_model.l1_proposer` for the proposer
+        construction. The proposer is deterministic; the same input
+        grid always produces the same K proposals.
+        """
+        task = self.tasks[tid]
+        pop = self.pops[tid]
+        if not task.train:
+            return 0
+        # Build a list of (input, target) demo pairs from the task.
+        demos: list[tuple] = []
+        for input_grid, target_grid in task.train:
+            demos.append((
+                tuple(tuple(r) for r in input_grid),
+                tuple(tuple(r) for r in target_grid),
+            ))
+        # All demos must be grid→grid (the proposer only handles
+        # grid inputs).
+        for st, tg in demos:
+            if not (isinstance(st, tuple) and st and isinstance(st[0], tuple)):
+                return 0
+            if not (isinstance(tg, tuple) and tg and isinstance(tg[0], tuple)):
+                return 0
+        # Cap at a quarter of the pop size — too many seeds would
+        # crowd out the random initial population.
+        max_seeds = max(1, self.pop_size // 4)
+        k_eff = min(k, max_seeds)
+        # Collect proposals (de-duplicated by (program, primitive)).
+        seen_progs: set = set()
+        proposals: list = []
+        first_state = demos[0][0]
+        for prog, prim_name in proposer.propose_first_step(first_state, k=k_eff):
+            # De-dup on the program's hashable representation.
+            key = tuple((st.fn, tuple(st.arg_kinds)) for st in prog.statements)
+            if key in seen_progs:
+                continue
+            seen_progs.add(key)
+            proposals.append((prog, prim_name))
+        if not proposals:
+            return 0
+        added = 0
+        for prog, prim_name in proposals:
+            try:
+                fit = self.evaluator.evaluate_for_mode(prog, task)
+            except Exception:
+                continue
+            pop.individuals.insert(0, Individual(prog, fit))
+            added += 1
+        self._sort(pop)
+        return added
+
     # ---------- one generation on one task ----------
 
     def step_generation(self, tid: str) -> None:

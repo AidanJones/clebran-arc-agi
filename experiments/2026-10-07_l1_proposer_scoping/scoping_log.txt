@@ -1,0 +1,207 @@
+﻿loading trace dataset from C:\Users\aidan\repos\clebran-arc-agi\data\traces.jsonl ...
+  loaded 16,149 rows
+  frontier tasks (held-out): 30
+  train grid rows: 1,645, test grid rows: 86
+
+training GPL1 on non-frontier tasks (this takes ~30s) ...
+  evolving L1 for primitive 'apply' (17 training rows) ...
+    gen  2/8: best fitness=0.382, exact=0/17, shape=13/17
+    gen  4/8: best fitness=0.382, exact=0/17, shape=13/17
+    gen  6/8: best fitness=0.382, exact=0/17, shape=13/17
+    gen  8/8: best fitness=0.382, exact=0/17, shape=13/17
+  evolving L1 for primitive 'bottomhalf' (54 training rows) ...
+    gen  2/8: best fitness=0.491, exact=1/54, shape=51/54
+    gen  4/8: best fitness=0.509, exact=3/54, shape=49/54
+    gen  6/8: best fitness=0.509, exact=3/54, shape=49/54
+    gen  8/8: best fitness=0.509, exact=3/54, shape=49/54
+  evolving L1 for primitive 'branch' (19 training rows) ...
+    gen  2/8: best fitness=0.737, exact=11/19, shape=6/19
+    gen  4/8: best fitness=0.737, exact=11/19, shape=6/19
+    gen  6/8: best fitness=0.737, exact=11/19, shape=6/19
+    gen  8/8: best fitness=0.737, exact=11/19, shape=6/19
+  evolving L1 for primitive 'canvas' (16 training rows) ...
+    gen  2/8: best fitness=0.156, exact=0/16, shape=5/16
+    gen  4/8: best fitness=0.156, exact=0/16, shape=5/16
+    gen  6/8: best fitness=0.156, exact=0/16, shape=5/16
+    gen  8/8: best fitness=0.156, exact=0/16, shape=5/16
+  evolving L1 for primitive 'cellwise' (12 training rows) ...
+    gen  2/8: best fitness=0.500, exact=0/12, shape=12/12
+    gen  4/8: best fitness=0.500, exact=0/12, shape=12/12
+    gen  6/8: best fitness=0.500, exact=0/12, shape=12/12
+    gen  8/8: best fitness=0.500, exact=0/12, shape=12/12
+  evolving L1 for primitive 'cmirror' (18 training rows) ...
+    gen  2/8: best fitness=1.000, exact=18/18, shape=0/18
+    gen  4/8: best fitness=1.000, exact=18/18, shape=0/18
+    gen  6/8: best fitness=1.000, exact=18/18, shape=0/18
+    gen  8/8: best fitness=1.000, exact=18/18, shape=0/18
+  evolving L1 for primitive 'compress' (20 training rows) ...
+    gen  2/8: best fitness=0.000, exact=0/20, shape=0/20
+    gen  4/8: best fitness=0.000, exact=0/20, shape=0/20
+    gen  6/8: best fitness=0.000, exact=0/20, shape=0/20
+    gen  8/8: best fitness=0.000, exact=0/20, shape=0/20
+  evolving L1 for primitive 'crop' (47 training rows) ...
+    gen  2/8: best fitness=0.234, exact=7/47, shape=8/47
+    gen  4/8: best fitness=0.234, exact=7/47, shape=8/47
+    gen  6/8: best fitness=0.234, exact=7/47, shape=8/47
+    gen  8/8: best fitness=0.234, exact=7/47, shape=8/47
+  evolving L1 for primitive 'dedupe' (6 training rows) ...
+    gen  2/8: best fitness=0.000, exact=0/6, shape=0/6
+    gen  4/8: best fitness=0.000, exact=0/6, shape=0/6
+    gen  6/8: best fitness=0.000, exact=0/6, shape=0/6
+    gen  8/8: best fitness=0.000, exact=0/6, shape=0/6
+  evolving L1 for primitive 'dmirror' (38 training rows) ...
+    gen  2/8: best fitness=0.921, exact=35/38, shape=0/38
+    gen  4/8: best fitness=0.921, exact=35/38, shape=0/38
+    gen  6/8: best fitness=0.921, exact=35/38, shape=0/38
+    gen  8/8: best fitness=0.921, exact=35/38, shape=0/38
+  evolving L1 for primitive 'downscale' (19 training rows) ...
+    gen  2/8: best fitness=0.000, exact=0/19, shape=0/19
+    gen  4/8: best fitness=0.000, exact=0/19, shape=0/19
+    gen  6/8: best fitness=0.000, exact=0/19, shape=0/19
+    gen  8/8: best fitness=0.000, exact=0/19, shape=0/19
+  evolving L1 for primitive 'fill' (279 training rows) ...
+    gen  2/8: best fitness=0.480, exact=17/279, shape=234/279
+    gen  4/8: best fitness=0.480, exact=17/279, shape=234/279
+    gen  6/8: best fitness=0.480, exact=17/279, shape=234/279
+    gen  8/8: best fitness=0.480, exact=17/279, shape=234/279
+  evolving L1 for primitive 'hconcat' (85 training rows) ...
+    gen  2/8: best fitness=0.100, exact=6/85, shape=5/85
+    gen  4/8: best fitness=0.100, exact=6/85, shape=5/85
+    gen  6/8: best fitness=0.100, exact=6/85, shape=5/85
+    gen  8/8: best fitness=0.100, exact=6/85, shape=5/85
+  evolving L1 for primitive 'hmirror' (70 training rows) ...
+    gen  2/8: best fitness=0.886, exact=61/70, shape=2/70
+    gen  4/8: best fitness=0.886, exact=61/70, shape=2/70
+    gen  6/8: best fitness=0.886, exact=61/70, shape=2/70
+    gen  8/8: best fitness=0.886, exact=61/70, shape=2/70
+  evolving L1 for primitive 'hupscale' (14 training rows) ...
+    gen  2/8: best fitness=0.000, exact=0/14, shape=0/14
+    gen  4/8: best fitness=0.000, exact=0/14, shape=0/14
+    gen  6/8: best fitness=0.000, exact=0/14, shape=0/14
+    gen  8/8: best fitness=0.000, exact=0/14, shape=0/14
+  evolving L1 for primitive 'last' (14 training rows) ...
+    gen  2/8: best fitness=0.500, exact=0/14, shape=14/14
+    gen  4/8: best fitness=0.500, exact=0/14, shape=14/14
+    gen  6/8: best fitness=0.500, exact=0/14, shape=14/14
+    gen  8/8: best fitness=0.500, exact=0/14, shape=14/14
+  evolving L1 for primitive 'lefthalf' (50 training rows) ...
+    gen  2/8: best fitness=0.060, exact=0/50, shape=6/50
+    gen  4/8: best fitness=0.060, exact=0/50, shape=6/50
+    gen  6/8: best fitness=0.060, exact=0/50, shape=6/50
+    gen  8/8: best fitness=0.060, exact=0/50, shape=6/50
+  evolving L1 for primitive 'mapply' (6 training rows) ...
+    gen  2/8: best fitness=0.000, exact=0/6, shape=0/6
+    gen  4/8: best fitness=0.000, exact=0/6, shape=0/6
+    gen  6/8: best fitness=0.000, exact=0/6, shape=0/6
+    gen  8/8: best fitness=0.000, exact=0/6, shape=0/6
+  evolving L1 for primitive 'move' (6 training rows) ...
+    gen  2/8: best fitness=0.500, exact=0/6, shape=6/6
+    gen  4/8: best fitness=0.500, exact=0/6, shape=6/6
+    gen  6/8: best fitness=0.500, exact=0/6, shape=6/6
+    gen  8/8: best fitness=0.500, exact=0/6, shape=6/6
+  evolving L1 for primitive 'paint' (118 training rows) ...
+    gen  2/8: best fitness=0.551, exact=12/118, shape=106/118
+    gen  4/8: best fitness=0.551, exact=12/118, shape=106/118
+    gen  6/8: best fitness=0.551, exact=12/118, shape=106/118
+    gen  8/8: best fitness=0.551, exact=12/118, shape=106/118
+  evolving L1 for primitive 'replace' (107 training rows) ...
+    gen  2/8: best fitness=0.528, exact=9/107, shape=95/107
+    gen  4/8: best fitness=0.528, exact=9/107, shape=95/107
+    gen  6/8: best fitness=0.528, exact=9/107, shape=95/107
+    gen  8/8: best fitness=0.528, exact=9/107, shape=95/107
+  evolving L1 for primitive 'righthalf' (46 training rows) ...
+    gen  2/8: best fitness=0.500, exact=0/46, shape=46/46
+    gen  4/8: best fitness=0.500, exact=0/46, shape=46/46
+    gen  6/8: best fitness=0.500, exact=0/46, shape=46/46
+    gen  8/8: best fitness=0.500, exact=0/46, shape=46/46
+  evolving L1 for primitive 'rot180' (40 training rows) ...
+    gen  2/8: best fitness=0.713, exact=19/40, shape=19/40
+    gen  4/8: best fitness=0.738, exact=21/40, shape=17/40
+    gen  6/8: best fitness=0.738, exact=21/40, shape=17/40
+    gen  8/8: best fitness=0.738, exact=21/40, shape=17/40
+  evolving L1 for primitive 'rot270' (46 training rows) ...
+    gen  2/8: best fitness=0.848, exact=32/46, shape=14/46
+    gen  4/8: best fitness=0.848, exact=32/46, shape=14/46
+    gen  6/8: best fitness=0.848, exact=32/46, shape=14/46
+    gen  8/8: best fitness=0.848, exact=32/46, shape=14/46
+  evolving L1 for primitive 'rot90' (58 training rows) ...
+    gen  2/8: best fitness=1.000, exact=58/58, shape=0/58
+    gen  4/8: best fitness=1.000, exact=58/58, shape=0/58
+    gen  6/8: best fitness=1.000, exact=58/58, shape=0/58
+    gen  8/8: best fitness=1.000, exact=58/58, shape=0/58
+  evolving L1 for primitive 'sfilter' (9 training rows) ...
+    gen  2/8: best fitness=0.000, exact=0/9, shape=0/9
+    gen  4/8: best fitness=0.000, exact=0/9, shape=0/9
+    gen  6/8: best fitness=0.000, exact=0/9, shape=0/9
+    gen  8/8: best fitness=0.000, exact=0/9, shape=0/9
+  evolving L1 for primitive 'subgrid' (18 training rows) ...
+    gen  2/8: best fitness=0.111, exact=0/18, shape=4/18
+    gen  4/8: best fitness=0.111, exact=0/18, shape=4/18
+    gen  6/8: best fitness=0.139, exact=1/18, shape=3/18
+    gen  8/8: best fitness=0.139, exact=1/18, shape=3/18
+  evolving L1 for primitive 'switch' (25 training rows) ...
+    gen  2/8: best fitness=0.580, exact=4/25, shape=21/25
+    gen  4/8: best fitness=0.580, exact=4/25, shape=21/25
+    gen  6/8: best fitness=0.580, exact=4/25, shape=21/25
+    gen  8/8: best fitness=0.580, exact=4/25, shape=21/25
+  evolving L1 for primitive 'tophalf' (53 training rows) ...
+    gen  2/8: best fitness=0.094, exact=2/53, shape=6/53
+    gen  4/8: best fitness=0.094, exact=2/53, shape=6/53
+    gen  6/8: best fitness=0.094, exact=2/53, shape=6/53
+    gen  8/8: best fitness=0.094, exact=2/53, shape=6/53
+  evolving L1 for primitive 'trim' (16 training rows) ...
+    gen  2/8: best fitness=0.000, exact=0/16, shape=0/16
+    gen  4/8: best fitness=0.000, exact=0/16, shape=0/16
+    gen  6/8: best fitness=0.000, exact=0/16, shape=0/16
+    gen  8/8: best fitness=0.000, exact=0/16, shape=0/16
+  evolving L1 for primitive 'underfill' (9 training rows) ...
+    gen  2/8: best fitness=0.333, exact=0/9, shape=6/9
+    gen  4/8: best fitness=0.333, exact=0/9, shape=6/9
+    gen  6/8: best fitness=0.333, exact=0/9, shape=6/9
+    gen  8/8: best fitness=0.333, exact=0/9, shape=6/9
+  evolving L1 for primitive 'upscale' (34 training rows) ...
+    gen  2/8: best fitness=0.000, exact=0/34, shape=0/34
+    gen  4/8: best fitness=0.000, exact=0/34, shape=0/34
+    gen  6/8: best fitness=0.000, exact=0/34, shape=0/34
+    gen  8/8: best fitness=0.000, exact=0/34, shape=0/34
+  evolving L1 for primitive 'vconcat' (119 training rows) ...
+    gen  2/8: best fitness=0.000, exact=0/119, shape=0/119
+    gen  4/8: best fitness=0.000, exact=0/119, shape=0/119
+    gen  6/8: best fitness=0.000, exact=0/119, shape=0/119
+    gen  8/8: best fitness=0.000, exact=0/119, shape=0/119
+  evolving L1 for primitive 'vmirror' (72 training rows) ...
+    gen  2/8: best fitness=0.896, exact=60/72, shape=9/72
+    gen  4/8: best fitness=0.896, exact=60/72, shape=9/72
+    gen  6/8: best fitness=0.896, exact=60/72, shape=9/72
+    gen  8/8: best fitness=0.896, exact=60/72, shape=9/72
+  evolving L1 for primitive 'vupscale' (8 training rows) ...
+    gen  2/8: best fitness=0.000, exact=0/8, shape=0/8
+    gen  4/8: best fitness=0.000, exact=0/8, shape=0/8
+    gen  6/8: best fitness=0.000, exact=0/8, shape=0/8
+    gen  8/8: best fitness=0.000, exact=0/8, shape=0/8
+
+GPL1 evolution took 7.9s
+
+per-primitive OOD accuracy on frontier tasks:
+            bottomhalf: exact=0/3 = 0.0%, shape=3/3 = 100.0%
+              cellwise: exact=0/5 = 0.0%, shape=5/5 = 100.0%
+               hconcat: exact=0/19 = 0.0%, shape=0/19 = 0.0%
+               hmirror: exact=5/5 = 100.0%, shape=5/5 = 100.0%
+              hupscale: exact=0/5 = 0.0%, shape=0/5 = 0.0%
+              lefthalf: exact=0/2 = 0.0%, shape=0/2 = 0.0%
+                 paint: exact=0/4 = 0.0%, shape=4/4 = 100.0%
+               replace: exact=0/3 = 0.0%, shape=3/3 = 100.0%
+               tophalf: exact=0/5 = 0.0%, shape=0/5 = 0.0%
+               vconcat: exact=0/13 = 0.0%, shape=0/13 = 0.0%
+               vmirror: exact=17/17 = 100.0%, shape=17/17 = 100.0%
+              vupscale: exact=0/5 = 0.0%, shape=0/5 = 0.0%
+                 TOTAL: exact=22/86 = 25.6%, shape=37/86 = 43.0%
+
+ranking test: rank Hodel's first-step primitive by interpreter distance vs GPL1 distance ...
+
+scoped over 18 demo first-step pairs across 5 frontier tasks
+  pairs where GPL1 had no program for Hodel's primitive: 0
+
+  ranking                      #1      <=3      <=5
+  interpreter (perfect)    13/ 18 ( 72%)    13/ 18 ( 72%)    13/ 18 ( 72%)
+  GPL1 (learned)           10/ 18 ( 56%)    10/ 18 ( 56%)    10/ 18 ( 56%)
